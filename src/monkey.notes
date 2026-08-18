@@ -582,9 +582,9 @@ C 0x613B 0x65C3: los patrones de andar hacia la derecha; 0x65D3 los de la izquie
 C 0x614E Cada 4 pixels el sonido del paso (3)
 C 0x615A 0x6924: hay suelo debajo (NC) o no (C)
 C 0x6160 X entre 8 y 0xB8: dentro de la pantalla de juego
-L 0x6168 ACTOR_ANDA_X      X nueva a los dos sprites; el cangrejo (tipo 3) se atonta al azar: bit 4 puesto y a esperar
+L 0x6168 ACTOR_ANDA_X      X nueva a los dos sprites; el cangrejo del tipo 3, cuando el azar (E140) sale a cero, se pone el bit 4: para el, el disparo
 C 0x616F Solo el tipo 3 (el cangrejo que se para)
-C 0x6176 Una vez de cada 256: se queda parado con el bit 4
+C 0x6176 Solo cuando E140 sale exactamente 0: se pone el bit 4 (saltara en cuanto este parado)
 L 0x618D ACTOR_SIN_SUELO   Sin suelo debajo: el mono y el tipo 1 se caen (estado 6); los tipos 2 y 3 lo piensan (0x6205)
 L 0x6197 ACTOR_CAE         Un pixel mas alla del borde y a caer (estado 6) con el sonido 5
 L 0x61AC ACTOR_BORDE_DER   Borde derecho: el cangrejo da la vuelta (bits 6-7 de +0x5B); el mono se queda

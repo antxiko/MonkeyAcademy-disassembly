@@ -66,9 +66,9 @@ frames while the tile is not empty) and drop to the first floor.
 - **Type 1** walks to an edge and falls off.
 - **Type 2** thinks about it at the edge: half the time it falls, half it
   turns round.
-- **Type 3** is the only one that jumps (0x616F: once in 256 it stops and sets
-  bit 4, which for a crab is the fire button), and so the only one that can
-  grab a hanging fruit and throw it at you.
+- **Type 3** is the only one that jumps (0x616F: when the random byte at
+  0xE140 comes out zero it sets bit 4, which for a crab is the fire button),
+  and so the only one that can grab a hanging fruit and throw it at you.
 - **From stage 18** the first one is type 4 (0x47E9: 0x44) and patrols the
   second platform: at the edge it turns round if it is at that height
   (Y = 0x38) and otherwise lets itself fall to it.

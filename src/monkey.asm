@@ -2950,7 +2950,7 @@ ACTOR_ANDA_SUELO:		; La animacion y el suelo
 	jr c,ACTOR_BORDE_IZQ		;6162
 	cp 0b9h		;6164
 	jr nc,ACTOR_BORDE_DER		;6166
-ACTOR_ANDA_X:		; X nueva a los dos sprites; el cangrejo (tipo 3) se atonta al azar: bit 4 puesto y a esperar
+ACTOR_ANDA_X:		; X nueva a los dos sprites; el cangrejo del tipo 3, cuando el azar (E140) sale a cero, se pone el bit 4: para el, el disparo
 	ld (ix+001h),c		;6168
 	ld (ix+005h),c		;616b
 	pop bc			;616e
@@ -2959,7 +2959,7 @@ ACTOR_ANDA_X:		; X nueva a los dos sprites; el cangrejo (tipo 3) se atonta al az
 	ret z			;6172
 	cp 003h		;6173
 	ret nz			;6175
-	call AZAR		;6176   ; Una vez de cada 256: se queda parado con el bit 4
+	call AZAR		;6176   ; Solo cuando E140 sale exactamente 0: se pone el bit 4 (saltara en cuanto este parado)
 	ld a,(0e140h)		;6179
 	or a			;617c
 	ret nz			;617d

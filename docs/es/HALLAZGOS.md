@@ -69,8 +69,8 @@ tarjeta. El cálculo sobra y el resultado es el correcto.
 
 ## Solo el tercer cangrejo salta, y por eso solo él tira frutas
 
-`ACTOR_ANDA_X` (0x616F) solo deja que el tipo 3 se pare al azar y ponga el
-bit 4, que para un cangrejo es el disparo. Como saltar es la única forma de
+`ACTOR_ANDA_X` (0x616F) solo deja que el tipo 3 ponga el bit 4 —que para un
+cangrejo es el disparo— cuando el azar de 0xE140 sale a cero. Como saltar es la única forma de
 coger una fruta colgada, la fruta que lleva un cangrejo sigue siempre al
 sprite de 0xE0C8 (0x7371): el del actor 4, que es el del tipo 3. El código
 lo da por hecho en vez de mirar quién la lleva.

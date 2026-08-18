@@ -68,9 +68,9 @@ caen al primer suelo.
 - **El tipo 1** anda hasta un borde y se cae.
 - **El tipo 2** en el borde lo piensa: la mitad de las veces se cae y la otra
   mitad da la vuelta.
-- **El tipo 3** es el único que salta (0x616F: una vez de cada 256 se para y se
-  pone el bit 4, que para un cangrejo es el disparo), y por eso el único que
-  puede coger una fruta colgada y tirártela.
+- **El tipo 3** es el único que salta (0x616F: cuando el azar de 0xE140 sale a
+  cero se pone el bit 4, que para un cangrejo es el disparo), y por eso el
+  único que puede coger una fruta colgada y tirártela.
 - **Desde la fase 18** el primero es del tipo 4 (0x47E9: 0x44) y patrulla la
   segunda plataforma: en el borde da la vuelta si está a esa altura (Y = 0x38)
   y si no se deja caer hasta ella.

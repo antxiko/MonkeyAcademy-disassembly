@@ -69,8 +69,8 @@ anyway. The calculation is redundant and the result is correct.
 
 ## Only the third crab jumps, so only it throws fruit
 
-`ACTOR_ANDA_X` (0x616F) only lets type 3 stop at random and set bit 4, which
-for a crab is the fire button. Since jumping is the only way to grab a
+`ACTOR_ANDA_X` (0x616F) only lets type 3 set bit 4 —which for a crab is the
+fire button— when the random byte at 0xE140 comes out zero. Since jumping is the only way to grab a
 hanging fruit, a fruit carried by a crab always follows the sprite at 0xE0C8
 (0x7371): actor 4's, which is type 3's. The code takes it for granted instead
 of checking who carries it.
