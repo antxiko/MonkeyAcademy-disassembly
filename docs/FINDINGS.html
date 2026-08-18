@@ -1,0 +1,118 @@
+<title>Findings — Monkey Academy (1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html">The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html" style=color:var(--tinta)>Findings</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/HALLAZGOS.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="findings">Findings</h1>
+<p>What turned up when taking it apart and cannot be seen by playing. Each item with its address; what was measured in the emulator, with the measurement.</p>
+<h2 id="the-never-goes-beyond-what-the-first-digit-is-worth">The <code>?</code> never goes beyond what the first digit is worth</h2>
+<p><code>ELIGE_INCOGNITA</code> (0x7253) picks the digit to cover by subtracting a random 0-15 from the <b>value</b> of the equation&#x27;s first digit, and takes that as the position. With a 9 in front the <code>?</code> can land on any of the first ten positions; with a 1 in front, only in the first operand. Measured with 400 level-1 equations in the emulator: 0 exceptions, 238 of 400 with the <code>?</code> in the first two positions and only 67 in the result. The digit that gets hidden depends on the digit you can see.</p>
+<h2 id="operands-never-end-in-0-or-1">Operands never end in 0 or 1</h2>
+<p><code>OPERANDO</code> (0x6F45) rolls again until the units come out between 2 and 9. In 400 equations there is not one operand ending in 0 or 1: 3?+7, 82+6, 89+9?… The result can.</p>
+<h2 id="division-is-generated-backwards">Division is generated backwards</h2>
+<p>For level 3 (<code>DIVISION</code>, 0x6EDE) no two numbers are divided: D and E are chosen between 1 and 9, D × E is written, then the division sign, then D, and the result is E. Division is always exact because it is built from the quotient. And level 5 does a × ( b + c ) with the multiplication of 0x6EC1: adding the number to itself b − 1 times, in BCD.</p>
+<h2 id="a-random-choice-of-scripts-cancelled-with-a-xor-a">A random choice of scripts, cancelled with a <code>xor a</code></h2>
+<p><code>GENERA_ECUACION</code> (0x6FBC) does <code>call AZAR / and 7 / xor a / call HL_MAS_A</code>: it computes a random offset from 0 to 7 and throws it away before using it, so every level always uses the first script of its table. The table at 0x7117 carries a second pointer per level for those offsets, and it points at the 0 that closes the script itself.</p>
+<h2 id="the-five-levels-are-five-scripts-of-three-to-five-bytes">The five levels are five scripts of three to five bytes</h2>
+<p><code>0A 0E</code> (+ =), <code>0B 0E</code> (− =), <code>0D 0E</code> (÷ =), <code>0C 0E</code> (× =) and <code>0C 10 0A 11 0E</code> (× ( + ) =) at 0x712B: that is all that tells one level from another. The rest —which operands, how many digits, whether there is a sign— the generator decides on seeing the symbol. A <code>jp z,7117h</code> for symbol 0x0F, which appears in no script, would jump into the table if it ever came up.</p>
+<h2 id="the-22-sprites-are-in-vram-twice">The 22 sprites are in VRAM twice</h2>
+<p>INIT copies 0xC0 bytes from 0x56BF to 0x1800 and then 0x2C0 to 0x18C0 without reloading HL: <code>COPIA_A_VRAM</code> (0x4894) saves and restores it. The first six sprites end up at 0-5 and the 22 again at 6-27, and the game uses the second set: the monkey is pattern 0x18, the crab 0x30. Patterns 0-5 are overwritten later by whichever sprite set is due (0x6044).</p>
+<h2 id="the-professor-is-the-player-s-monkey-in-red">The professor is the player&#x27;s monkey, in red</h2>
+<p>Sprites 8 and 9 (0x7ED9) have the monkey&#x27;s patterns 0x00 and 0x0C with colours 6 and 15, and he walks with the same phases (0x7585, 0x758D). The monkey that brings the answer by balloon on the third miss is the player too: the climbing patterns mirrored (0xC8/0xCC), arms up holding the balloon, in cyan and light red (0x6D76).</p>
+<h2 id="the-card-s-edge-places-itself">The card&#x27;s edge places itself</h2>
+<p><code>PINTA_TARJETAS</code> (0x4F42) computes <code>8c + Y</code> in A —where the edge should go according to how far the card has come down— and never uses it: it calls <code>PINTA_BLOQUE</code> with the D it had. But since <code>PINTA_BLOQUE</code> (0x6906) returns D advanced by as many rows as it painted, the edge lands right under the card anyway. The calculation is redundant and the result is correct.</p>
+<h2 id="only-the-third-crab-jumps-so-only-it-throws-fruit">Only the third crab jumps, so only it throws fruit</h2>
+<p><code>ACTOR_ANDA_X</code> (0x616F) only lets type 3 stop at random and set bit 4, which for a crab is the fire button. Since jumping is the only way to grab a hanging fruit, a fruit carried by a crab always follows the sprite at 0xE0C8 (0x7371): actor 4&#x27;s, which is type 3&#x27;s. The code takes it for granted instead of checking who carries it.</p>
+<h2 id="sound-0xa1-is-silence">Sound 0xA1 is silence</h2>
+<p>The three entries for 0xA1 in the table at 0x7A7B point at the same byte, a 0xFF at 0x7B1B: three mute tracks that shut the three channels. That is what plays when the title starts and while the monkey is with the professor. And 0xA0 (losing a life) gets in over anything but is recorded as 0x20 (0x7929), so afterwards whatever comes overrides it.</p>
+<h2 id="the-effects-belong-to-the-monkey">The effects belong to the monkey</h2>
+<p><code>SONIDO_DEL_ACTOR</code> (0x78F7): an effect requested from an actor only plays if the actor is the monkey, with one exception, number 9, the crab dying. Crab footsteps, jumps and falls make no sound.</p>
+<h2 id="the-crabs-speed-up-by-table-not-by-velocity">The crabs speed up by table, not by velocity</h2>
+<p>There is no velocity: <code>MONO_Y_CANGREJOS</code> (0x4850) calls <code>ACTOR_PASO</code> for each crab stage/8 + 1 times per frame, at most four, and one frame in four only once. And they wait hidden (16 − stage) × 16 + 17 frames up to stage 19; from 20, one (0x6585).</p>
+<h2 id="ready-can-be-hurried">READY can be hurried</h2>
+<p>READY (0x43EE) counts 15 seconds in BCD (0xE242) and starts only on reaching zero, or earlier with any new button. And LEVEL SELECT (0x762F) waits 0x0F00 frames —64 seconds— and goes on with whatever level was set.</p>
+<h2 id="the-random-generator-reads-the-bios">The random generator reads the BIOS</h2>
+<p><code>AZAR</code> (0x6F0D) takes a word from the system ROM at 0x0000-0x3FFF, using the seed as the address, and mixes it with the seed and the R register. The BIOS serves as a noise table. And the <code>daa</code> in the mix leaves the nibbles between 0 and 9: randomness comes out already in BCD.</p>
+<h2 id="there-are-no-credits">There are no credits</h2>
+<p>There are no initials or names in the binary: only the big KONAMI of tiles 0x16-0x2F, which rises at boot, and the small &quot;©Konami 1984&quot; (0x3A-0x3F), written under the title and at the foot of the panel.</p>
+<h2 id="leftovers">Leftovers</h2>
+<p>A list-driven platform painter (0x664F → 0x6624 → 0x65F8) that does the same as 0x6685 and nobody calls; eight position lists aligned with the eight stages (0x67C2) that nothing points at, between the platforms and the fruit; and 287 bytes of 0xFF at the end.</p>
+<footer><p><em>Monkey Academy</em> was published by Konami in 1984 for the MSX; its catalogue number is RC-702. The cartridge signs itself three times, all in plain tiles: the <b>KONAMI</b> that rises at boot, the <b>©Konami 1984</b> under the title and the one at the foot of the scoreboard. There are no credits and no initials anywhere in the binary. All rights in the game remain with their holders. This is preservation, study and documentation work.</p></footer></div>

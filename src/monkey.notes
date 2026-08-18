@@ -1,0 +1,1229 @@
+# Anotaciones de Monkey Academy (Konami, 1984, MSX1, cartucho RC-702).
+#
+# Cada linea va anclada a una direccion, asi que los comentarios sobreviven a
+# un retrazado. Directivas: L=etiqueta, C=comentario de linea, B=cabecera de
+# bloque, D=rango de datos, F=anchura de las filas de un bloque de datos. Todo
+# sale de leer el codigo que lo usa; los graficos se han comprobado
+# reconstruyendo la VRAM tal como la carga la ROM (tools/graficos.py) y la
+# pantalla se ha cotejado con la tabla de nombres volcada del emulador. Sin
+# acentos a proposito.
+#
+# El mapa de memoria: cartucho de 16 KB en la pagina 1 (0x4000-0x7FFF); la
+# RAM del juego en 0xE000-0xE3FF y la pila en 0xE400. INIT instala la
+# interrupcion en el gancho H.KEYI y se queda parado: el juego entero corre
+# dentro de la interrupcion, un paso por fotograma. Es el armazon que Konami
+# repite en sus cartuchos de 1984: el mismo despachador, la misma lectura de
+# mandos y el mismo reproductor de sonido, con otras direcciones.
+#
+# La VRAM: nombres en 0x3800, colores en 0x0000 y patrones en 0x2000 (los
+# tres tercios iguales, cargados por RLE), atributos de sprites en 0x3B00 y
+# patrones de sprites en 0x1800 (64 sprites de 16x16, los 22 primeros con su
+# espejo a partir del 0x98).
+
+# =============================================================================
+# EL MAPA DE LA RAM (0xE000-0xE3FF; INIT lo borra entero y pone la pila en 0xE400)
+# =============================================================================
+#   E000 estado (0..19), indice de la tabla de 0x4226
+#   E002 opciones: bit4 teclado, bit5 dos jugadores, bit6 partida en marcha,
+#        bit7 jugador actual (0=1P, 1=2P). Lo ponen las teclas 1-4 del menu.
+#   E003 contador de fotogramas   E004 cuenta atras de espera / columna de la cortinilla
+#   E005 la interrupcion esta dentro (candado)   E008/E009 mandos: antes / ahora
+#   E00A pasos que le quedan al logotipo KONAMI por subir
+#   E00B fin de la demo (0xFF: se acabo el guion; 1: la ronda de la demo termino)
+#   E00C ha perdido la vida (o ha acabado la ecuacion: pasa por el mismo sitio)
+#   E00D fase superada   E00E/E00F cursor VRAM del logotipo que sube
+#   E010-E02D los tres canales del sonido, 10 bytes cada uno (ver 0x796F)
+#   E040-E042 record (BCD, 6 cifras)   E043-E045 puntos del 1P   E046-E048 los del 2P
+#   E050-E06F el jugador en juego: E050 vidas, E051 fase (BCD), E052 proxima vida
+#        extra (decenas de millar, BCD), E053 hace falta ecuacion nueva, E054
+#        ecuaciones resueltas en esta fase (a las 3, fase superada), E055/E056
+#        tiempo que queda (segundos y minutos en BCD: 05:00), E057 fallos (a los
+#        3 se pierde la vida), E058 numero de simbolos de la ecuacion. Con dos
+#        jugadores E080-E09F es la copia del otro; 0x4584 los intercambia.
+#   E0B0-E10F la tabla de sprites (24 x 4: Y, X, patron, color); 0x46BA la
+#        vuelca girada a la VRAM cada fotograma:
+#          0-1 el mono (cuerpo azul + detalles blancos)   2-7 los tres cangrejos
+#          8-9 el mono profesor de arriba a la derecha    10-17 las ocho frutas
+#          18 la tarjeta de la respuesta (cae, la lleva el mono, sube)   19-23 sobras
+#        E0B8-E0CF se reusan para los globos de la ecuacion que sube.
+#   E108-E12F los cuatro actores (mono + tres cangrejos), 8 bytes cada uno, que
+#        el codigo lee como IX+0x58.. desde el sprite: +0 numero de estado del
+#        mono (0x33 = ha llegado la respuesta, 0x88 = va con el profesor), +1
+#        direccion (bit7 derecha, bit6 izquierda), +2 fase de la animacion / del
+#        salto, +3 tipo (nibble bajo: 0 el mono, 1-3 los cangrejos) y direccion
+#        de la marcha (bits 6-7), +4 estado del actor (indice de 0x602E), +5
+#        temporizador, +6 juego de sprites del mono / si va cargado, +7 pasos
+#        antes de girar
+#   E13C se ha pintado el menu   E140/E141 semilla del azar (0x6F0D)
+#   E142/E143 resultado de la ecuacion (BCD)   E144-E150 la ecuacion en simbolos
+#   E150 puntero al guion de la ecuacion   E152 banderas del menu y del signo
+#   E153/E154 nivel elegido por cada jugador (0-4)   E15A-E16E las 10 tarjetas
+#        de la fase (Y, X) copiadas de 0x509E
+#   E1AF tarjeta que lleva el mono (0xFF: ninguna)   E1B0/E1B1 reloj y puntero
+#        del guion de la demo   E1B2 giro de la tabla de sprites   E1B3 espera
+#   E1B5-E1BD / E1C1-E1C9 la ecuacion de cada jugador   E1CD/E1CE la cifra
+#        escondida tras el ? de cada jugador   E1CF-E1D8 las diez cifras barajadas
+#   E1E4-E1F8 / E20E-E222 las tarjetas de cada jugador: por tarjeta [estado, cifra];
+#        estado: bits 0-1 cuanto asoma, bit4 abierta, bit6 boca abajo, bit7 repintar
+#   E238 cuenta de la tarjeta que se abre   E239 su indice   E23A/B su VRAM
+#   E23C descontar el tiempo a puntos   E23D/E23E teclas 1-5 ahora / antes
+#   E23F/E240 tiempo de espera del LEVEL SELECT   E241/E242 fase y cuenta atras del READY
+#   E246/E248 cursores del titulo que se pinta fila a fila   E24A siguiente estado
+#   E24B globos llegados   E24C-E255 estado de cada globo (0 espera, 1 sube, 2 llego, FF fin)
+#   E258 globo que esta subiendo   E25C/E25E punteros de la fruta en curso
+#   E260-E26F las ocho frutas [estado, contador]   E270 banderas de la respuesta
+#   E271 columna del ?   E272 reloj de los cangrejos   E273 juego de sprites cargado
+#   E274 reloj del hundimiento   E276 banderas del fin de ecuacion / del profesor
+
+# =============================================================================
+# LA CABECERA Y LAS RUTINAS DEL VDP
+# =============================================================================
+D 0x4000 0x4010 cabecera_del_cartucho La cabecera que lee la BIOS: "AB", INIT=0x40AF y a cero STATEMENT, DEVICE y TEXT. La BIOS mapea el cartucho en la pagina 1 (0x4000-0x7FFF) y salta a 0x40AF al terminar de arrancar
+F 0x4000 2,w4,6
+D 0x4010 0x4038 cinco_stubs_sin_usar Cinco veces `pop hl / ld (0),hl / ret` y cuatro `ret`: talones de 8 bytes para los ganchos STATEMENT/DEVICE/TEXT que la cabecera deja a cero. Nadie salta aqui
+F 0x4010 8
+
+# =============================================================================
+# LA INTERRUPCION: TODO EL JUEGO CORRE AQUI DENTRO
+# =============================================================================
+B 0x4038 ######################################################################
+B 0x4038 LA INTERRUPCION (gancho H.KEYI). Todo el juego corre aqui dentro:
+B 0x4038 INIT la instala y se queda en un jr $ para siempre. Cada fotograma:
+B 0x4038   796F  el sonido, SIEMPRE, aunque el fotograma anterior no acabara
+B 0x4038   46BA  la tabla de sprites a la VRAM, girada
+B 0x4038   41A7  los mandos, solo a partir del estado 7 (demo y partida)
+B 0x4038   4209  el paso del juego, un estado de la tabla de 0x4226
+B 0x4038 E005 es el candado: si un paso tarda mas de un fotograma, la
+B 0x4038 siguiente interrupcion solo hace sonido y sprites y se va por 4075.
+B 0x4038 ######################################################################
+L 0x4038 INTERRUPCION      Guarda todo, reconoce la interrupcion del VDP, sonido y sprites; y si no hay otro paso a medias, un paso del juego
+C 0x4043 Leer el estado del VDP baja la interrupcion
+C 0x404B E005 distinto de 0: el paso anterior no ha acabado; solo sonido y sprites
+C 0x4055 Los mandos solo se leen en la demo y en la partida (estados 7 en adelante)
+L 0x4072 SIN_LLAMADAS_4072 `push iy / ret`: tres bytes a los que no llega nadie
+L 0x4075 INTERRUPCION_SALE Salida corta cuando el paso anterior sigue a medias: recupera los registros y vuelve
+L 0x4082 VPOKE             Escribe A en la VRAM DE (bit 6 de D para escribir; se deja como estaba)
+L 0x408F RET_              Un `ret` suelto: 0x4090 lo llama para dejar respirar al VDP entre la direccion y el dato
+L 0x4090 VPEEK             Lee en A el byte de la VRAM DE
+L 0x409B VDP_DIRECCION     Manda DE al VDP: primero E, luego D (con el bit 6 a 1 si es para escribir; con el 7, un registro)
+L 0x40A5 HL_MAS_A          HL = HL + A, sin signo. Es la rutina que usa el despachador
+L 0x40AA DE_MAS_A          DE = DE + A, sin signo
+
+# =============================================================================
+# INIT: LA VRAM, LOS SPRITES ESPEJADOS Y EL GANCHO
+# =============================================================================
+B 0x40AF ######################################################################
+B 0x40AF INIT, el punto de entrada de la cabecera. Deja la maquina montada y
+B 0x40AF se para: la interrupcion hace el resto. Lo que carga en la VRAM, y
+B 0x40AF que tools/graficos.py repite tal cual:
+B 0x40AF   56BF -> 1800 (6 sprites) y OTRA VEZ -> 18C0 (los 22, porque
+B 0x40AF   COPIA_A_VRAM conserva HL)   597F -> 1B80   5ABF -> 1F80
+B 0x40AF   59FF -> 1C00 (0xC0)   y los 22 de 56BF ESPEJADOS -> 1CC0
+B 0x40AF Asi el sprite k de la VRAM (patron 4k) es: 0-5 y 6-27 el 0-21 de
+B 0x40AF 0x56BF (repetidos), 28-31 el 500/100/platano/uvas, 32-37 el mono
+B 0x40AF hacia la izquierda, 38-59 los espejos, 60-63 la cara y la manzana.
+B 0x40AF   5156 -> patrones 0x2000/2800/3000 y 566B -> colores 0/800/1000,
+B 0x40AF   los dos por RLE (0x6C84), 1472 bytes cada uno: los tiles 0x00-0xB7
+B 0x40AF ######################################################################
+L 0x40AF INIT              di, im 1, `jp 4038` en H.KEYI (FD9A), pila en E400, registros del VDP y los graficos a la VRAM
+C 0x40B2 0xC3 = jp; el gancho H.KEYI queda `jp 4038h`
+C 0x40C0 Los 8 registros del VDP desde 0x488C
+C 0x40C3 Los seis primeros sprites a 0x1800; y como COPIA_A_VRAM deja HL como estaba, los 22 (0x2C0) OTRA VEZ desde 0x18C0: el sprite 6 es el 0, el 12 el 6...
+C 0x40D8 Los cuatro sprites de 0x597F en 0x1B80 (patrones 0x70-0x7C: 500, 100, platano y uvas; aqui van luego los globos)
+C 0x40E4 Y los de 0x5ABF en 0x1F80 (patrones 0xF0-0xFC): BC sigue valiendo 0x80
+C 0x40ED Los seis de 0x59FF en 0x1C00 (patrones 0x80-0x94): el mono andando hacia la izquierda
+L 0x4107 ESPEJA_SPRITES    Da la vuelta a los 22 sprites de 0x56BF (16x16, 32 bytes) bit a bit en E000, y luego van a 0x1CC0
+C 0x4100 IX = destino en RAM: +0 columna izquierda nueva, +0x10 la derecha
+C 0x410A DE = columna izquierda de la fila, HL = la derecha (16 bytes mas alla)
+L 0x410A ESPEJA_SPRITE_FILA Una fila de 16 bits: H = izquierda, L = derecha
+L 0x4113 ESPEJA_16_BITS    Los 16 bits salen por el carry desde el bit alto y entran por la derecha en (IX+0) y (IX+10): invertidos y con las mitades cambiadas
+C 0x4130 Los 22 espejos (0x2C0 bytes) a 0x1CC0: el espejo del sprite k de 0x56BF es el patron 0x98 + 4k
+C 0x413C Toda la RAM del juego a cero (E000-E3FF)
+C 0x4149 Los patrones RLE de 0x5156 en los tres tercios (0x6000/0x6800/0x7000 = escribir en 0x2000/0x2800/0x3000)
+C 0x4162 Y los colores RLE de 0x566B en 0x0000/0x0800/0x1000
+C 0x417E R1 = 0xA2: 16K, pantalla apagada, interrupciones, sprites de 16x16
+C 0x4184 E005 = 1: la interrupcion no da pasos mientras se acaba de montar
+C 0x4189 R7 del PSG = 0xB8: los tres canales de tono abiertos, ruido cerrado, puerto A de entrada
+L 0x419B PARADO            Aqui se queda para siempre; la interrupcion hace el juego
+
+# =============================================================================
+# EL DESPACHADOR Y LOS MANDOS
+# =============================================================================
+B 0x419D ----------------------------------------------------------------------
+B 0x419D EL DESPACHADOR de Konami. Se llama con el indice en A y la tabla de
+B 0x419D palabras va PEGADA detras del CALL: el POP HL recoge la direccion de
+B 0x419D retorno, que es la tabla. Dos tablas: 0x4226 (los 20 estados del
+B 0x419D juego) y 0x602E (los 11 estados de un actor). Nunca vuelve al CALL.
+B 0x419D ----------------------------------------------------------------------
+L 0x419D DESPACHA          Salta al destino A de la tabla de palabras que va detras del CALL
+C 0x419E La direccion de retorno ES la tabla
+B 0x41A7 ----------------------------------------------------------------------
+B 0x41A7 LOS MANDOS. Deja en E009 lo pulsado en este fotograma y en E008 lo
+B 0x41A7 del anterior, siempre en el formato del joystick: bit0 arriba,
+B 0x41A7 bit1 abajo, bit2 izquierda, bit3 derecha, bit4 disparo (espacio),
+B 0x41A7 bit5 segundo boton (tecla SELECT). El teclado se lee del PPI a
+B 0x41A7 pelo (filas 7 y 8 de la matriz) y se recoloca bit a bit para que
+B 0x41A7 salga igual. Es la rutina que Konami repite tal cual en sus cartuchos.
+B 0x41A7 ----------------------------------------------------------------------
+L 0x41A7 LEE_MANDOS        E009 = ahora, E008 = el fotograma anterior; joystick o teclado segun el bit 4 de E002
+C 0x41AF Registro 15 del PSG: el puerto de joystick del jugador que juega
+C 0x41B2 Registro 14: cuatro direcciones y dos botones
+C 0x41BC Fila 7 del teclado (0x57: fila 7, motor de cinta y CAPS apagados)
+C 0x41C6 SELECT (bit 6 de la fila 7) al bit 5: el segundo boton
+L 0x41CB GUARDA_MANDOS     Lo de ahora pasa a E009 y lo que habia baja a E008
+L 0x41D3 LEE_TECLADO       Monta el mismo mapa de bits con las filas 7 (SELECT) y 8 (flechas y espacio) del teclado
+C 0x41E1 Fila 8: espacio, flechas
+C 0x41EC IZQUIERDA al bit 2
+C 0x41F4 DERECHA al bit 3 y ESPACIO al bit 4
+C 0x41FA ARRIBA al bit 0 y ABAJO al bit 1
+L 0x41FF BORRA_PANTALLA    Tabla de nombres entera (0x3800, 768 bytes) a cero
+B 0x4209 ----------------------------------------------------------------------
+B 0x4209 UN PASO DEL JUEGO, cada fotograma. Cuenta el reloj, mira el 1UP que
+B 0x4209 parpadea (en la partida) y las teclas 1-5 (fuera de ella), y despacha
+B 0x4209 el estado E000 por la tabla de 0x4226:
+B 0x4209    0 arranca el titulo        1 la ecuacion sube en globos
+B 0x4209    2 sube el logotipo KONAMI  3 espera   4 pinta el titulo fila a fila
+B 0x4209    5 menu, espera             6 monta la partida de demostracion
+B 0x4209    7 la demo juega sola       8 LEVEL SELECT (y arranque de partida)
+B 0x4209    9 PLAYER n / LEVEL n      10 monta la fase (ecuacion nueva si toca)
+B 0x4209   11 READY: cuenta atras     12 LA PARTIDA
+B 0x4209   13 vida perdida o ecuacion resuelta   14 cambio de jugador
+B 0x4209   15 espera y decide         16 fase superada   17 espera a que acabe el sonido
+B 0x4209   18 opcion elegida (parpadea)   19 espera y a la partida
+B 0x4209 ----------------------------------------------------------------------
+L 0x4209 PASO_DEL_JUEGO    E003++, el 1UP a partir del estado 11, las teclas 1-5 salvo en el 18, y el estado por la tabla
+C 0x420D En el estado 18 (opcion recien elegida) no se leen las teclas
+D 0x4226 0x424E tabla_de_estados Los 20 estados del juego (indice E000), destino del despachador de 0x4223
+F 0x4226 w1
+
+# =============================================================================
+# LOS ESTADOS DEL TITULO Y LA DEMO (0-7)
+# =============================================================================
+L 0x424E ESTADO_0_TITULO   Musica del titulo (0xA1), pantalla apagada, sprites y nombres a cero, fuente magenta, y el logotipo listo para subir; salta al estado 2
+C 0x424E 0xA1: la musica del titulo, sin mirar el bit 6 de E002 (aun no hay partida)
+C 0x4253 R1 = 0xA2: pantalla apagada mientras se limpia
+C 0x4259 Los 32 atributos de sprite a 0xD0: no se pinta ninguno
+C 0x4267 0xD0: la fuente en magenta sobre transparente
+C 0x426C 17 pasos de subida del logotipo
+C 0x4277 R1 = 0xE2: pantalla encendida
+C 0x427D Un inc aqui y otro en 0x4661: al estado 2
+L 0x4284 ESTADO_1_GLOBOS   Suben los globos con la ecuacion (0x713D); al llegar todos, las frutas de la fase, los sprites de juego y al estado 7 (la demo)
+L 0x4296 ESTADO_2_LOGO     Cada dos fotogramas sube una fila el KONAMI (0x6C42); al acabar, "VIDEO CARTRIDGE" y 0x80 fotogramas de espera
+L 0x42AA ESTADO_3_ESPERA   Cuando E004 llega a cero, prepara la zona del titulo (0x4BF0) y los cursores del dibujo
+L 0x42C1 ESTADO_4_TITULO   Cada 8 fotogramas una fila de pixels del "Monkey Academy" (0x4C77); al acabar, el menu (0x6B99) y espera 256 fotogramas
+L 0x42D5 ESTADO_5_MENU     Cuando E004 llega a cero, E00B = 0 y a montar la demo
+L 0x42E1 ESTADO_6_DEMO_MONTA Cortinilla, tiles de la ecuacion en 0xB8, jugador 1, fase 1 y el marcador; ecuacion 93+25 fija, tarjetas 2-7, y los globos
+C 0x42E4 La cortinilla devuelve P mientras le quedan columnas
+C 0x42EB Jugador 1
+C 0x42F0 Cinco minutos
+C 0x42FF Las tarjetas 4 a 9 de la demo llevan las cifras 2, 3, 4, 5, 6 y 7 (las 0-3 se quedan con el 0 de la RAM)
+C 0x4310 Cinco simbolos, los de 0x4332, a la ecuacion del 1P (E1B5)
+C 0x4320 La cifra escondida es el 2
+C 0x4328 Estado 0 mas el inc de 0x4661: al estado 1, la subida de los globos
+D 0x4332 0x4337 ecuacion_de_la_demo Los cinco simbolos de la ecuacion de la demo: 3 + ? = 5 (0x0A es +, 0x12 el ?, 0x0E el =); la cifra escondida, el 2, va en E1CD
+L 0x4337 ESTADO_7_DEMO     La demo: si el profesor ya va con la respuesta (bit 3 de E276) solo eso; si no, frutas, respuesta, tarjetas y el guion de 0x4B78. Al acabar, al titulo
+C 0x433A Bit 3 de E276: la respuesta ha llegado arriba, no hay mas que hacer
+C 0x4355 E238 distinto de 0: hay una tarjeta abriendose
+C 0x435F E00B: el guion se ha acabado (0xFF) o la ronda ha terminado (1)
+C 0x4368 0x50 fotogramas y vuelta al estado 0
+L 0x4375 ESTADO_8_LEVEL_SELECT Al LEVEL SELECT (0x4747), que tambien arranca la partida
+L 0x4378 ESTADO_9_PLAYER_N Espera a que calle el sonido; borra todo, gasta una vida, marcador, tiempo, y el recuadro PLAYER n / LEVEL n durante 0x65 fotogramas
+C 0x4378 Los canales B (E01C) y C (E026) callados
+C 0x4387 La vida se gasta aqui: por eso 0x6E4A la devuelve antes de venir
+C 0x438B R7 = 1: fondo negro
+C 0x4390 0xF4: la fuente en blanco sobre azul oscuro (el panel)
+C 0x43A1 El recuadro azul de 11x5 en la fila 10, columna 8
+C 0x43A7 "PLAYER" y el numero del jugador
+C 0x43AD "LEVEL n" debajo
+D 0x43B5 0x43BA recuadro_player Rectangulo para 0x66BB: 11 columnas x 5 filas del tile 0x60 (azul) en la VRAM 0x3948 (fila 10, columna 8). Es el fondo del PLAYER n / LEVEL n y del GAME OVER
+L 0x43BA ESTADO_10_MONTA_FASE Cuando E004 llega a cero: marcador, tiempo, tarjetas de la fase (0x4F81) y, si toca, la ecuacion nueva (0x6F96), la cifra escondida (0x7253) y las cifras barajadas (0x4FCC); luego los globos y al READY
+C 0x43CB E053: hace falta ecuacion nueva (la primera del turno, o al resolver la anterior)
+C 0x43E2 Sonido 1: la ecuacion arranca
+L 0x43EE ESTADO_11_READY   Primero suben los globos (0x713D); despues el recuadro READY con la cuenta atras 15..0 en segundos, o hasta que se pulse un boton
+C 0x43FC Los cuatro sprites de 0x597F vuelven a 0x1B80 (los globos ya no hacen falta)
+C 0x4410 E00C = 0, E241 = 1: fase de la cuenta atras
+C 0x4418 15 segundos, en BCD
+C 0x441D El recuadro azul de 7x4 en la fila 11, columna 10, y "READY"
+C 0x442B El 15 en la fila 12, columna 12
+L 0x4434 READY_CUENTA      Cada 64 fotogramas resta uno (BCD); un boton nuevo o el cero arrancan
+C 0x443C Lo pulsado ahora y no antes
+C 0x4444 Sin boton nuevo: se mantiene la musica del READY (0x93)
+L 0x4462 READY_ARRANCA     Borra el recuadro (0x448A), esconde los sprites y al estado 12
+D 0x447D 0x4482 recuadro_ready Rectangulo para 0x66BB: 7 columnas x 4 filas del tile 0x60 en 0x396A (fila 11, columna 10)
+D 0x4482 0x448A rotulo_ready "READY" en la fila 12, columna 11 (lista de tiles para 0x48E9; el numero lo pone 0x4A4F en la 0x39AC)
+D 0x448A 0x448F borra_recuadro_ready El mismo rectangulo con el tile 0 para borrarlo
+B 0x448F ----------------------------------------------------------------------
+B 0x448F LA PARTIDA (estado 12), cada fotograma. Si se esta descontando el
+B 0x448F tiempo (E23C) solo eso. Si no: el profesor con la respuesta, la
+B 0x448F musica de fondo, el hundimiento, las frutas, la respuesta, las
+B 0x448F tarjetas, el mono y los cangrejos (0x4822), y el reloj. Al morir o
+B 0x448F al resolver, al estado 13; con la fase superada, al 16.
+B 0x448F ----------------------------------------------------------------------
+L 0x448F ESTADO_12_PARTIDA El paso de la partida
+C 0x4492 E23C: la fase esta acabada y el tiempo se convierte en puntos
+C 0x4499 Con el canal B callado se relanza la musica: 0x9B si el mono lleva la respuesta (E108 = 0x33), 0xA1 si va con el profesor (0x88), 0x93 si no
+C 0x44B4 Cangrejos hundidos, frutas, la respuesta que sube, tarjetas, y el mono
+C 0x44CD Con menos de 10 segundos, el aviso 0x0C cada fotograma
+C 0x44DF Tiempo a cero: se pierde la vida (E00C = 1), sonido 0xA0, cara de susto y el reloj vuelve a 05:00
+C 0x44F8 E00C: al estado 13; E00D: al 16; si no, sigue
+L 0x4509 ESTADO_13_VIDA_O_RESUELTA Suelta la tarjeta, esconde los cangrejos, restaura los sprites del mono; sin vidas, GAME OVER; si no, al 17 (o al 14 con dos jugadores)
+C 0x4516 Los sprites del mono (0x56BF) y de los cangrejos (0x59FF) vuelven a su sitio
+C 0x452C E050 = 0: se acabaron las vidas
+L 0x4532 GAME_OVER         Espera a que callen los tres canales; sonido 0x9D, "GAME OVER" y "PLAYER n" en el recuadro azul, y al estado 14 tras 0x50 fotogramas
+C 0x455B Estado 14 mas el inc de 0x465E: al 15
+L 0x4564 SIGUE_O_CAMBIA    Con vidas: si el otro jugador tambien tiene, al estado 14 (cambio); si no, al 17 y luego al 9
+C 0x456B El estado 17 vuelve al 8 (E24A) y de ahi al 9: PLAYER n de nuevo
+L 0x4576 ESCONDE_CANGREJOS Los sprites 2 a 7 (E0B8-E0CF) fuera de la pantalla (Y = 0xE1)
+L 0x4584 ESTADO_14_CAMBIO  Intercambia E050-E06F con E080-E09F, cambia el bit 7 de E002 (el jugador) y su puerto de joystick, y al 17 con E24A = 8
+L 0x45A0 ESTADO_15_DECIDE  Cuando E004 llega a cero: si el otro jugador tiene vidas, al 14 (cambio); si no, se acabo la partida (bit 6 de E002 a cero) y al titulo
+L 0x45BC ESTADO_16_FASE_SUPERADA Sonido 0x99, devuelve la vida que gastara el 9, fase + 1, y al 17 con E24A = 7 (que acaba en el 8: LEVEL SELECT otra vez)
+L 0x45CC AL_ESTADO_17      E000 = 17
+L 0x45D2 ESTADO_17_ESPERA_SONIDO Cuando callan los tres canales: estado = E24A, sprites a cero, 0x50 fotogramas y el inc de 0x465C
+L 0x45EC ESTADO_18_OPCION  La primera vez pinta el menu limpio (0x470D) y suena 0x91; luego 0x60 fotogramas parpadeando la linea elegida, y al 8
+C 0x45F2 Pantalla en blanco: el menu vuelve a pintarse sin el titulo
+C 0x4614 Bit 3 de E004: la linea se ve o no
+C 0x461A Opcion 0-3 de E002 (bits 4-5) a su fila: 1P joystick 16, 1P teclado 20, 2P joystick 18, 2P teclado 22
+C 0x462A 0x3A00 es la fila 16; se borran los 32 tiles de la fila
+D 0x4637 0x463B fila_de_cada_opcion Desplazamiento en la VRAM de la linea del menu de cada opcion: 0x00 (fila 16), 0x80 (fila 20), 0x40 (fila 18), 0xC0 (fila 22), indexado por los bits 4-5 de E002
+L 0x463B OPCION_AL_8       Al estado 8 con la pantalla en blanco y los tiles de la ecuacion cargados
+L 0x464D ESTADO_19_ESPERA_PARTIDA Cuando E004 llega a cero, al 12 y a mirar E00C/E00D
+L 0x465C SIGUIENTE_ESTADO_50 E004 = 0x50 y al estado siguiente
+L 0x465E SIGUIENTE_ESTADO_A E004 = A y al estado siguiente
+L 0x4661 SIGUIENTE_ESTADO  E000++
+L 0x4666 PLAYER_N          La lista HL ("PLAYER") y el numero del jugador (bit 7 de E002) en la fila 11, columna 17
+B 0x4678 ----------------------------------------------------------------------
+B 0x4678 LAS TECLAS 1-5. Se miran en cada fotograma salvo en el estado 18.
+B 0x4678 Fila 0 del teclado, bits 1-5 = teclas 1-5; E23D las de ahora y E23E
+B 0x4678 las de antes (el LEVEL SELECT las lee de ahi). En los estados 0-7
+B 0x4678 (titulo y demo) la tabla de 0x46B2 convierte 1-4 en las opciones
+B 0x4678 de E002: 1=0x40 un jugador con joystick, 2=0x60 dos, 3=0x50 uno con
+B 0x4678 teclado, 4=0x70 dos con teclado; y al estado 18. Con dos teclas a la
+B 0x4678 vez, o la 5, no vale (0).
+B 0x4678 ----------------------------------------------------------------------
+L 0x4678 TECLAS_1_A_5      Guarda en E23D/E23E las teclas 1-5; en el titulo y la demo, 1-4 eligen la opcion y pasan al estado 18
+C 0x4678 Fila 0 del teclado (0x50: fila 0, CAPS apagado)
+C 0x468C A partir del estado 8 solo se guardan
+C 0x4692 Indice = teclas - 1: 0, 1, 3, 7 son una sola tecla
+C 0x46B0 Se come el retorno al despachador: este fotograma no da paso
+D 0x46B2 0x46BA opcion_por_tecla Las opciones de E002 indexadas por (teclas - 1): tecla 1 = 0x40, 2 = 0x60, 4 = 0x50, 8 = 0x70; el resto 0 (no vale)
+
+# =============================================================================
+# SPRITES, MENU, RECORD Y MARCADOR
+# =============================================================================
+B 0x46BA ----------------------------------------------------------------------
+B 0x46BA LA TABLA DE SPRITES A LA VRAM, cada fotograma. Los sprites de E0B0
+B 0x46BA se vuelcan a 0x3B00 empezando por uno distinto cada vez (E1B2 baja
+B 0x46BA de 0x17 a 0, o de 0x12 fuera del READY): asi la prioridad y el
+B 0x46BA limite de cuatro por linea del TMS9918 van rotando y ninguno
+B 0x46BA desaparece siempre. 24 sprites en el READY (los globos), 19 si no.
+B 0x46BA ----------------------------------------------------------------------
+L 0x46BA VUELCA_SPRITES    E0B0.. a 0x3B00 girados E1B2 posiciones
+C 0x46C4 En el READY (estado 11) giran 24 sprites (0x60 bytes); si no, 19 (0x4C)
+L 0x46DE VUELCA_SPRITES_COLA Desde el sprite E1B2 hasta el final
+L 0x46F4 VUELCA_SPRITES_CABEZA Y luego los del principio hasta llegar a el
+L 0x46FF ESCONDE_SPRITES   E0B0-E0FB (19 sprites) a 0xE1: fuera de la pantalla
+L 0x470D PINTA_MENU        El titulo entero de golpe (0x4BF0 y todas las filas de 0x4C77) y el menu de 0x6B99
+L 0x4721 PINTA_MENU_TEXTO  Solo el texto del menu (PLAY SELECT y las cuatro opciones)
+L 0x4728 CARGA_TILES_ECUACION Los 12 tiles de 0x5EFF a 0xB8-0xC3 en los tres tercios (cifras de la ecuacion que faltaban en 0x5156) y sus colores: 6 blancos sobre azul y 6 amarillos
+C 0x4728 0x65C0 = escribir en 0x25C0: los patrones 0xB8-0xC3
+C 0x4734 Colores 0x45C0 = 0x05C0: los de 0xB8-0xBD blancos sobre azul oscuro
+C 0x473F Y los de 0xBE-0xC3 amarillo claro sobre transparente (las cifras grandes)
+B 0x4747 ----------------------------------------------------------------------
+B 0x4747 EL LEVEL SELECT (estado 8), gobernado por los bits de E152:
+B 0x4747   bit 7  la cortinilla ya paso   bit 6  esperando la tecla 1-5
+B 0x4747   bit 4 / bit 3  la linea elegida parpadea (0x7670)
+B 0x4747 La primera vez (E00D = 0) arranca la partida: puntos a cero, vidas
+B 0x4747 y fase de 0x47E1, y la copia para el 2P. Tras cada fase superada
+B 0x4747 (E00D = 1) se vuelve aqui: se puede cambiar de nivel.
+B 0x4747 ----------------------------------------------------------------------
+L 0x4747 LEVEL_SELECT      Cortinilla; arranca la partida si no habia; pinta PLAYER n / LEVEL SELECT y espera la tecla
+C 0x4757 Bit 4: parpadea la linea
+C 0x475C Bit 6: esperando la tecla
+C 0x4763 Bit 3: parpadea la linea
+C 0x476C E00D: viene de superar una fase; la partida ya esta en marcha
+C 0x477B Bit 7 de E002: es el turno del 2P, sus datos ya estan puestos
+C 0x4782 0x91: la musica del menu
+C 0x4787 Puntos, record de la partida y todo lo demas hasta E142 a cero
+C 0x479D Vidas, fase, tiempo... de 0x47E1
+C 0x47AB Con dos jugadores, la misma copia para el 2P
+L 0x47BA LEVEL_SELECT_PINTA Fuente blanca, fondo azul (R7 = 4), el texto de 0x7595, 0x0F00 fotogramas de espera y a esperar la tecla
+C 0x47C4 R7 = 4: fondo azul oscuro
+L 0x47D7 LEVEL_SELECT_ESPERA 0x762F: con la tecla pulsada (carry) pasa a parpadear
+D 0x47E1 0x47E9 jugador_nuevo Los 8 bytes de E050 al empezar: 3 vidas, fase 1, sin vida extra pendiente, ecuacion nueva (E053 = 1), 0 resueltas, tiempo 05:00 (E055 = 00, E056 = 05), 0 fallos
+L 0x47E9 SPRITES_DE_JUEGO  Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de sprites (0x4B04) a E0B0 y los cuatro actores (0x4B24) a E108; el mono en Y = 0xA8; a partir de la fase 18 el cangrejo 1 es del tipo 4 y patrulla la segunda plataforma
+C 0x4809 El mono, en el suelo (Y = 0xA8)
+C 0x4811 Fase 18 en adelante (BCD): el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
+B 0x4822 ----------------------------------------------------------------------
+B 0x4822 EL MONO Y LOS CANGREJOS, cada fotograma de partida. Los mandos van
+B 0x4822 a E10B (nibble alto: bit4 disparo, bit5 boton 2, bit6 izquierda,
+B 0x4822 bit7 derecha, en el mismo formato que el guion de la demo). Cada 8
+B 0x4822 fotogramas repinta las tarjetas. Si un cangrejo pilla al mono
+B 0x4822 (0x69B0), cara de susto y estado 10. Y luego 0x5F5F por actor: el
+B 0x4822 mono una vez y los cangrejos entre 1 y 4 veces segun la fase (mas
+B 0x4822 rapidos cuanto mas alta), y solo una cada cuatro fotogramas.
+B 0x4822 ----------------------------------------------------------------------
+L 0x4822 MONO_Y_CANGREJOS  El reloj, los mandos a E10B, las tarjetas cada 8 fotogramas, la colision y un paso de cada actor
+C 0x4825 Izquierda, derecha y los dos botones (bits 2-5) suben al nibble alto
+C 0x483F 0x69B0 devuelve carry si no hay colision
+C 0x4844 Le han pillado: cara de susto y estado 10 del mono (el mismo que cuando le da una fruta)
+C 0x4850 Cuantas veces por fotograma se mueve cada cangrejo: (fase/8 + 1), como mucho 4; y cada cuatro fotogramas solo una
+L 0x4860 ACTORES_PASO      B veces cada actor (0x5F5F recorre los cuatro)
+L 0x486E ACTORES_PASO_4    Cuatro veces
+L 0x4872 VDP_R7            Registro 7 = A (color de fondo y borde)
+L 0x487B VDP_REGISTROS     Los 8 registros del VDP desde la tabla de 0x488C
+D 0x488C 0x4894 registros_vdp R0-R7 de arranque: 02 (SCREEN 2), A2 (16K, pantalla apagada, interrupciones, sprites 16x16), 0E (nombres en 0x3800), 7F (colores en 0x0000), 07 (patrones en 0x2000), 76 (atributos en 0x3B00), 03 (patrones de sprites en 0x1800), E1 (fondo negro)
+F 0x488C 8
+L 0x4894 COPIA_A_VRAM      BC bytes desde HL a la VRAM DE (con di; el que llama pone ei)
+L 0x489C COPIA_A_VRAM_YA   Sin poner la direccion: el VDP ya apunta
+L 0x48AA RELLENA_VRAM      BC bytes de A en la VRAM DE
+L 0x48C2 CORTINILLA        Un paso de la cortinilla: borra una columna entera (24 filas) de izquierda a derecha y de derecha a izquierda a la vez; devuelve M al acabar, P mientras
+C 0x48C9 Bit 6 de E004: fotograma par (columna de la izquierda) o impar (la de la derecha)
+L 0x48DA CORTINILLA_COLUMNA Los 24 tiles de una columna a cero
+L 0x48E9 PINTA_LISTA_TILES Lista de HL: dos bytes de VRAM y tiles seguidos; 0xFE cambia de direccion, 0xFF acaba
+L 0x48ED PINTA_LISTA_SIGUE El bucle de tiles con DE ya puesto
+L 0x48FB INTERCAMBIA       B bytes de HL con los de DE (los datos de los dos jugadores)
+L 0x4905 PSG_PUERTO_JOYSTICK Registro 15 del PSG = 0x8F, o 0xCF (bit 6) para el puerto 2 si juega el 2P
+L 0x4917 SIN_LLAMADAS_COLOR_F0 `ld a,0F0h` y cae en COLOR_FUENTE: la fuente en blanco sobre transparente, que nadie pide
+L 0x4919 COLOR_FUENTE      Los colores de los tiles 0x30-0x5F (cifras y letras) = A en los tres tercios
+L 0x491F COLOR_TRES_TERCIOS BC bytes de A en la VRAM DE y en los dos tercios siguientes
+L 0x4934 COPIA_TRES_TERCIOS BC bytes de HL en la VRAM DE y en los dos tercios siguientes
+B 0x4945 ----------------------------------------------------------------------
+B 0x4945 LOS PUNTOS. CDE en BCD (seis cifras) se suman a los del jugador que
+B 0x4945 juega; en la demo no. Vida extra al pasar de cada 20000 (E052 son las
+B 0x4945 decenas de millar del siguiente), y el record de paso.
+B 0x4945 ----------------------------------------------------------------------
+L 0x4945 SUMA_PUNTOS       CDE (BCD) a E043 (1P) o E046 (2P); solo con partida en marcha (bit 6 de E002)
+C 0x4948 Bit 6 al carry: sin partida (la demo) no se suman
+C 0x494F Bit 7 al carry: E046 para el 2P
+C 0x4965 Mas de 999999: se clava el record en 999999
+L 0x4974 VIDA_EXTRA        Al pasar las decenas de millar de E052 (20000, 40000...): una vida mas, se pintan y sonido 0x10
+C 0x497C La siguiente, 20000 mas alla
+L 0x4995 RECORD            Si los puntos superan el record, se copian y se pinta
+L 0x49B4 PINTA_MARCADOR    La pantalla de juego entera: plataformas de la fase, panel azul, TIME, HI, STAGE, 1UP (y 2UP), record, puntos, vidas, fase, flores, y las tablas de sprites y actores
+C 0x49B7 Las plataformas de la fase (0x6685)
+C 0x49BA El panel azul: 7 columnas x 22 filas del tile 0x60 desde la fila 2, columna 25
+C 0x49BD "TIME" y "00:00", el Konami de abajo, y HI / STAGE / 1UP
+C 0x49D5 Con dos jugadores, "2UP" y sus puntos
+C 0x49E7 Vidas, fase, flores
+C 0x4A02 Colores del panel (0x665A) y R7 = 1
+L 0x4A05 PINTA_RECORD      El record en la fila 6, columna 25
+L 0x4A0E PINTA_PUNTOS      Los puntos del jugador que juega
+L 0x4A11 PINTA_PUNTOS_DE   Los puntos del jugador del bit 7 de A: 1P en la fila 9, 2P en la 12, columna 25
+L 0x4A1F PINTA_3_BYTES_BCD Seis cifras (HL apunta al byte alto)
+L 0x4A24 PINTA_FASE        E051 (BCD, y si llega a 100 vuelve a 0) en la fila 20, columna 26
+C 0x4A2D Fase 100 (0x64 en binario, aunque E051 es BCD): vuelta a 0
+L 0x4A33 FASE_DECENAS      Cuenta las decenas restando 10
+L 0x4A4F PINTA_BYTES_BCD   B bytes BCD desde HL hacia abajo, dos cifras cada uno, en la VRAM DE
+L 0x4A6C PARPADEA_1UP      Cada 32 fotogramas: "1UP" (fila 8) o "2UP" (fila 11) sobre los puntos del jugador que juega, alternando con el azul
+C 0x4A7E '1' 'U' 'P'
+C 0x4A91 Si esta el azul (0x60), letras; si estan las letras, azul
+L 0x4AAB RET_2             Otro `ret` suelto de espera para el VDP
+L 0x4AAC PINTA_VIDAS       Hasta tres caras de mono de 2x2 (0x4AE0) en la fila 14, columna 25; las que no hay, azul
+L 0x4AB8 PINTA_VIDAS_UNA   Cada hueco: cara o azul, y 16 pixels a la derecha
+L 0x4AD2 PINTA_FALLOS      Los fallos (E057) como caras de 2x2 (0x4AE8) en la fila 17, columna 25
+D 0x4AE0 0x4AE4 cara_de_vida El bloque de 2x2 tiles de una vida (0x0D 0x0F / 0x0E 0x10): la cara del mono
+D 0x4AE4 0x4AE8 hueco_azul Cuatro tiles 0x60: el hueco de una vida que ya no esta
+D 0x4AE8 0x4AEC cara_de_fallo El bloque de 2x2 de un fallo (0x11 0x13 / 0x12 0x14): la cara del mono llorando
+L 0x4AEC MONTA_DEMO        Fase 1, guion de la demo desde el principio, fuente blanca, colores del panel y el marcador entero
+D 0x4B04 0x4B24 sprites_iniciales Los ocho primeros atributos de sprite (Y, X, patron, color) para E0B0: el mono (patrones 0x00 azul y 0x0C blanco) y los tres cangrejos (0x30 rojo y 0x3C amarillo), todos escondidos (Y = 0xE1) en X = 8
+F 0x4B04 4
+D 0x4B24 0x4B44 actores_iniciales Los cuatro registros de actor de E108: mono (tipo 0), cangrejos de tipo 1, 2 y 3 (0x41, 0x82, 0x43: el bit 6/7 es la direccion) con temporizadores 0x20, 0x40, 0x60 antes de salir
+F 0x4B24 8
+L 0x4B44 DEMO_GUION        Cada 8 fotogramas el byte siguiente de 0x4B78 a E10B (los mandos de la demo); 0xFF acaba (E00B = 0xFF); y un paso de cada actor
+D 0x4B78 0x4BF0 guion_de_la_demo Los mandos de la demo, uno cada 8 fotogramas, en el formato de E10B: 0x80 derecha, 0x40 izquierda, 0x10 disparo, 0x20 boton 2, 0x50/0x90 con salto; 0xFF fin
+F 0x4B78 16
+B 0x4BF0 ----------------------------------------------------------------------
+B 0x4BF0 EL TITULO "Monkey Academy" es un dibujo de 192x21 pixels (0x4CD0)
+B 0x4BF0 que se pinta fila a fila en los patrones de los tiles 0xB8-0xFF
+B 0x4BF0 (24 tiles por fila, tres filas), con las tres bandas de color de
+B 0x4BF0 0x4C5F. Los tiles se colocan en las filas 4-6 desde la columna 5.
+B 0x4BF0 ----------------------------------------------------------------------
+L 0x4BF0 PREPARA_TITULO    Patrones 0xB8-0xFF a cero, la fila 11 limpia, los colores del titulo, los tiles 0xB8.. colocados en las filas 4-6 y la fuente en cyan
+C 0x4BFA 19 tiles de la fila 11 desde la columna 6 (donde iba VIDEO CARTRIDGE)
+C 0x4C07 Fila 4, columna 5: los tiles 0xB8, 0xB9... 24 por fila, tres filas
+C 0x4C26 0x70: la fuente en cyan (el menu)
+C 0x4C2B Colores 0x0980 = 0x0180 en el segundo tercio: los tiles 0x30-0x3F blancos sobre transparente
+L 0x4C37 COLORES_TITULO    Los colores de los tiles 0xB8-0xFF: una banda de 8 bytes distinta por fila de tiles (0x4C5F, 0x4C67, 0x4C6F)
+L 0x4C4E COLORES_TITULO_FILA 24 tiles con la misma banda de 8 bytes
+D 0x4C5F 0x4C77 bandas_del_titulo Tres bandas de 8 colores por fila de tiles: 20 20 F0 80 80 F0 20 20 (verde, blanco, rojo), 20 20 F0 80 80 F0 20 20 y 20 20 20 20 20 20 20 20 (verde). Es el rayado del rotulo
+F 0x4C5F 8
+L 0x4C77 TITULO_UNA_FILA   Una fila de 24 bytes del dibujo de 0x4CD0 a los 24 tiles de la fila en curso; carry mientras quede dibujo, y "©Konami 1984" (0x6B8B) al acabar
+C 0x4C92 Al llegar a 0x2804 (el final del tile 0xFF mas uno) se ha acabado el dibujo
+C 0x4CAC Fila de pixel siguiente; si se pasa del tile, salta a la fila de tiles siguiente (24 tiles mas alla)
+D 0x4CD0 0x4EC8 dibujo_del_titulo "Monkey Academy": 21 filas de 24 bytes (192 pixels de ancho), un bit por pixel, tal como se pinta en los patrones 0xB8-0xFF
+F 0x4CD0 24
+B 0x4EC8 ----------------------------------------------------------------------
+B 0x4EC8 LAS TARJETAS. Diez por fase, en las posiciones (Y, X) de la tabla
+B 0x4EC8 de 0x509E; cada jugador tiene las suyas en E1E4 (o E20E): dos
+B 0x4EC8 bytes por tarjeta, el estado y la cifra. El estado: bits 0-1
+B 0x4EC8 cuanto ha bajado (0-3), bit 4 se esta abriendo o cerrando, bit 6
+B 0x4EC8 ya abierta del todo, bit 7 hay que repintarla. La tarjeta esta metida
+B 0x4EC8 en la plataforma y solo asoma su canto (el 2x2 de 0x5082); al tirar
+B 0x4EC8 de ella baja: se pintan las 3 - c filas de abajo del bloque de 3x2
+B 0x4EC8 (en blanco, 0x507C, o con la cifra, 0x5040 + 6n) desde Y, y el canto
+B 0x4EC8 justo debajo, porque PINTA_BLOQUE deja D avanzado tantas filas como
+B 0x4EC8 pinto (el 8c + Y que calcula 0x4F42 se queda en A y no se usa).
+B 0x4EC8 Mientras baja alterna el bloque en blanco y el de la cifra, y con el
+B 0x4EC8 bit 4 el canto es el de 0x5086 (blanco y las dos rayas).
+B 0x4EC8 ----------------------------------------------------------------------
+L 0x4EC8 PINTA_TARJETAS    Recorre las tarjetas de E15A (0xFF fin); las que llevan el bit 7 se repintan en su fase de apertura y avanzan un paso
+C 0x4EE2 Bit 7: hay que repintarla
+C 0x4EEF Fuera del estado 10 (montar la fase) suena el 0x0A al moverse
+C 0x4EF7 La cifra (byte siguiente) elige el bloque de 3x2 de 0x5040
+C 0x4F04 Bit 4 a cero: el bloque en blanco de 0x507C
+C 0x4F2B Cuanto asoma: 3 - (bits 0-1) filas de la cifra
+L 0x4F30 TARJETA_CANTO     Debajo de lo pintado (D ya va avanzado), el canto: 0x5082 o, con el bit 4, 0x5086
+L 0x4F4F TARJETA_ASOMA     Las 3 - c filas de abajo del bloque, desde Y; D queda debajo
+L 0x4F59 TARJETA_AVANZA    Un paso mas: cambia el bit 4 (por eso alterna blanco y cifra) y baja o sube c segun el bit 6; al llegar al tope (0 abriendose, 3 cerrandose) se para: fuera los bits 7 y 6, cambia el 4
+C 0x4F60 Con el bit 4 el tope es 0 (abierta del todo); sin el, 3 (metida)
+C 0x4F79 Llego: fuera los bits 7 y 6, cambia el 4 (0x13 metida, 0x40 abierta)
+L 0x4F7D TARJETA_SIGUIENTE La siguiente
+L 0x4F81 TARJETAS_DE_LA_FASE Las 10 posiciones de la fase ((E051-1) & 7 de 0x509E) a E15A, todas metidas y por pintar (0xC3: al pintarlas pasan a 0x13), pintadas, y el mono sin tarjeta
+C 0x4F9F 0xC3: metida (c = 3), con los bits 7 y 6; el primer pintado la deja en 0x13
+L 0x4FAE COGE_TARJETA      El mono coge la tarjeta A: si llevaba otra la deja (bit 7 para repintarla) y apunta la nueva en E1AF
+L 0x4FCC BARAJA_CIFRAS     Las diez cifras en E1CF, empezando por una al azar; 64 barajadas al azar; y a las tarjetas del jugador (E1E4 o E20E) con estado 0x13, cifra a cifra
+C 0x4FCF Empieza por una cifra al azar y sigue en orden 0-9
+C 0x4FE3 64 vueltas: mueve la primera cifra a una posicion al azar (1-9)
+C 0x5011 Diez tarjetas: estado 0x13 (metida) y su cifra
+L 0x502E TARJETAS_DEL_JUGADOR HL = E1E4 para el 1P, E20E (0x2A mas alla) para el 2P
+D 0x5040 0x507C tarjetas_con_cifra Diez bloques de 3x2 tiles, uno por cifra 0-9: la fila de arriba es 61 61 (el borde blanco de la tarjeta) y las dos de abajo la cifra en azul sobre blanco (tiles 0x62-0x7A). 0x508A los apunta
+F 0x5040 6
+D 0x507C 0x5082 tarjeta_en_blanco El bloque de 3x2 en blanco (seis 0x61): la tarjeta sin cifra, que alterna con la de la cifra mientras baja
+D 0x5082 0x5086 canto_de_tarjeta El bloque de 2x2 del canto de la tarjeta: 01 02 / 00 00 (la curva roja que asoma bajo la plataforma cuando esta metida, y que baja con ella)
+D 0x5086 0x508A canto_abierta El canto con el bit 4: 61 61 / 03 04 (blanco y las dos rayas)
+D 0x508A 0x509E punteros_a_cifras Diez punteros a los bloques de 0x5040, uno por cifra
+F 0x508A w1
+D 0x509E 0x50AE punteros_a_tarjetas Ocho punteros a las posiciones de las tarjetas de cada fase ((fase - 1) & 7)
+F 0x509E w1
+D 0x50AE 0x5156 posiciones_de_tarjetas Ocho fases x 21 bytes: diez pares (Y, X) en pixels y 0xFF; las tarjetas cuelgan en Y = 0x18, 0x50 y 0x88 (las filas 3, 10 y 17, bajo cada plataforma)
+F 0x50AE 21
+D 0x5156 0x566B patrones_rle Los patrones de los tiles 0x00-0xB7 comprimidos (0x515 bytes; 1472 al descomprimir con 0x6C84): n<0x80 repite n veces el byte siguiente, n>=0x80 copia n&0x7F bytes, 0 fin. Van a los tres tercios
+D 0x566B 0x56BF colores_rle Los colores de los mismos tiles, en el mismo formato (84 bytes; 1472 al descomprimir)
+D 0x56BF 0x597F sprites_espejables Los 22 sprites de 16x16 (32 bytes: columna izquierda y derecha) que INIT copia a 0x1800 (los 6 primeros), a 0x18C0 (los 22: patrones 0x18-0x6C) y espeja en 0x1CC0 (0x98-0xEC), todos mirando a la derecha: 0-2 el mono andando y 3-5 sus detalles blancos, 6-8 el cangrejo y 9-11 sus ojos, 12-13 el mono trepando y 14-15 sus detalles, 16-17 la cara de susto, 18-19 el mono tirando la fruta, 20-21 el cangrejo tirandola
+F 0x56BF 32
+D 0x597F 0x59FF sprites_500_y_frutas Cuatro sprites que van a 0x1B80 (patrones 0x70-0x7C): el "500", el "100", el platano y las uvas. 0x1B80 se pisa con los globos (0x5E3F) y se restaura desde aqui
+F 0x597F 32
+D 0x59FF 0x5ABF sprites_mono_izquierda Seis sprites que van a 0x1C00 (patrones 0x80-0x94): el mono andando hacia la izquierda (tres fases y sus detalles), dibujado aparte en vez de espejado
+F 0x59FF 32
+D 0x5ABF 0x5B3F sprites_cara_manzana_tarjeta Cuatro sprites que van a 0x1F80 (patrones 0xF0-0xFC): la cara grande del mono de frente y sus detalles (0xF0/0xF4: el profesor cuando le llevan la respuesta), la manzana (0xF8) y la tarjeta de la respuesta vista de canto (0xFC)
+F 0x5ABF 32
+D 0x5B3F 0x5BFF sprites_mono_con_fruta Juego 1 del mono (E10E = 1): seis sprites que 0x5F5F carga en 0x1800 cuando lleva una fruta en la cabeza (los brazos arriba), tres fases y sus detalles
+F 0x5B3F 32
+D 0x5BFF 0x5CBF sprites_mono_con_tarjeta Juego 2 del mono (E10E = 2): con la tarjeta de la respuesta en alto, para 0x1800
+F 0x5BFF 32
+D 0x5CBF 0x5D7F sprites_mono_con_fruta_izquierda Los seis del juego 1 mirando a la izquierda, para 0x1C00
+F 0x5CBF 32
+D 0x5D7F 0x5E3F sprites_mono_con_tarjeta_izquierda Los seis del juego 2 mirando a la izquierda, para 0x1C00
+F 0x5D7F 32
+D 0x5E3F 0x5E7F sprites_globo Dos sprites (a 0x1B80, patrones 0x70 y 0x74): el globo que sube con cada simbolo de la ecuacion, y el que lleva la respuesta al profesor
+F 0x5E3F 32
+D 0x5E7F 0x5EFF sprites_mono_contento Cuatro sprites que 0x7532 carga en 0x1800 (patrones 0x00-0x0C) cuando la respuesta llega al profesor: la cara del mono de frente en dos fases (0x00 y 0x08) con sus detalles (0x04 y 0x0C); el mono y el profesor bailan con ellos (0x6DFC)
+F 0x5E7F 32
+D 0x5EFF 0x5F5F tiles_de_la_ecuacion Doce patrones de 8 bytes para los tiles 0xB8-0xC3 (0x4728 los carga en el menu): los trozos de las cifras grandes de la ecuacion que no cabian en 0x5156 (0xC0/0xC1 aparecen en el 2, el 3, el 8 y el signo de dividir)
+F 0x5EFF 8
+
+# =============================================================================
+# LOS ACTORES: EL MONO Y LOS TRES CANGREJOS
+# =============================================================================
+B 0x5F5F ######################################################################
+B 0x5F5F UN PASO DE UN ACTOR. B = 1 el mono, 2-4 los cangrejos. IX apunta a
+B 0x5F5F sus dos sprites (E0B0 + 8(B-1)) y IX+0x58.. a su registro de E108
+B 0x5F5F (+0x5B tipo y sentido, +0x5C estado, +0x5D temporizador...). Primero
+B 0x5F5F el boton de responder (0x7708), luego el juego de sprites del mono
+B 0x5F5F si ha cambiado (E10E), luego las frutas: si toca una colgada en
+B 0x5F5F pleno salto se la lleva en la cabeza (el mono, 100 puntos; tambien el
+B 0x5F5F cangrejo que salta); si le da una que va por el aire, el mono pierde
+B 0x5F5F la vida (estado 10) y el cangrejo se muere (500 puntos, estado 9):
+B 0x5F5F las frutas se tiran unos a otros. Y por fin el estado por 0x602E:
+B 0x5F5F    0 escondido, esperando       1 parado (o con la respuesta)
+B 0x5F5F    2 andando                    3 saltando
+B 0x5F5F    4 subiendo por un hueco      5 hundiendose despacio
+B 0x5F5F    6 cayendo                    7 el cangrejo se descuelga de arriba
+B 0x5F5F    8 tira la fruta que lleva    9 el cangrejo se muere (500)
+B 0x5F5F   10 al mono le ha dado una fruta
+B 0x5F5F ######################################################################
+L 0x5F5F ACTOR_PASO        Un paso del actor B (1 el mono, 2-4 los cangrejos)
+C 0x5F60 Con el mono hundiendose (estado 5) no se puede responder
+C 0x5F68 IX = sus dos sprites; el registro del actor esta 0x58 mas alla
+C 0x5F76 E10E: el juego de sprites que pide el mono; E273 el que esta cargado
+L 0x5F80 CARGA_SPRITES_MONO Los dos bloques de 0xC0 del juego E10E (tabla 0x6044) a 0x1800 y 0x1C00
+L 0x5FA7 ACTOR_FRUTAS      Si el actor toca una fruta (0x6A4F): E = 1 quieta (colgada o en el suelo), 0 en el aire (cae o vuela); D su indice
+C 0x5FAD E = 0: la fruta va por el aire
+C 0x5FB1 Solo saltando (estado 3) se coge una fruta quieta
+C 0x5FB9 +0x5E = 1: el mono va cargado con ella
+C 0x5FC4 0x0C si es el mono (bits 2 y 3: la lleva en la cabeza), 0x44 si es un cangrejo (bit 6: la ha tirado el)
+C 0x5FD9 El mono: sonido 7 y 100 puntos
+L 0x5FE8 ACTOR_FRUTA_LE_DA Una fruta en el aire le da: el mono pierde la vida (estado 10); el cangrejo se muere
+L 0x5FF5 CANGREJO_MUERE_POR_FRUTA La fruta se da por gastada (0x80), su sprite pasa a ser el "500" blanco, sonido 9, 500 puntos, y el cangrejo al estado 9 durante 0x20 fotogramas
+C 0x6008 +0x59/+0x5A guardan el puntero al sprite de la fruta, para esconderlo al acabar
+L 0x6028 ACTOR_DESPACHA    El estado del actor (+0x5C) por la tabla de 0x602E
+D 0x602E 0x6044 tabla_de_estados_del_actor Los 11 estados de un actor (indice IX+0x5C), destino del despachador de 0x602B
+F 0x602E w1
+D 0x6044 0x6050 juegos_de_sprites_del_mono Tres pares de punteros (0x1800, 0x1C00), indice E10E: 0 el mono normal (0x56BF, 0x59FF), 1 (0x5B3F, 0x5CBF), 2 con la tarjeta de la respuesta (0x5BFF, 0x5D7F)
+F 0x6044 w2
+L 0x6050 ACTOR_ESCONDIDO   Estado 0: fuera de la pantalla mientras +0x5D cuenta (uno cada dos fotogramas); al llegar a cero aparece arriba, en el centro (Y = 0x10, X = 0x60) y se descuelga (estado 7)
+L 0x6081 ACTOR_PARADO      Estado 1: si el mono ya ha entregado la respuesta (E108 = 0x33), borra la flecha y esconde a los cangrejos; si no, disparo = salto, y con direccion, a andar
+C 0x6088 Bits 6-7 de +0x5B: hacia donde va
+C 0x6090 El mono, con partida en marcha: disparo recien pulsado (E008/E009)
+C 0x60A2 Los cangrejos y la demo: bit 4 de +0x5B
+C 0x60A6 Con una tarjeta abriendose (E238) no se salta
+L 0x60AC ACTOR_SALTA       Arranca el salto: sonido 4, fase 0; con direccion y sitio (X entre 0x0C y 0xB4), sube por el hueco (estado 4); si no, salto vertical (3)
+C 0x60AF Bit 0 de +0x5E: va cargado con una fruta; el boton la tira (estado 8)
+C 0x60C6 Hacia la derecha hace falta X < 0xB4; hacia la izquierda, X >= 0x0C
+L 0x60CF ACTOR_ESTADO_D    +0x59 = la direccion si la hay, y el estado D
+L 0x60DB ACTOR_SALTA_IZQ   Lo mismo hacia la izquierda
+L 0x60E6 ACTOR_ANDA_SI_HAY Sin disparo: con direccion, a andar (estado 2)
+L 0x60EF ACTOR_CARGADO_TIRA Con la fruta encima no salta: la tira (estado 8 durante 0x10 fotogramas)
+L 0x60F9 RESPUESTA_ENTREGADA Borra la flecha roja (2x2 en la fila 6, columna 23) y esconde a los cangrejos
+L 0x610A ACTOR_ANDA        Estado 2: tres pasos por delante; disparo salta; sin direccion se para; con ella avanza un pixel con la animacion de 0x65C3 (derecha) o 0x65D3 (izquierda) y suena el paso cada 4
+C 0x610A +0x5F = 3: cuantos pasos antes de que el cangrejo se plantee girar
+C 0x6134 Sin direccion: parado (estado 1)
+C 0x613B 0x65C3: los patrones de andar hacia la derecha; 0x65D3 los de la izquierda (E = +1 o -1)
+C 0x614E Cada 4 pixels el sonido del paso (3)
+C 0x615A 0x6924: hay suelo debajo (NC) o no (C)
+C 0x6160 X entre 8 y 0xB8: dentro de la pantalla de juego
+L 0x6168 ACTOR_ANDA_X      X nueva a los dos sprites; el cangrejo (tipo 3) se atonta al azar: bit 4 puesto y a esperar
+C 0x616F Solo el tipo 3 (el cangrejo que se para)
+C 0x6176 Una vez de cada 256: se queda parado con el bit 4
+L 0x618D ACTOR_SIN_SUELO   Sin suelo debajo: el mono y el tipo 1 se caen (estado 6); los tipos 2 y 3 lo piensan (0x6205)
+L 0x6197 ACTOR_CAE         Un pixel mas alla del borde y a caer (estado 6) con el sonido 5
+L 0x61AC ACTOR_BORDE_DER   Borde derecho: el cangrejo da la vuelta (bits 6-7 de +0x5B); el mono se queda
+L 0x61BB ACTOR_RETROCEDE   Deshace el pixel
+L 0x61C2 ACTOR_BORDE_IZQ   Borde izquierdo: el cangrejo da la vuelta si no esta en el suelo (Y < 0xA8); en el suelo se marcha por la izquierda (estado 0, a esperar)
+L 0x61D8 CANGREJO_SUELTA_FRUTA Si iba cargado (bit 0 de +0x5E) busca la fruta 8 pixels por encima (0x6A55) y la hace desaparecer con el
+L 0x6205 CANGREJO_LO_PIENSA Los tipos 2 y 3 al borde: el 4 (0x44, desde la fase 18) da la vuelta si esta en la altura de +0x58 (0x38: la segunda plataforma) y si no se deja caer; los demas caen o dan la vuelta al azar
+L 0x6212 CANGREJO_GIRA     Cambia de sentido sin caer (estado 4 = sube por el hueco)
+L 0x6220 CANGREJO_44       El de la fase 18: da la vuelta si su Y es la de +0x58 (0x38, la segunda plataforma), si no cae
+L 0x6229 ACTOR_ANIMACION   Los dos patrones de la fase de andar (X/4 & 3) de la tabla HL (+8 para los cangrejos)
+L 0x6244 ACTOR_SALTANDO    Estado 3: si el mono lleva la respuesta y toca al profesor (0x6ADB), entregada (E108 = 0x33). Sube y baja con la tabla de 0x6423; en lo alto (paso 11) coge la tarjeta si la hay (0x6A1F); al ultimo paso (23) al estado 6
+C 0x6249 Bit 0 de E270: la respuesta sube sola; E108 = 0x33: entregada; E10E = 0: los sprites normales
+C 0x625C Bit 7 de +0x5A: la bajada; si no, los primeros 8 pasos suben 4 pixels cada uno
+C 0x6261 Al octavo paso, empieza la tabla (bit 7)
+L 0x6269 ACTOR_SALTO_Y     Y nueva a los dos sprites y un paso mas
+L 0x6279 ACTOR_SALTO_TABLA El desplazamiento del paso (+0x5A/2) de 0x6423; el 23 aterriza (estado 6); el 11 (lo alto) mira la tarjeta
+C 0x628E 0x6A1F: hay un canto de tarjeta (tiles 1-2) justo encima; D = fila de tiles, E = columna
+C 0x6293 0x65E7 pasa la posicion a (fila - 7) x 8 y columna x 8; con la segunda mitad del canto, 8 pixels menos
+L 0x62A3 BUSCA_TARJETA     Busca en E15A la tarjeta que cuelga en (D, E) y la coge (0x4FAE): repintar y estado 5 (se hunde con ella)
+L 0x62CB ACTOR_ATERRIZA    Estado 6 (cayendo) con +0x5A = 0xFF
+L 0x62D6 ACTOR_SUBE_HUECO  Estado 4: sube por un hueco de la plataforma de arriba trepando (patrones 0x65E3/0x65E5); si no hay hueco, salto corto y vuelta
+C 0x62DA +0x59: hacia donde
+C 0x62F3 Bit 7 de +0x5A: bajando por la tabla; bit 6: cayendo recto
+C 0x62FD Los seis primeros pasos, el mono sin mando se planta (0x80)
+C 0x6324 Sube 4 pixels y se mueve un pixel hacia el lado, entre 8 y 0xB8
+C 0x634E 0x696B: hay plataforma 0x18 por encima y 6 pixels al lado (C = si)
+L 0x6312 ACTOR_HUECO_PARA  Se queda con el bit 7: baja
+L 0x636B ACTOR_HUECO_CAE   Cae recto (4 pixels, alineado) moviendose un pixel al lado
+L 0x6399 ACTOR_HUECO_BAJA  La bajada por la tabla de 0x6423 moviendose un pixel al lado; en el paso 0x18 deja de bajar y en el 0x12 cae recto
+L 0x63D9 ACTOR_HUECO_SUELO Con suelo debajo (0x6924): parado (estado 1) o cayendo (6) si se salio de la pantalla; los patrones de andar
+L 0x63EF ACTOR_HUECO_TOPE_IZQ X = 8 y a caer
+L 0x63FB ACTOR_HUECO_TOPE_DER X = 0xB8 y a caer
+L 0x641A ACTOR_HUECO_FIN   +0x5A = 0 y el estado D
+D 0x6423 0x643B arco_del_salto Los 24 desplazamientos verticales del salto (uno por cada dos fotogramas): -3 -3 -3 -2 -1 -1 -1 0 -1 0 -1 0 (sube) 0 1 0 1 0 1 1 1 2 3 3 3 (baja); el paso 11 es lo alto y el 23 el suelo
+F 0x6423 12
+L 0x643B ACTOR_SE_HUNDE    Estado 5: cada 8 fotogramas baja 4 pixels hasta tocar suelo (0x6924); entonces parado (1). Es el mono bajando con la tarjeta recien cogida
+L 0x645B ACTOR_CAE_ESTADO  Estado 6: baja 4 pixels (alineado a 4) hasta el suelo; el cangrejo elige entonces sentido al azar y el mono se queda parado
+C 0x647A Los cangrejos salen andando hacia la derecha (bit 7)... o hacia la izquierda si sale impar
+L 0x6496 ACTOR_CAE_MONO    El mono: cada tres pasos de caida, si no esta en el suelo (Y = 0xA8), mira si hay una fruta 0x18 por debajo (0x6A5B) y la descuelga (bit 0 de E260: cae)
+L 0x64BA ACTOR_SE_DESCUELGA Estado 7: cada 4 fotogramas baja un pixel mientras el tile bajo el sprite no sea vacio (esta cruzando la plataforma de arriba); en el vacio, a caer (estado 6)
+L 0x64E9 RET_3             `ret` de espera para el VDP
+L 0x64EA ACTOR_TIRA_FRUTA  Estado 8: la fruta que lleva (E260 con 0x0C el mono, 0x04 el cangrejo) sale volando (bit 1) hacia donde mira (bit 5). El mono se queda +0x5D fotogramas con los brazos de tirar (los sprites 18-19 de 0x56BF: 0x60/0x64, o sus espejos 0xE0/0xE4) y vuelve a estar parado (1); el cangrejo con los suyos (20-21: 0x68/0x6C, o 0xE8/0xEC)
+C 0x64EF 0x0C: la lleva el mono; 0x04: un cangrejo
+C 0x6506 La fruta pasa a caer (bit 1), sin dueno (bits 2, 3 y 5 fuera), y con el sentido (bit 5)
+L 0x6534 ACTOR_TIRA_FIN    El mono vuelve a estar parado (estado 1) con sus patrones (0x00/0x0C o 0x80/0x8C) y sin carga
+L 0x654A CANGREJO_TIRA     El cangrejo, con los patrones 0xE8/0xEC (o 0x68/0x6C) mientras cuenta
+L 0x655D CANGREJO_TIRA_FIN Y a estar parado con 0x30/0x3C (o 0xB0/0xBC)
+L 0x656B CANGREJO_MUERE    Estado 9: cuando acaba +0x5D, esconde el "500" (el sprite de la fruta que lo mato, +0x59/+0x5A), vuelve a esconderse (estado 0) a esperar segun la fase (0x6585), y la fruta que llevara desaparece
+L 0x6585 CANGREJO_ESPERA   +0x5D = cuanto espera escondido: (16 - fase) x 16 + 17 fotogramas hasta la fase 19; desde la 20, uno
+L 0x659F ACTOR_LE_DA_LA_FRUTA Estado 10: sonido 0xA0, cara de susto y se pierde la vida (E00C = 1)
+L 0x65AE CARA_DE_SUSTO     Los patrones del mono a 0x58/0x5C (los sprites 16-17 de 0x56BF, la cara de susto) o sus espejos 0xD8/0xDC segun a donde mira
+D 0x65C3 0x65CB patrones_andar_derecha Los patrones de las cuatro fases de andar hacia la derecha, dos sprites por fase: (00,0C) (04,10) (00,0C) (08,14): los sprites 0-2 de 0x56BF con sus detalles 3-5 (o el juego que haya cargado E10E)
+F 0x65C3 2
+D 0x65CB 0x65D3 patrones_cangrejo Las cuatro fases del cangrejo hacia la derecha: (34,40) (30,3C) (34,40) (38,44): los sprites 6-8 de 0x56BF (que en la VRAM son el 12-14) con sus ojos 9-11. Tambien las usa el mono del globo de 0x6D86
+F 0x65CB 2
+D 0x65D3 0x65DB patrones_andar_izquierda Las cuatro fases hacia la izquierda: (80,8C) (84,90) (80,8C) (88,94): los sprites de 0x59FF, el mono mirando a la izquierda
+F 0x65D3 2
+D 0x65DB 0x65E3 patrones_cangrejo_izquierda Las cuatro fases del cangrejo hacia la izquierda: (B4,C0) (B0,BC) (B4,C0) (B8,C4): los espejos de los sprites 6-11 de 0x56BF
+F 0x65DB 2
+D 0x65E3 0x65E7 patrones_trepar Los dos patrones de trepar por el hueco: (48,4C) hacia la derecha, (C8,CC) hacia la izquierda (los sprites 12 y 14 de 0x56BF, con los brazos arriba, y sus espejos)
+F 0x65E3 2
+L 0x65E7 TILE_A_PIXELS     D = (fila - 7) x 8, E = columna x 8: de la posicion de un tile a los pixels de la tarjeta que cuelga ahi
+L 0x65F8 SIN_LLAMADAS_TILE_EN_PIXELS Pone el tile A en los pixels (D, E). Solo la llama 0x6624, y a esa nadie: un pintador de plataformas que quedo sin usar (0x664F -> 0x6624 -> aqui)
+L 0x6624 SIN_LLAMADAS_TRAMO B tiles seguidos de C desde (D, E), 8 pixels a la derecha cada uno
+L 0x664F SIN_LLAMADAS_LISTA_DE_TRAMOS Recorre una lista de (Y, X, ancho) hasta 0xFF pintando el tile C. Nadie la llama: 0x6685 hace lo mismo con las plataformas de la fase
+L 0x6605 PIXELS_A_VRAM     DE = 0x3800 + (D / 8) x 32 + E / 8: la direccion en la tabla de nombres del tile que cae en los pixels (D, E)
+L 0x661A DENTRO_DE         Carry si |H - L| >= B: H y L son dos coordenadas y B la distancia; NC si estan a menos de B
+L 0x663A RELLENA_RECTANGULO L filas de C tiles del byte A desde la VRAM DE (una fila cada 32)
+L 0x665A COLORES_DEL_PANEL R7 = 1, la fuente blanca sobre azul, y los colores de los tiles 0x40-0x5F: amarillo sobre azul en el segundo tercio (0x0A00), rojo sobre azul en el primero (0x0200) y cyan sobre azul en el tercero (0x1200): TIME, HI y STAGE de distinto color
+L 0x6685 PINTA_PLATAFORMAS Las plataformas de la fase (0x66F5 -> lista de Y, X, ancho hasta 0xFF) con el tile base mas (fase / 2) & 3: cuatro colores
+L 0x66A2 PINTA_PLATAFORMA  Una: la posicion a VRAM (0x6605) y C tiles
+L 0x66BB PINTA_RECUADRO    Cinco bytes en HL: ancho, alto, tile, y la VRAM en dos bytes (el alto delante); y a 0x663A
+D 0x66CC 0x66DB rotulo_time "TIME" en la fila 2, columna 26, y "00:00" (0x62 es el tile de los dos puntos) en la 3
+D 0x66DB 0x66EB rotulo_konami_panel El "©Konami" (tiles 0x3A-0x3F) en la fila 22, columna 25, y "1984" en la 23
+D 0x66EB 0x66F0 recuadro_game_over Rectangulo para 0x66BB: 24 filas x 25 columnas del tile 0 desde 0x3800: borra toda la zona de juego para el GAME OVER
+D 0x66F0 0x66F5 recuadro_del_panel Rectangulo para 0x66BB: 7 columnas x 22 filas del tile 0x60 (azul) desde 0x3859 (fila 2, columna 25): el panel de la derecha; la columna 24 y las filas 0-1 quedan negras
+D 0x66F5 0x6705 punteros_a_plataformas Ocho punteros a las plataformas de cada fase ((fase - 1) & 7)
+F 0x66F5 w1
+D 0x6705 0x67C2 plataformas_por_fase Ocho listas: el tile base (5, para las cuatro barras 5-8) y las plataformas como (Y, X, ancho en tiles) hasta 0xFF; la primera es siempre el suelo (0xB8) y la segunda la de arriba (0x10)
+D 0x67C2 0x6806 sobras_67C2 Ocho listas de X (Y fija por fila) acabadas en 0xFF, alineadas con las ocho fases: 38 58 70 A0 A8 38... Nadie las apunta: sobras de un reparto de flores o frutas anterior
+D 0x6806 0x6906 frutas_por_fase Ocho fases x 8 frutas x (Y, X, patron, color): los sprites 10-17 que 0x7E85 copia a E0D8. Cuelgan en Y = 0x18, 0x50 y 0x88; 0xF8 rojo es la manzana, 0x78 amarillo el platano, 0x7C magenta las uvas
+F 0x6806 4
+L 0x6906 PINTA_BLOQUE      B filas x C columnas de tiles desde HL en los pixels (D, E)
+L 0x6924 HAY_SUELO         NC si en la fase hay una plataforma justo debajo de (B, C): a Y + 0x10 y con X entre su principio y su fin (0x661A con el ancho x 8 + 4)
+L 0x693D HAY_SUELO_BUSCA   Recorre las plataformas de la fase
+L 0x694C HAY_SUELO_X       Misma fila: la X del actor mas 10 contra el tramo
+L 0x696B HAY_PLATAFORMA_ARRIBA Carry si hay una plataforma a menos de 0x11 pixels por encima de (B, C) que cubra la X (mas 11): para saber si se puede subir por ahi
+B 0x69B0 ----------------------------------------------------------------------
+B 0x69B0 LA COLISION CON LOS CANGREJOS. NC si un cangrejo vivo (estado ni 0
+B 0x69B0 ni 9) esta a menos de 16 pixels en X y de (0x6A0F + 16) en Y del
+B 0x69B0 mono; carry si no. No se mira si el mono esta atontado (10) o ya ha
+B 0x69B0 entregado la respuesta (0x33).
+B 0x69B0 ----------------------------------------------------------------------
+L 0x69B0 COLISION_CANGREJOS Carry si ningun cangrejo toca al mono
+L 0x69D1 COLISION_SIGUIENTE Los tres, ocho bytes cada uno
+L 0x69E5 COLISION_MIRA     X a menos de 16 y Y a menos de (0x6A0F[tipo] + 16)
+D 0x6A0F 0x6A1F holgura_por_tipo Dieciseis veces 8: la holgura vertical de la colision por tipo de actor (todos igual)
+F 0x6A0F 16
+L 0x6A1F HAY_TARJETA_ENCIMA Carry si NO hay tarjeta: el mono (tipo 0), sin tarjeta suelta (E0F8 = 0xE1), mira el tile a (Y + 7, X + 8): 1 o 2 son las dos mitades del canto (0x5082) de una tarjeta metida
+L 0x6A48 ACTOR_BC          B = Y, C = X del actor
+L 0x6A4F ACTOR_TOCA_FRUTA  Si el mono ya entrego la respuesta no mira; con +0x5E = 2 (lleva la tarjeta) tampoco; si no, 0x6A5B
+L 0x6A5B TOCA_ALGUNA_FRUTA Recorre los 8 sprites de fruta (E0D8): carry y D = indice, E = 1 (quieta) o 0 (en el aire) si alguna esta a menos de 0x16 pixels en las dos coordenadas y no esta gastada (bit 7); a un cangrejo no le da la que tiro el (bit 6)
+L 0x6AAC TOCA_SIGUIENTE_FRUTA La siguiente de las ocho
+L 0x6ABB TOCA_LA_TARJETA_CAIDA NC si el mono, sin cargar (E10E = 0), esta a la altura exacta de la tarjeta caida (E0F8) y a menos de 16 pixels en X
+L 0x6ADB TOCA_AL_PROFESOR  NC si el mono con la tarjeta (E10E = 2) esta a menos de 0x20 pixels del profesor (E0D0) en Y y en X + 12
+L 0x6B03 PINTA_FLORES      Las tres flores (tile 0x15) de la fase, una por tabla (0x6B42, 0x6B52, 0x6B62), con la VRAM escrita con el byte alto delante
+D 0x6B42 0x6B52 flores_1 La VRAM de la primera flor de cada fase, ocho parejas con el byte alto delante (0x3908 = fila 8, columna 8)
+F 0x6B42 2
+D 0x6B52 0x6B62 flores_2 La segunda, igual
+F 0x6B52 2
+D 0x6B62 0x6B72 flores_3 La tercera, igual
+F 0x6B62 2
+D 0x6B72 0x6B85 rotulos_del_panel "HI" en la fila 5, columna 26; "STAGE" en la 19, columna 25; "1UP" en la 8, columna 26
+D 0x6B85 0x6B8B rotulo_2up "2UP" en la fila 11, columna 26
+D 0x6B8B 0x6B99 rotulo_konami_1984 "©Konami 1984" (tiles 0x3A-0x3F) en la fila 8, columna 11, bajo el titulo
+D 0x6B99 0x6C17 menu_play_select "PLAY SELECT" en la fila 13 y las cuatro opciones en las filas 16, 18, 20 y 22 desde la columna 4: "1-key 1PLAYER  with JOYSTICK"... (0x40 es el guion, 0x5C-0x5D "key" y 0x5E-0x5F "with")
+D 0x6C17 0x6C23 rotulo_game_over "GAME OVER" en la fila 13, columna 9 (0x60 azul en medio); sigue con "PLAYER"
+D 0x6C23 0x6C2C rotulo_player "PLAYER" en la fila 11, columna 10 (el numero lo pone 0x4666)
+D 0x6C2C 0x6C42 rotulo_video_cartridge "- VIDEO CARTRIDGE -" en la fila 11, columna 6
+L 0x6C42 SUBE_LOGO_KONAMI  Una fila mas arriba: pinta las tres filas del KONAMI (3, 11 y 12 tiles desde 0x16) desde la columna 10 y borra la de debajo; E00A cuenta las que faltan
+C 0x6C4E La fila de arriba: 0x3AAA (fila 21, columna 10) menos lo que ha subido
+L 0x6C71 PINTA_TILES_SEGUIDOS B tiles consecutivos desde A en la VRAM DE y baja una fila
+L 0x6C80 SIN_LLAMADAS_RLE_CON_DIRECCION Entrada a RLE_A_VRAM que lee la direccion de la VRAM delante de los datos, como en otros cartuchos de Konami; aqui nadie la usa
+L 0x6C84 RLE_A_VRAM        Descomprime HL en la VRAM DE: 0 fin; n<0x80 repite n veces el byte siguiente; n>=0x80 copia n&0x7F bytes tal cual
+L 0x6C88 RLE_SIGUIENTE     El bucle
+L 0x6C93 RLE_REPITE        B veces el mismo byte
+L 0x6C9B RLE_TAL_CUAL      A&0x7F bytes seguidos
+L 0x6CA6 FLECHA_ROJA       Mientras el mono lleva la tarjeta (bit 1 de E270): cada 8 fotogramas la flecha de 2x2 (0x6CC2) o nada en la fila 6, columna 23
+D 0x6CC2 0x6CC6 flecha_roja El bloque de 2x2 de la flecha que apunta al profesor: 09 0B / 0A 0C
+L 0x6CC6 RELOJ             Cada 64 fotogramas un segundo menos (BCD, los minutos en E056), y se pinta
+L 0x6CD4 RELOJ_RESTA       Un segundo menos: de 00 pasa a 59 y un minuto menos
+L 0x6CE0 PINTA_RELOJ       Minutos y segundos en la fila 3, columna 26 (con los dos puntos en medio)
+L 0x6CEF RELOJ_MINIMO      Si queda menos de 0:30, se pone en 0:30
+L 0x6CFC RESPUESTA_REVELADA Se acabo la ecuacion sin acertar: fallos a cero, se pierde la vida (E00C), ecuacion nueva (E053), los sprites del 500 vuelven, sonido 2 y al estado 19 con 0x80 fotogramas
+L 0x6D27 PROFESOR_PASO     Segun E276: bit 0 monta el globo con la respuesta, bit 1 lo lleva bajo el ?, bit 2 lo sube y escribe la cifra
+L 0x6D38 GLOBO_MONTA       Con el canal C callado: esconde a los cangrejos, pone en E0B8 los cuatro sprites de 0x6D76 (un mono agarrado a un globo, fuera por la izquierda), carga los globos en 0x1B80, E108 = 0x88 y sonido 0x97
+D 0x6D76 0x6D86 sprites_del_globo Cuatro atributos: dos sprites de un mono con los brazos arriba (los espejos 0xC8/0xCC de trepar, en cyan y rojo claro: otro mono agarrado al globo) en Y = 0xA8 y dos del globo (0x70/0x74, rojo oscuro) encima, todos en X = 0xFD (entran por la izquierda)
+F 0x6D76 4
+L 0x6D86 GLOBO_ANDA        Los cuatro sprites avanzan un pixel por fotograma hasta la columna del ? (E271 - 13), animando el mono con las fases de 0x65CB; al llegar, bit 2
+L 0x6DB6 GLOBO_YA_ESTA     E276: fuera el bit 1, dentro el 2: a subir
+L 0x6DBF GLOBO_SUBE        El globo (sprites 4 y 5) sube un pixel por fotograma hasta arriba; entonces se esconde, se escribe la cifra escondida (E1CD) sobre el ? con los bloques de 0x7207, sonido 2 y 0x6CFC
+L 0x6DFC FASE_RESUELTA_BAILE Con el bit 3 de E276: cada 16 fotogramas alterna los colores del mono y del profesor (los del bit 4) hasta que el nibble alto llega a 0x10; entonces la ecuacion cuenta (0x6E32)
+C 0x6E12 Bit 4 a 1: patrones 0x08 y color 0x0C; a 0: 0x00 y 0x04
+L 0x6E32 ECUACION_RESUELTA En la partida (bit 6 de E002): banderas a cero, ecuacion nueva, vida devuelta (el estado 9 la gasta), una resuelta mas; a las tres, fase superada: al estado 12 con E23C (el tiempo a puntos)
+C 0x6E35 En la demo (sin bit 6) vuelve con carry al que llamo a 0x4337
+C 0x6E4A El estado 9 gasta una vida al entrar: se devuelve antes
+C 0x6E55 Menos de tres: al estado 9 (PLAYER n) por 0x4661
+C 0x6E5D Tres: E054 = 0, estado 12 con E23C = 1 (descuenta el tiempo), y la vida devuelta se retira porque no pasa por el 9
+
+# =============================================================================
+# LA ECUACION: ARITMETICA EN BCD, EL GENERADOR Y LOS GLOBOS
+# =============================================================================
+B 0x6E6E ----------------------------------------------------------------------
+B 0x6E6E LA ARITMETICA. El resultado vive en E142 (unidades y decenas, BCD) y
+B 0x6E6E E143 (centenas). Suma, resta y multiplicacion por sumas repetidas,
+B 0x6E6E todo con DAA. Un acarreo o un prestamo cambian el bit 0 de E152: es
+B 0x6E6E el signo, y 0x70B1 lo pinta como un menos delante del resultado.
+B 0x6E6E ----------------------------------------------------------------------
+L 0x6E6E SUMA_A_MAS_B      E142 = A + B (BCD); E143 = 0 mas el acarreo
+L 0x6E78 SUMA_B            E142/E143 += B
+L 0x6E7C SUMA_B_BUCLE      La suma con DAA y el signo si se desborda
+L 0x6E92 RESTA_A_MENOS_B   E142 = A - B (BCD); si presta, el signo (bit 0 de E152)
+L 0x6E9C RESTA_B           E142/E143 -= B
+L 0x6EA0 RESTA_B_BUCLE     La resta con DAA y el signo si presta
+L 0x6EB6 MULTIPLICA_A_POR_B E142 = A x B (BCD): A sumado B - 1 veces
+L 0x6EC1 MULTIPLICA_POR_B  E142/E143 x B, sumandose a si mismo B - 1 veces
+L 0x6ECE MULTIPLICA_BUCLE  Una suma mas
+L 0x6EDE DIVISION          Para el signo de dividir: D y E al azar (1-9), se escribe D x E, el signo, D, y el resultado es E: siempre exacta
+C 0x6EF6 D x E a E142
+C 0x6EF9 El dividendo (D x E), el signo de dividir del guion, y el divisor D
+C 0x6F06 El resultado es E
+L 0x6F0D AZAR              Semilla de 16 bits en E140/E141: se mezcla, se suma el registro R, se lee una palabra de la ROM en 0x0000-0x3FFF (la BIOS) y se remezcla con DAA. Los nibbles de E140 salen entre 0 y 9
+C 0x6F1C El registro R del Z80: la parte que no se puede predecir
+C 0x6F26 Una palabra de la BIOS (H queda entre 0 y 0x3F) como tabla de ruido
+L 0x6F45 OPERANDO          Un numero al azar de dos cifras BCD (E140) con las unidades entre 2 y 9, escrito en la ecuacion; B se lo queda
+L 0x6F53 ESCRIBE_NUMERO    Escribe A (BCD, dos cifras) detras de HL: las decenas si no son cero y las unidades; E058 cuenta los simbolos
+L 0x6F70 LEE_GUION         A = el simbolo del guion (E150) sin avanzar
+L 0x6F77 ESCRIBE_DEL_GUION Copia el simbolo del guion detras de HL y avanza
+L 0x6F83 UN_SIMBOLO_MAS    E058++
+L 0x6F8A OPERANDO_1_CIFRA  Un numero al azar de una cifra (1-9), escrito
+B 0x6F96 ----------------------------------------------------------------------
+B 0x6F96 EL GENERADOR DE ECUACIONES. Los simbolos: 0-9 las cifras, 0x0A +,
+B 0x6F96 0x0B -, 0x0C x, 0x0D dividir, 0x0E =, 0x10 (, 0x11 ), 0x12 el ?,
+B 0x6F96 0x13 nada. Cada nivel tiene su guion en 0x7117:
+B 0x6F96   nivel 1  A + B = R          nivel 2  A - B = R (con signo si
+B 0x6F96   nivel 3  (D x E) / D = E     sale negativo: 89 - 99 = -10)
+B 0x6F96   nivel 4  A x b = R           nivel 5  a x ( b + c ) = R
+B 0x6F96 A y B son de dos cifras BCD (unidades 2-9); en el x, B se queda
+B 0x6F96 con las unidades; en el nivel 5 todo es de una cifra. El resultado
+B 0x6F96 se escribe con sus cifras y luego 0x7253 tapa una cifra al azar con
+B 0x6F96 el ?. La eleccion al azar del guion (and 7) esta anulada con un
+B 0x6F96 `xor a`: siempre el primero. Comprobado con 600 ecuaciones
+B 0x6F96 muestreadas en el emulador (work/omsx/ecuaciones*.log).
+B 0x6F96 ----------------------------------------------------------------------
+L 0x6F96 GENERA_ECUACION   Trece huecos, el guion del nivel del jugador y los operandos al azar; el resultado en E142/E143 y en la ecuacion
+C 0x6FA7 El nivel del jugador (E153/E154) elige la entrada de 0x7117
+C 0x6FBC El azar & 7 iba a elegir entre ocho desplazamientos... y el `xor a` lo deja siempre en el primero (0)
+C 0x6FD1 El nivel 5 va aparte
+C 0x6FDF HL = E143: los simbolos se escriben desde E144
+C 0x6FE5 0x0F no aparece en ningun guion: este salto a la tabla no se da nunca
+C 0x6FEA El signo de dividir se genera al reves: del resultado a los operandos
+C 0x6FFD Multiplicar: el segundo operando de una cifra
+C 0x7001 Restar
+L 0x700E ECUACION_SEGUNDO_SIGNO Tras el segundo operando: si viene el =, al resultado; si otro signo (mas o menos), un tercer operando
+L 0x7024 ECUACION_RESTA_C  Menos el tercero
+L 0x702D MULTIPLICA        El segundo operando pierde las decenas (se queda con las unidades, un simbolo menos) y A x b
+L 0x703B MULTIPLICA_B      E142 = A x (b & 0x0F)
+L 0x7045 ECUACION_NIVEL_5  a x ( b + c ) = R con las tres cifras al azar (1-9); si b + c da 0 se repite; el resultado a x (b + c) en E142/E143
+C 0x7057 Los dos simbolos del guion: x y (
+C 0x7068 El tercer simbolo: + (o -, con signo)
+C 0x708D Suma cero: otra ecuacion
+C 0x7094 Y por a (E144)
+C 0x709B ) y =
+L 0x70B1 ECUACION_SIGNO    Con el bit 0 de E152 (negativo): un menos delante del resultado y E142/E143 = 0 - E142/E143
+L 0x70CF ECUACION_RESULTADO Las centenas (si hay), y las dos cifras (o una, o el 0)
+L 0x70E5 RESULTADO_3_CIFRAS Con centenas: decenas y unidades siempre
+L 0x70FE RESULTADO_2_CIFRAS Sin centenas: las decenas si no son cero, y las unidades
+D 0x7117 0x712B tabla_de_guiones Cinco entradas de dos punteros (una por nivel): el guion de la ecuacion y la tabla de desplazamientos (que es el 0 que cierra el guion). El `jp z,7117h` de 0x6FE7 no salta nunca
+F 0x7117 w2
+D 0x712B 0x713D guiones_de_ecuacion Los cinco guiones, acabados en 0: 0A 0E (A + B =), 0B 0E (A - B =), 0D 0E (dividir), 0C 0E (A x b =) y 0C 10 0A 11 0E (a x ( b + c ) =)
+B 0x713D ----------------------------------------------------------------------
+B 0x713D LOS GLOBOS. La ecuacion entra en globos que suben desde abajo, uno
+B 0x713D detras de otro y en orden al azar, hasta Y = 0x10; al llegar, el
+B 0x713D globo desaparece y el simbolo se pinta en tiles de 2x2 (0x7207) en
+B 0x713D las filas 0-1. Cada globo son dos sprites (0x70/0x74, de 0x5E3F)
+B 0x713D en E0B8 + 8n; E24C + n es su estado: 0 espera, 1 sube, 2 llego,
+B 0x713D 0xFF cierra la lista. E24B cuenta los llegados y E058 cuantos son.
+B 0x713D ----------------------------------------------------------------------
+L 0x713D GLOBOS_SUBEN      Un pixel arriba cada globo en marcha; al llegar a 0x10 su simbolo se pinta; suelta el siguiente al azar; carry cuando estan todos
+L 0x713F GLOBO_SIGUIENTE   Recorre E24C hasta 0xFF
+C 0x714B Estado 1: sube (los dos sprites)
+C 0x7161 A Y = 0x10 ha llegado
+L 0x716A GLOBOS_SUELTA_OTRO Si faltan por soltar (E24B < E058) y el ultimo suelto ya paso de 8 pixels, suelta uno al azar de los que esperan (0)
+C 0x7173 E258: el ultimo que se solto; hasta que no lleva 8 pixels no sale otro
+L 0x7183 GLOBO_AL_AZAR     Un indice al azar menor que E058, y desde ahi el primer globo en espera (dando la vuelta)
+L 0x7197 GLOBO_BUSCA_LIBRE El primer estado 0 desde HL, con vuelta al principio en el 0xFF
+L 0x71A6 GLOBO_SUELTA      Estado 1 y uno mas soltado
+L 0x71AE GLOBOS_TODOS      Todos soltados: carry si todos han llegado (2), NC si queda alguno subiendo
+L 0x71BF GLOBO_LLEGA       Esconde los dos sprites, pinta el simbolo (de la ecuacion del jugador, E1B5 o E1C1) en 2x2 donde estaba el globo, apunta la columna del ? (E271) y sonido 2
+C 0x71C1 Los dos sprites del globo a Y = 0xE1; DE = donde estaba el de arriba
+C 0x71DE El simbolo 0x12 es el ?: su X mas 13 queda en E271 para el profesor
+D 0x7207 0x7253 tiles_de_los_simbolos Diecinueve bloques de 2x2 tiles, uno por simbolo: 0-9 las cifras grandes amarillas, + - x dividir =, un hueco (0x0F), ( ) y el ? (tiles 0x7B-0xB7 mas 0xBE-0xC3 de 0x5EFF)
+F 0x7207 4
+L 0x7253 ELIGE_INCOGNITA   Tapa una cifra de la ecuacion con el ? y guarda la cifra en E1CD (1P) o E1CE (2P): la posicion es (primera cifra - azar 0..15), asi que nunca va mas alla de lo que VALE la primera cifra (medido en 400 ecuaciones: 0 excepciones; con un 1 delante el ? cae siempre en el primer operando, y solo 1 de cada 6 veces cae en el resultado)
+C 0x725F La posicion sale de restar el azar a la PRIMERA cifra de la ecuacion (su valor, no su sitio); negativa, se repite
+C 0x7266 Tiene que caer en una cifra (0-9), no en un signo
+L 0x727A ECUACION_AL_JUGADOR Copia los E058 simbolos de E144 a la ecuacion del jugador (E1B5 o E1C1) y apaga E053
+L 0x7297 MONTA_GLOBOS      Sprites a 0xE1; para cada simbolo dos sprites de globo (0x70 y 0x74, uno bajo otro, Y = 0xC8/0xD8, fuera por abajo) en la X de 0x7325 y un color al azar de 0x732E; los globos de 0x5E3F a 0x1B80; estados a 0 y 0xFF, y suelta el primero al azar
+C 0x72AD 0x7325 + (simbolos - 5): la X del primer globo segun cuantos son, para centrarlos
+C 0x72D1 El de arriba en Y = 0xC8 y el de abajo en 0xD8 (bit 2 del patron)
+L 0x72B9 MONTA_GLOBO       Un simbolo: dos sprites y 16 pixels a la derecha
+L 0x72D1 MONTA_GLOBO_SPRITE Uno de los dos
+L 0x730B GLOBO_PRIMERO     Un indice al azar menor que E058 arranca (estado 1) y se apunta en E258
+D 0x7325 0x732E x_del_primer_globo La X del primer globo segun cuantos simbolos tenga la ecuacion (5 a 13): 0x38 0x38 0x38 0x28 0x28 0x18 0x08 0x00 0x00, para que la ecuacion salga centrada
+D 0x732E 0x733E colores_de_globos Dieciseis colores para los globos, elegidos al azar: azul, rojo claro, blanco, verde oscuro, cyan, amarillo...
+F 0x732E 16
+
+# =============================================================================
+# LAS FRUTAS, EL PROFESOR, EL LEVEL SELECT Y LA RESPUESTA
+# =============================================================================
+B 0x733E ----------------------------------------------------------------------
+B 0x733E LAS OCHO FRUTAS de la fase (sprites 10-17, E0D8). Cada una lleva en
+B 0x733E E260 dos bytes: el estado y un contador. El estado: bit 0 cae, bit 1
+B 0x733E vuela (la han tirado), bits 2-3 la lleva alguien en la cabeza (el 3
+B 0x733E el mono, solo el 2 el cangrejo), bit 5 hacia donde vuela, bit 6 la
+B 0x733E tiro un cangrejo, bit 7 ya no esta. Colgada o en el suelo vale 0.
+B 0x733E Se cogen saltando, se tiran con el boton, y la que va por el aire
+B 0x733E mata al cangrejo (500) o al mono.
+B 0x733E ----------------------------------------------------------------------
+L 0x733E FRUTAS_PASO       Un paso de cada una de las ocho
+L 0x734C FRUTA_PASO        La fruta B: E25C su sprite, E25E su estado; y segun el bit que tenga
+C 0x7365 Bit 0: cae; bit 1: vuela; bit 2: la lleva alguien
+C 0x7371 Bit 3: la lleva el mono (E0B0); si no, el cangrejo de E0C8 (el tipo 3, el unico que salta)
+L 0x737B FRUTA_EN_LA_CABEZA 16 pixels por encima de quien la lleva
+L 0x7387 FRUTA_CAE         Sonido 6; con suelo debajo (0x6924) se para (estado 0) o desaparece si venia volando (bit 1); si no, dos pixels mas abajo
+L 0x73A8 FRUTA_CAE_2       Dos pixels
+L 0x73AE FRUTA_VUELA       Sonido 8; fuera de la pantalla (X < 8 o >= 0xC0) desaparece; en el nibble alto del contador 8 mira si hay suelo (rebota o sigue); y el paso de la parabola
+C 0x73D3 En el octavo paso del vuelo, si hay suelo cambia de parabola (bit 0 del contador); si no, se le quita el bit 0
+L 0x73F4 FRUTA_VUELA_PASO  Parabola 0x742F (bit 0 del contador) o 0x7451, la segunda mitad si va hacia la izquierda (bit 5): (dY, dX) del paso (nibble alto del contador) y un paso mas
+D 0x742F 0x7451 parabola_baja Dos tandas de ocho pares (dY, dX) y 0xFF: hacia la derecha (0, -4)... no: dX = -4 (0xFC) es hacia la izquierda y +4 hacia la derecha; dY 0 0 1 1 2 3 4 5: la fruta sale recta y cae
+F 0x742F 2
+D 0x7451 0x7473 parabola_alta Las otras dos tandas: dY -5 -2 -1 0 0 1 2 5 con dX -2 (o +2): sube y luego cae
+F 0x7451 2
+B 0x7473 ----------------------------------------------------------------------
+B 0x7473 EL PROFESOR (sprites 8 y 9, E0D0), arriba a la derecha. Pasea entre
+B 0x7473 X = 0xB8 y 0xE8 (bit 6 de E270 el sentido). Cuando el mono coge la
+B 0x7473 tarjeta buena (bit 1) se planta en 0xB8 con la cara grande; cuando
+B 0x7473 le llega (bit 2) la lleva andando hasta el ?, la escribe (0x7207),
+B 0x7473 vuelve a su sitio y el mono y el se ponen a bailar (E276 = 0x88).
+B 0x7473 ----------------------------------------------------------------------
+L 0x7473 PROFESOR          Un paso del profesor segun E270
+C 0x7482 Cada dos fotogramas un pixel
+C 0x7488 En 0xB8 o 0xE8 da la vuelta (bit 6 de E270)
+C 0x749A Hacia la izquierda: X - 1 y los patrones de 0x758D; hacia la derecha: X + 1 y los de 0x7585
+L 0x74AB PROFESOR_X        La X a los dos sprites y la animacion (0x7565)
+L 0x74B8 PROFESOR_ESPERA   Con la tarjeta en marcha: vuelve a 0xB8 y se queda con la cara grande (0xF0/0xF4)
+L 0x74C9 PROFESOR_CARA_GRANDE Los patrones 0xF0 y 0xF4 (la cara de 0x5ABF)
+L 0x74D5 PROFESOR_LLEVA    Con la tarjeta entregada: anda hasta la columna del ? (E271) y espera E004; entonces escribe la cifra escondida en el ? (0x7207), sonido 0x0D, bit 5, y esconde la tarjeta
+C 0x74F0 La cifra escondida del jugador (E1CD/E1CE) en bloque de 2x2 sobre el ?
+L 0x751F PROFESOR_VUELVE   Vuelve hacia la derecha; en 0xB8 carga las caras de 0x5E7F en 0x1800, pone a los dos con ella (0x08/0x0C) y arranca el baile (E276 = 0x88)
+L 0x755C SIN_LLAMADAS_755C `dec (hl) / ld hl,0E0D4h / dec (hl) / pop hl / ld hl,758Dh`: nueve bytes a los que no salta nadie y que caen en PROFESOR_ANIMACION; parecen un resto de la vuelta del profesor (0x751F hace lo mismo)
+L 0x7565 PROFESOR_ANIMACION Los dos patrones de la fase (fotograma / 4 & 3) de la tabla HL; con la tarjeta entregada, la tarjeta (E0F9) va con el
+D 0x7585 0x758D patrones_profesor_derecha Las cuatro fases del profesor hacia la derecha: (18,24) (1C,28) (18,24) (20,2C): el mono andando (los sprites 6-11 de la VRAM, que son el 0-5 de 0x56BF)
+F 0x7585 2
+D 0x758D 0x7595 patrones_profesor_izquierda Las cuatro hacia la izquierda: (98,A4) (9C,A8) (98,A4) (A0,AC): los espejos del mono andando
+F 0x758D 2
+L 0x7595 PINTA_LEVEL_SELECT "PLAYER n" en la fila 2, "LEVEL SELECT" en la 6 y las cinco lineas "LEVEL n --- n-key" en las filas 9, 11, 13, 15 y 17
+D 0x75B7 0x75C0 rotulo_player_arriba "PLAYER" en la fila 2, columna 12 (el numero en la 19)
+D 0x75C0 0x75D0 rotulo_level_select "LEVEL  SELECT" en la fila 6, columna 10
+D 0x75D0 0x762F lineas_de_nivel Cinco listas de 19 bytes: "LEVEL 1 --- 1-key" en la fila 9, columna 8, y las de 2 a 5 en las filas 11, 13, 15 y 17
+F 0x75D0 19
+L 0x762F LEVEL_SELECT_TECLA Mantiene la musica del menu; descuenta la espera (E23F, 0x0F00 fotogramas); con la tecla 1-5 recien pulsada, el nivel (0x765F) al jugador; carry si ya esta decidido
+C 0x763A Sin espera: se queda el nivel que hubiera
+C 0x7645 Lo pulsado ahora y no antes
+D 0x765F 0x7670 nivel_por_tecla El nivel (0-4) segun el mapa de bits de las teclas 1-5 (1, 2, 4, 8, 16); 0xFF si no es una sola tecla
+F 0x765F 17
+L 0x7670 LEVEL_LINEA_PARPADEA Cada 4 fotogramas: la linea del nivel elegido se pinta o se borra (0x20 veces); al acabar, al estado 9; con dos jugadores, primero el LEVEL SELECT del 2P
+C 0x76A2 Con dos jugadores y el turno del 1P: cambia al 2P y repite el LEVEL SELECT
+L 0x768E LEVEL_LINEA_BORRA Los 16 tiles de la linea a cero
+L 0x769B LEVEL_LINEA_FIN   Al estado 9 (o al 2P)
+L 0x76BB LEVEL_YA_LOS_DOS  Vuelve al 1P
+L 0x76BD LEVEL_AL_ESTADO_9 Fase superada y banderas a cero, y al 9
+L 0x76C7 HL_MAS_19A        HL += A x 19: la linea A de 0x75D0
+L 0x76D7 NIVEL_DEL_JUGADOR HL = E153 (1P) o E154 (2P)
+L 0x76E5 PINTA_LEVEL       "LEVEL" en la fila 13, columna 10, y el nivel del jugador mas uno
+D 0x7700 0x7708 rotulo_level "LEVEL" en la fila 13, columna 10
+B 0x7708 ----------------------------------------------------------------------
+B 0x7708 RESPONDER. El segundo boton (SELECT), o el 0x20 del guion en la
+B 0x7708 demo, con una tarjeta cogida (E1AF): la tarjeta parpadea 5 veces
+B 0x7708 (E238) y luego se compara su cifra con la escondida (E1CD/E1CE).
+B 0x7708 Acierto: 500 puntos, sonido 0x95 y el bit 4 de E270 (la tarjeta se
+B 0x7708 cierra y cae al suelo para que el mono la lleve). Fallo: una cara
+B 0x7708 llorando mas (E057), sonido 0x0E; a la tercera, E276 = 1 y otro
+B 0x7708 mono trae la respuesta en globo (0x6D27).
+B 0x7708 ----------------------------------------------------------------------
+L 0x7708 RESPONDE          Con el boton (o el 0x20 de la demo), si no salta ni hay otra abriendose: arranca el parpadeo de la tarjeta cogida
+C 0x770F La demo: el 0x20 del guion
+C 0x7717 Saltando (estado 3) no; ni con otra tarjeta en marcha
+C 0x7722 El segundo boton recien pulsado
+L 0x772C RESPONDE_TARJETA  Sin tarjeta cogida (0xFF) nada; sonido 0x0B, su indice a E239, su posicion (Y, X) a E23A/E23B y cinco parpadeos
+L 0x7760 TARJETA_PARPADEA  Cada 4 fotogramas: la tarjeta en blanco (0x782C) o con su cifra (0x508A); al acabar, la comparacion
+L 0x7796 TARJETA_COMPARA   Acierto: sonido 0x95, 500 puntos, bit 4 de E270 y la tarjeta por repintar; fallo: E057++, sonido 0x0E, las caras, y a los tres E276 = 1
+L 0x77D5 TARJETA_FALLO     Un fallo mas
+L 0x77ED TIEMPO_A_PUNTOS   Fase acabada: cada 4 fotogramas un segundo menos y 10 puntos mas (sonido 0x0F); a cero, el reloj a 05:00, fase superada (E00D) y al estado 16
+L 0x7818 TIEMPO_AGOTADO    05:00, E23C = 0, E00D = 1, estado 16
+D 0x782C 0x7834 tarjeta_en_blanco_3x2 Seis tiles 0x61: la tarjeta en blanco de 3x2 con la que parpadea
+B 0x7834 ----------------------------------------------------------------------
+B 0x7834 LA TARJETA DE LA RESPUESTA (sprite 18, E0F8, patron 0xFC amarillo),
+B 0x7834 segun los bits de E270: 4 espera a que la tarjeta se cierre y la
+B 0x7834 suelta, 3 cae hasta el suelo, 1 el mono la lleva en la cabeza,
+B 0x7834 0 sube sola hasta el profesor. Sin ninguno, mira si el mono la
+B 0x7834 recoge del suelo.
+B 0x7834 ----------------------------------------------------------------------
+L 0x7834 TARJETA_PASO      Un paso de la tarjeta de la respuesta
+C 0x7844 Sin bits: si el mono la toca en el suelo (0x6ABB), la coge: bit 1 y los sprites con la tarjeta (E10E = 2)
+L 0x7853 TARJETA_SUBE      Bit 0: un pixel arriba hasta Y = 0; entonces bit 2, 500 puntos y sonido 0x9B
+L 0x7871 TARJETA_EN_CABEZA Bit 1: en la posicion del mono
+L 0x787E TARJETA_CAE       Bit 3: un pixel abajo hasta el suelo (0x6924); entonces bit 3 fuera y el mono sin tarjeta cogida (E1AF = 0xFF)
+L 0x7899 TARJETA_SE_SUELTA Bit 4: espera a que la tarjeta cogida este cerrada (0x13), repintando; entonces bit 4 -> bit 3, borra la tarjeta de la pantalla y pone el sprite en su sitio
+D 0x78DB 0x78DF bloque_vacio Cuatro tiles 0: el bloque de 2x2 vacio (borra la flecha, la tarjeta suelta y el hueco de la percha)
+
+# =============================================================================
+# EL SONIDO
+# =============================================================================
+B 0x78DF ----------------------------------------------------------------------
+B 0x78DF ARRANCAR UN SONIDO (A = numero). Del 1 al 0x10 son efectos de un
+B 0x78DF canal (el C); del 0x91 al 0x9B musicas de dos canales (A y B) y del
+B 0x78DF 0x9D en adelante de tres. La tabla de 0x7A7B da el puntero de la
+B 0x78DF pista del primer canal y los siguientes son las palabras que le
+B 0x78DF siguen (por eso los numeros de musica van de dos en dos). Prioridad:
+B 0x78DF si el canal ya suena algo igual o mayor, nada (salvo el 2, que
+B 0x78DF siempre entra); el 0xA0 (perder la vida) entra sobre todo pero se
+B 0x78DF apunta como 0x20, y el 0xA1 son tres pistas mudas: callar todo.
+B 0x78DF ----------------------------------------------------------------------
+L 0x78DF SONIDO            Arranca el sonido A si hay partida en marcha (bit 6 de E002)
+L 0x78E7 SONIDO_YA         Arranca el sonido A sin mirar nada (D = 0: con prioridad)
+L 0x78F7 SONIDO_DEL_ACTOR  Un efecto pedido desde un actor: los cangrejos solo pueden pedir el 9; los demas son del mono
+L 0x7905 SONIDO_ARRANCA    Los menores de 0x20 pasan por el filtro del actor; reparte los canales y apunta las pistas
+L 0x7909 SONIDO_CANALES    B canales desde HL: 1 desde E026 (efectos), 2 desde E012 (musicas 0x91-0x9B), 3 (0x9D en adelante)
+L 0x791D SONIDO_PRIORIDAD  D = 1 (desde el bucle) no mira; si no, contra el numero que suena en el canal
+C 0x7925 0xA0 se apunta como 0x20: entra sobre todo y luego lo pisa cualquiera
+L 0x792B SONIDO_PISTAS     Indice = numero & 0x3F en la tabla de 0x7A7B; una palabra por canal seguida
+L 0x7937 SONIDO_CANAL      Arranca un canal: 1 fotograma, duracion 1, el numero, y el puntero de la tabla; y al siguiente canal (10 bytes mas alla)
+L 0x7950 SONIDO_IGUAL      El mismo numero: solo el 2 se repite
+L 0x7955 SONIDO_REPITE     0xFE n en la pista: vuelve a arrancar el mismo sonido n veces (0xFF, siempre); despues se apaga
+L 0x7964 SONIDO_REARRANCA  Otra vez desde el principio, sin prioridad
+B 0x796F ----------------------------------------------------------------------
+B 0x796F EL REPRODUCTOR, en cada interrupcion (aunque el juego vaya atrasado).
+B 0x796F Tres canales de 10 bytes desde E010: +0 lo que queda de nota, +1 la
+B 0x796F duracion, +2 el numero (0 = libre), +3/+4 la pista, +5 octava, +6
+B 0x796F volumen de arranque, +7 volumen en curso, +8 la envolvente, +9 las
+B 0x796F repeticiones. Para cada canal ocupado descuenta la nota y, si acabo,
+B 0x796F lee el siguiente evento de su pista. Dos formatos segun el bit 7:
+B 0x796F   EFECTO: [0x2n duracion n] vp pp -> volumen v, periodo 0xppp
+B 0x796F   MUSICA: [0xFD oo] ln -> l duracion (tabla 0x7AC3), n nota 0-11 en
+B 0x796F           la octava de 0x7A71 bajada oo&7 octavas, 12 silencio;
+B 0x796F           oo>>3 es el volumen de arranque
+B 0x796F   0xFE n repite n veces (0xFF siempre), 0xFF apaga el canal.
+B 0x796F La musica lleva envolvente: la nota arranca al volumen v y baja tres
+B 0x796F pasos en tres fotogramas, se mantiene, y baja dos mas al acabar.
+B 0x796F Es el reproductor que Konami repite en sus cartuchos, con otras direcciones.
+B 0x796F ----------------------------------------------------------------------
+L 0x796F SUENA             Un fotograma de los tres canales (IX = E010, +10 por canal; C = registro de periodo)
+L 0x797B SUENA_CANAL       Siguiente canal
+L 0x798B SUENA_PASO        Musica (bit 7) por 79E5; efecto: descuenta y, a cero, siguiente evento
+L 0x7992 SIGUIENTE_EVENTO  Lee la pista: 0xFE repite, 0xFF apaga, musica por 7A10, efecto aqui
+L 0x79B3 EFECTO_EVENTO     Nibble alto volumen, nibble bajo y byte siguiente el periodo
+L 0x79CD NOTA_ARRANCA      H = volumen; +0 = duracion, +8 = duracion + 3 (la envolvente); y al PSG
+L 0x79DB CANAL_APAGA       Numero 0 y volumen 0
+L 0x79E5 MUSICA_PASO       Descuenta la nota; envolvente: tres pasos abajo al principio, dos al final
+L 0x79FA ENVOLVENTE_ARRANQUE Los tres primeros fotogramas: baja
+L 0x79FD VOLUMEN_BAJA      Un paso menos, sin pasar de cero
+L 0x7A06 PSG_VOLUMEN       Registro 8/9/10 (segun C) = H
+L 0x7A10 MUSICA_EVENTO     0xFD: octava (bits 0-2) y volumen (bits 3-7); luego la nota
+L 0x7A24 MUSICA_NOTA       Nibble bajo la nota, alto el indice de duracion; 12 es silencio (no repone el volumen)
+L 0x7A4B MUSICA_PERIODO    Periodo de la nota por 0x7A71, doblado tantas veces como octavas
+L 0x7A5F MUSICA_OCTAVA     Una octava mas abajo por vuelta
+L 0x7A62 PSG_PERIODO       Registros C y C-1 = HL (periodo)
+D 0x7A71 0x7A7B periodos_de_notas Los periodos del PSG de Do6 a La6 (106, 100, 95, 89, 84, 80, 75, 71, 67, 63); La#6 y Si6 (60, 56) son los dos bytes siguientes, que a la vez son la entrada 0 de la tabla de punteros
+D 0x7A7B 0x7AC3 tabla_de_sonidos 36 punteros de pista, indice = numero del sonido & 0x3F, con los canales seguidos: 1-16 los efectos, 17-18 la musica del menu (0x91), 19-20 la de la partida y el READY (0x93), 21-22 el acierto (0x95), 23-24 el mono del globo (0x97), 25-26 la fase superada (0x99), 27-28 la respuesta camino del profesor (0x9B), 29-31 el GAME OVER (0x9D), 32 la vida perdida (0xA0, con 33-34 mudos) y 33-35 el 0xA1, que calla los tres canales (las tres apuntan al 0xFF de 0x7B1B). La entrada 0 (0x383C) no es un puntero: son las dos ultimas notas de la tabla de periodos
+F 0x7A7B w1
+D 0x7AC3 0x7AD2 duraciones_de_notas Las 15 duraciones en fotogramas que elige el nibble alto de cada nota: 3, 6, 8, 9, 12, 16, 18, 21, 24, 30, 32, 42, 48, 44, 4
+D 0x7AD2 0x7AFB fase_superada_canal_b Sonido 0x99 (fase superada), canal B
+D 0x7AFB 0x7B1C fase_superada_canal_a Sonido 0x99, canal A. Su 0xFF final, en 0x7B1B, es ademas la pista muda del 0xA1 (los tres canales) y de los canales B y C del 0xA0
+D 0x7B1C 0x7B30 game_over_canal_a Sonido 0x9D (GAME OVER), canal A
+D 0x7B30 0x7B46 game_over_canal_b Sonido 0x9D, canal B
+D 0x7B46 0x7B68 game_over_canal_c Sonido 0x9D, canal C
+D 0x7B68 0x7BA9 musica_partida_canal_a Sonido 0x93: la musica de la partida y del READY, canal A; se relanza cada vez que el canal B calla
+D 0x7BA9 0x7BEA musica_partida_canal_b Sonido 0x93, canal B
+D 0x7BEA 0x7BFA efecto_5_y_6 Sonidos 5 (el mono cae) y 6 (la fruta cae): la misma pista
+D 0x7BFA 0x7C0E acierto_canal_a Sonido 0x95 (respuesta acertada), canal A
+D 0x7C0E 0x7C22 acierto_canal_b Sonido 0x95, canal B
+D 0x7C22 0x7C40 vida_perdida Sonido 0xA0 (se pierde la vida: el tiempo, un cangrejo, la fruta caida), canal A; los otros dos van mudos
+D 0x7C40 0x7C50 efecto_0A Sonido 0x0A: la tarjeta que se abre o se cierra
+D 0x7C50 0x7C5C efecto_4 Sonido 4: el salto
+D 0x7C5C 0x7C6A efecto_3 Sonido 3: el paso al andar
+D 0x7C6A 0x7C72 efecto_0B Sonido 0x0B: el boton de responder
+D 0x7C72 0x7C91 efecto_0E Sonido 0x0E: el fallo
+D 0x7C91 0x7CA5 efecto_0C Sonido 0x0C: el aviso de que quedan menos de diez segundos
+D 0x7CA5 0x7CAD efecto_0F Sonido 0x0F: cada segundo que se convierte en puntos
+D 0x7CAD 0x7CBF efecto_10 Sonido 0x10: la vida extra
+D 0x7CBF 0x7CF9 musica_menu_canal_a Sonido 0x91 (el menu y el LEVEL SELECT), canal A
+D 0x7CF9 0x7D41 musica_menu_canal_b Sonido 0x91, canal B
+D 0x7D41 0x7D49 efecto_0D Sonido 0x0D: el profesor escribe la cifra (se repite 4 veces)
+D 0x7D49 0x7D61 efecto_2 Sonido 2: un simbolo se coloca (y el mono del globo lo revela); es el unico que se relanza sobre si mismo
+D 0x7D61 0x7DB7 efecto_1 Sonido 1: la ecuacion arranca (el mas largo de los efectos)
+D 0x7DB7 0x7DC0 efecto_7 Sonido 7: el mono descuelga una fruta (dos veces)
+D 0x7DC0 0x7DCE efecto_8 Sonido 8: la fruta vuela
+D 0x7DCE 0x7DEE efecto_9 Sonido 9: el cangrejo se come la fruta y muere
+D 0x7DEE 0x7E2C respuesta_sube_canal_b Sonido 0x9B (la tarjeta sube hasta el profesor), canal B
+D 0x7E2C 0x7E4C mono_del_globo_canal_a Sonido 0x97 (el mono trae la respuesta en globo), canal A
+D 0x7E4C 0x7E72 respuesta_sube_canal_a Sonido 0x9B, canal A
+D 0x7E72 0x7E85 mono_del_globo_canal_b Sonido 0x97, canal B
+L 0x7E85 FRUTAS_DE_LA_FASE Las 8 frutas de la fase ((fase - 1) & 7 de 0x6806) a los sprites 10-17; la tarjeta escondida y amarilla (0xFC); los ocho estados a (0, 1); el profesor (0x7ED9) a los sprites 8-9; y las banderas, los fallos y la tarjeta cogida a cero
+D 0x7ED9 0x7EE1 sprites_del_profesor Los dos atributos del profesor: Y = 0, X = 0xC0, patrones 0x00 (rojo oscuro) y 0x0C (blanco): el mismo mono del jugador, en rojo
+F 0x7ED9 4
+D 0x7EE1 0x8000 relleno_final 287 bytes a 0xFF hasta el final del cartucho
+
+# =============================================================================
+# LAS ETIQUETAS INTERNAS (destinos de salto dentro de las rutinas)
+# =============================================================================
+L 0x421B PASO_TECLAS       A partir del estado 1, las teclas 1-5
+L 0x4306 DEMO_TARJETAS_BUCLE Las seis cifras 2-7 a las tarjetas 4-9
+L 0x4349 DEMO_JUEGA        El paso de la demo: profesor, tarjeta, flecha, frutas, tarjeta que se abre y el guion
+L 0x435F DEMO_ACABA        Si E00B: sprites fuera, 0x50 fotogramas y al titulo
+L 0x43DF MONTA_FASE_GLOBOS Los globos, el sonido 1 y al READY
+L 0x4460 READY_CUENTA_FIN  Con boton nuevo (NZ) arranca; si no, sigue contando
+L 0x44B0 PARTIDA_MUSICA    Relanza la musica D
+L 0x44B4 PARTIDA_PASO      Profesor, respuesta, tarjetas, frutas, mono y cangrejos, y el reloj
+L 0x44DF PARTIDA_RELOJ     Tiempo a cero: se pierde la vida
+L 0x44F8 PARTIDA_DECIDE    E00C al 13, E00D al 16, si no sigue en el 12
+L 0x45B8 DECIDE_ESTADO     E000 = A
+L 0x460E OPCION_PARPADEA   La linea elegida se ve o no segun el bit 3 de E004; a cero, al estado 8
+L 0x46CD VUELCA_SPRITES_DESDE Desde el sprite E1B2 x 4
+L 0x46ED VUELCA_SPRITES_HASTA Hasta 0x60 (READY) o 0x4C bytes
+L 0x46FE VUELCA_SPRITES_FIN Listo
+L 0x471C PINTA_MENU_FILAS  Todas las filas del titulo de golpe
+L 0x4757 LEVEL_SELECT_BITS Cortinilla ya pasada: los bits 4, 6 y 3
+L 0x483F MONO_COLISION     La colision con los cangrejos y, si no, el paso de los actores
+L 0x484C MONO_ACTORES      Cuantas veces se mueven los cangrejos esta vez
+L 0x4868 ACTORES_BUCLE     Un paso de los cuatro actores, B veces
+L 0x4882 VDP_REGISTROS_BUCLE Registro por registro (D = 0x80 + n)
+L 0x489E COPIA_A_VRAM_BUCLE Byte a byte al puerto 0x98
+L 0x48B6 RELLENA_VRAM_BUCLE El mismo byte BC veces
+L 0x48D5 CORTINILLA_IMPAR  Fotograma impar: la columna de la derecha (E004 baja)
+L 0x4914 PSG_R15           Al registro 15
+L 0x4951 SUMA_PUNTOS_BCD   La suma en BCD de las tres parejas
+L 0x4973 SUMA_PUNTOS_ALTO  Al byte alto para la vida extra
+L 0x4983 VIDA_EXTRA_DA     La siguiente ya apuntada: una vida mas
+L 0x4996 RECORD_MIRA       Compara los puntos con el record, byte a byte
+L 0x49AA RECORD_NUEVO      Los puntos pasan a ser el record
+L 0x49E7 PINTA_MARCADOR_RESTO Vidas, fase, flores, sprites y colores
+L 0x4A3C FASE_UNIDADES     Las unidades y las decenas juntas
+L 0x4A88 PARPADEA_1UP_MIRA Lee lo que hay en la VRAM: letras o azul
+L 0x4A9D PARPADEA_1UP_PINTA Los tres tiles
+L 0x4ABF PINTA_VIDA_BLOQUE El bloque de 2x2 del hueco
+L 0x4B61 DEMO_RELOJ        El reloj de la demo (E1B0)
+L 0x4B6C DEMO_ACTORES      Un paso de los actores
+L 0x4B6E DEMO_ACTORES_BUCLE Los cuatro
+L 0x4B74 DEMO_FIN_GUION    E00B = 0 (sigue) o 0xFF (se acabo el guion)
+L 0x4C0E TITULO_FILA_TILES Una fila de 24 tiles seguidos
+L 0x4C10 TITULO_FILA_TILE  Uno
+L 0x4C50 COLORES_TITULO_TILE Los 8 bytes de un tile
+L 0x4C55 COLORES_TITULO_BYTE Un byte de color
+L 0x4C85 TITULO_UNA_FILA_BYTE Un byte del dibujo a un tile, y 8 mas alla
+L 0x4CA8 TITULO_FILA_SIGUIENTE La fila de pixel siguiente
+L 0x4CBB TITULO_FILA_DE_TILES_SIGUIENTE Se paso del tile: 24 tiles mas alla
+L 0x4CC3 TITULO_CURSOR     Guarda el cursor y devuelve carry (queda dibujo)
+L 0x4CC8 TITULO_ACABADO    "©Konami 1984" debajo y NC
+L 0x4ECA PINTA_TARJETA     La tarjeta B
+L 0x4EF4 PINTA_TARJETA_BLOQUE Elige el bloque: cifra o cerrada
+L 0x4F0B PINTA_TARJETA_POS Su posicion (Y, X) y su estado
+L 0x4F42 TARJETA_CANTO_PINTA El bloque de 2x2 en (D, E); el 8c + D de A no se usa
+L 0x4F66 TARJETA_AVANZA_MIRA Si ya esta en el tope
+L 0x4F71 TARJETA_AVANZA_PASO Un paso: abriendose baja (+1), cerrandose sube (-1)
+L 0x4F76 TARJETA_AVANZA_GUARDA El estado nuevo
+L 0x4F79 TARJETA_AVANZA_TOPE Llego al tope: bits 7 y 6 fuera, bit 4 cambia
+L 0x4F9F TARJETAS_CERRADAS_BUCLE Las diez a 0xC3
+L 0x4FC9 COGE_TARJETA_PRIMERA Sin tarjeta anterior: solo apunta la nueva
+L 0x4FD9 BARAJA_ORDEN      Las diez cifras en orden desde la primera
+L 0x4FE1 BARAJA_ORDEN_SIGUE La siguiente
+L 0x4FE5 BARAJA_VUELTA     Una barajada: la primera cifra a una posicion al azar
+L 0x4FFF BARAJA_MUEVE      La mueve
+L 0x5026 BARAJA_A_TARJETAS Las diez cifras a las tarjetas del jugador
+L 0x503E TARJETAS_DEL_JUGADOR_FIN Listo
+L 0x5FCF ACTOR_FRUTA_MARCA La fruta pasa a llevarla el actor
+L 0x6066 ACTOR_ESCONDIDO_CUENTA Uno menos
+L 0x606B ACTOR_APARECE     Aparece arriba en el centro y se descuelga
+L 0x60A2 ACTOR_PARADO_BIT4 Los cangrejos y la demo: el bit 4 es el disparo
+L 0x60D6 ACTOR_ESTADO_D_PON El estado D
+L 0x612A ACTOR_ANDA_BIT4   Bit 4: salta
+L 0x612F ACTOR_ANDA_MIRA   Con direccion sigue; sin ella se para
+L 0x6138 ACTOR_ANDA_PASO   Un pixel hacia el lado con la animacion
+L 0x6148 ACTOR_ANDA_MUEVE  X mas o menos uno
+L 0x6157 ACTOR_ANDA_SUELO  La animacion y el suelo
+L 0x619F ACTOR_CAE_LADO    El pixel de mas alla del borde
+L 0x623A ACTOR_ANIMACION_PON Los dos patrones
+L 0x6256 ACTOR_SALTO_PASO  Un paso del salto
+L 0x6274 ACTOR_SALTO_TABLA_EMPIEZA Al octavo paso empieza la tabla
+L 0x629D BUSCA_TARJETA_ENTRA Recorre E15A desde el principio
+L 0x62CD ACTOR_SALTO_ACABA Estado A con +0x5A = 0xFF
+L 0x62E6 ACTOR_HUECO_PATRONES Los patrones de trepar en el primer paso
+L 0x62F3 ACTOR_HUECO_FASE  Bit 7 baja, bit 6 cae, si no sube
+L 0x6318 ACTOR_HUECO_SUBE  Un paso mas arriba
+L 0x6339 ACTOR_HUECO_X     La X con el desplazamiento
+L 0x6342 ACTOR_HUECO_X_MIN X = 8 como poco
+L 0x6348 ACTOR_HUECO_X_PON X a los dos sprites y mira la plataforma de arriba
+L 0x635E ACTOR_HUECO_MIRA_ARRIBA Con la X mas o menos 6
+L 0x6382 ACTOR_HUECO_CAE_X La X al caer
+L 0x638B ACTOR_HUECO_CAE_X_MIN Como poco 8
+L 0x6391 ACTOR_HUECO_CAE_X_PON A los dos sprites
+L 0x63A3 ACTOR_HUECO_BAJA_X La X al bajar por la tabla
+L 0x63D1 ACTOR_HUECO_BAJA_PASO En el paso 0x12, a caer recto
+L 0x63F1 ACTOR_HUECO_TOPE  X al tope y a caer (6)
+L 0x63FF ACTOR_HUECO_SUELO_PATRONES Con suelo: los patrones de andar segun el sentido
+L 0x6411 ACTOR_HUECO_SUELO_PON Los patrones
+L 0x6421 ACTOR_HUECO_SALE  Fuera
+L 0x6459 ACTOR_SE_HUNDE_FIN Fuera
+L 0x6472 ACTOR_CAE_SUELO   Con suelo: parado (1); el cangrejo elige sentido
+L 0x64B8 ACTOR_CAE_FIN     Fuera
+L 0x64C5 ACTOR_SE_DESCUELGA_PIXEL Un pixel abajo y mira el tile
+L 0x64E8 ACTOR_SE_DESCUELGA_FIN Fuera
+L 0x64FA ACTOR_TIRA_BUSCA  Busca la fruta que lleva
+L 0x6506 ACTOR_TIRA_SUELTA La fruta a volar
+L 0x6514 ACTOR_TIRA_POSE   El mono con los brazos de tirar mientras cuenta
+L 0x652C ACTOR_TIRA_PATRONES Los dos patrones
+L 0x6540 ACTOR_TIRA_PARADO Parado (1) y sin carga
+L 0x6597 CANGREJO_ESPERA_PON +0x5D = A
+L 0x659B CANGREJO_ESPERA_1 Desde la fase 20: un fotograma
+L 0x65BA CARA_DE_SUSTO_PON Los patrones al mono
+L 0x6622 DENTRO_DE_FIN     Fuera
+L 0x662B SIN_LLAMADAS_TRAMO_BUCLE Un tile
+L 0x663E RELLENA_RECTANGULO_FILA Una fila
+L 0x6650 SIN_LLAMADAS_LISTA_BUCLE Un tramo
+L 0x66B9 PINTA_PLATAFORMAS_FIN Fuera
+L 0x6908 PINTA_BLOQUE_TILE Un tile
+L 0x6949 HAY_SUELO_SIGUIENTE La plataforma siguiente
+L 0x6967 HAY_SUELO_NO      Carry: no hay
+L 0x697D HAY_PLATAFORMA_ARRIBA_BUSCA Una plataforma
+L 0x6992 HAY_PLATAFORMA_ARRIBA_SIGUIENTE La siguiente
+L 0x6995 HAY_PLATAFORMA_ARRIBA_X Misma altura: la X
+L 0x69AD HAY_PLATAFORMA_ARRIBA_NO Carry: no hay
+L 0x69DC COLISION_OTRO     El cangrejo siguiente
+L 0x69E2 COLISION_NO       Carry: ninguno
+L 0x6A45 HAY_TARJETA_ENCIMA_NO Carry: no
+L 0x6A55 TOCA_FRUTA_SIN_TARJETA Con la tarjeta (2) no
+L 0x6A62 TOCA_FRUTA_BUCLE  Una fruta
+L 0x6A9A TOCA_FRUTA_EN_EL_AIRE En el aire: al cangrejo no le da la que tiro el (bit 6)
+L 0x6AA5 TOCA_FRUTA_EN_EL_AIRE_SI D = indice, E = 0
+L 0x6AD9 TOCA_TARJETA_NO   Carry: no
+L 0x6B01 TOCA_PROFESOR_NO  Carry: no
+L 0x6C72 PINTA_TILES_SEGUIDOS_BUCLE Uno
+L 0x6CB9 FLECHA_ROJA_PINTA El bloque de 2x2 en la fila 6, columna 23
+L 0x6CDB RELOJ_RESTA_DAA   Un segundo menos en BCD
+L 0x6D94 GLOBO_ANDA_PIXEL  Un pixel a la derecha los cuatro sprites
+L 0x6DCC GLOBO_ARRIBA      Se esconde y se escribe la cifra
+L 0x6DE5 GLOBO_ESCRIBE     El bloque de 2x2 de la cifra escondida
+L 0x6E1E BAILE_COLORES     Patron y color a los dos
+L 0x6E90 SUMA_B_FIN        Fuera
+L 0x6EB4 RESTA_B_FIN       Fuera
+L 0x6EC6 MULTIPLICA_ENTRA  B = 1: nada que sumar
+L 0x6EDB MULTIPLICA_FIN    Fuera
+L 0x6EE9 DIVISION_E        E al azar (1-9)
+L 0x6F6E ESCRIBE_UNIDADES  Las unidades
+L 0x700B ECUACION_RESTA    A - B
+L 0x7027 ECUACION_TERCERO_FIN El = y al signo
+L 0x7057 NIVEL_5_GUION     Dos simbolos del guion
+L 0x708A NIVEL_5_SUMA      b + c
+L 0x708D NIVEL_5_MIRA_CERO Cero: otra
+L 0x709D NIVEL_5_CIERRA    ) y =
+L 0x710F RESULTADO_UNIDADES Las unidades
+L 0x7167 GLOBO_OTRO        El siguiente globo
+L 0x719F GLOBO_BUSCA_LIBRE_MIRA Estado 0?
+L 0x71B1 GLOBOS_TODOS_MIRA Recorre hasta 0xFF: todos en 2?
+L 0x71BE GLOBOS_TODOS_FIN  Fuera
+L 0x71D8 GLOBO_LLEGA_SIMBOLO El simbolo B de la ecuacion del jugador
+L 0x71E8 GLOBO_LLEGA_PINTA El bloque de 2x2 y estado 2
+L 0x7278 ELIGE_INCOGNITA_GUARDA La cifra al jugador
+L 0x7287 ECUACION_AL_JUGADOR_COPIA Los E058 simbolos
+L 0x7340 FRUTAS_BUCLE      Una fruta
+L 0x73C0 FRUTA_VUELA_FUERA Fuera de la pantalla: desaparece
+L 0x73CC FRUTA_VUELA_SUELO En el octavo paso: hay suelo?
+L 0x73EE FRUTA_VUELA_SIN_SUELO Sin suelo: la parabola baja
+L 0x7404 FRUTA_VUELA_SENTIDO Hacia la izquierda: la segunda mitad de la tabla
+L 0x740F FRUTA_VUELA_MUEVE (dY, dX) del paso
+L 0x7492 PROFESOR_DA_VUELTA Cambia el bit 6
+L 0x749A PROFESOR_ANDA     Un pixel y los patrones segun el sentido
+L 0x74FA PROFESOR_ESCRIBE  La cifra escondida en el ?
+L 0x75AF LEVEL_SELECT_LINEAS Las seis listas
+L 0x763A LEVEL_SELECT_ESPERA_CUENTA La espera y las teclas
+L 0x765D LEVEL_SELECT_DECIDIDO Carry
+L 0x76E3 NIVEL_DEL_JUGADOR_FIN Fuera
+L 0x76F6 PINTA_LEVEL_NUMERO El nivel mas uno
+L 0x7717 RESPONDE_PARTIDA  En la partida: sin saltar, sin otra tarjeta, y el segundo boton
+L 0x778C TARJETA_PARPADEA_PINTA El bloque de 3x2 en la posicion de la tarjeta
+L 0x77A1 TARJETA_COMPARA_CIFRA La cifra de la tarjeta contra la escondida
+L 0x77F6 TIEMPO_A_PUNTOS_PASO Cada 4 fotogramas
+L 0x785C TARJETA_SUBE_LLEGA Arriba: bit 2, 500 puntos y sonido 0x9B
+L 0x788E TARJETA_CAE_SUELO En el suelo: soltada
+L 0x78AC TARJETA_SE_SUELTA_YA Cerrada: la suelta
+L 0x7919 SONIDO_UN_CANAL   Un canal, el C (E026)
+L 0x7EAC FRUTAS_ESTADOS    Los ocho estados a (0, 1)

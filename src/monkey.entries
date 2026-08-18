@@ -1,0 +1,66 @@
+# Puntos de entrada de Monkey Academy (Konami, RC-702, 1984). ROM de 16 KB en 0x4000.
+#
+# El unico punto de entrada que declara el cartucho: la BIOS lee la cabecera
+# "AB" y llama a INIT despues de inicializar la maquina. Todo lo demas tiene
+# que salir de seguir el flujo desde aqui, o de medirlo en el emulador.
+0x40AF   # INIT, declarado en la cabecera del cartucho (bytes 2-3: AF 40)
+
+0x4038   # la rutina de interrupcion. INIT escribe `jp 0x4038` en el gancho
+         # H.KEYI (0xFD9A): `ld a,0C3h / ld (0FD9Ah),a / ld hl,4038h /
+         # ld (0FD9Bh),hl` en 0x40B2-0x40BB. La BIOS llama al gancho en cada
+         # interrupcion.
+
+# --- El despachador. 0x419D es el "call seguido de tabla" de Konami:
+# `add a,a / pop hl / call 40A5h (hl += a) / ld e,(hl) / inc hl / ld d,(hl) /
+# ex de,hl / jp (hl)`. Dos sitios lo llaman.
+#
+# 0x4223: indice (0xE000), tabla de 0x4226 hasta 0x424D, donde empieza el
+# primer destino: 20 palabras.
+0x424E   # estado 0 de la tabla de 0x4226
+0x4284   # estado 1 de la tabla de 0x4226
+0x4296   # estado 2 de la tabla de 0x4226
+0x42AA   # estado 3 de la tabla de 0x4226
+0x42C1   # estado 4 de la tabla de 0x4226
+0x42D5   # estado 5 de la tabla de 0x4226
+0x42E1   # estado 6 de la tabla de 0x4226
+0x4337   # estado 7 de la tabla de 0x4226
+0x4375   # estado 8 de la tabla de 0x4226
+0x4378   # estado 9 de la tabla de 0x4226
+0x43BA   # estado 10 de la tabla de 0x4226
+0x43EE   # estado 11 de la tabla de 0x4226
+0x448F   # estado 12 de la tabla de 0x4226
+0x4509   # estado 13 de la tabla de 0x4226
+0x4584   # estado 14 de la tabla de 0x4226
+0x45A0   # estado 15 de la tabla de 0x4226
+0x45BC   # estado 16 de la tabla de 0x4226
+0x45D2   # estado 17 de la tabla de 0x4226
+0x45EC   # estado 18 de la tabla de 0x4226
+0x464D   # estado 19 de la tabla de 0x4226
+
+# 0x602B: indice (ix+0x5C), tabla de 0x602E. Son 11 palabras (0x602E-0x6043):
+# la que sigue, 0x6044, la carga `ld hl,6044h` en 0x5F86 y sus 6 palabras
+# apuntan a graficos (0x56BF, 0x59FF...), no a codigo.
+0x6050   # entrada 0 de la tabla de 0x602E
+0x6081   # entrada 1 de la tabla de 0x602E
+0x610A   # entrada 2 de la tabla de 0x602E
+0x6244   # entrada 3 de la tabla de 0x602E
+0x62D6   # entrada 4 de la tabla de 0x602E
+0x643B   # entrada 5 de la tabla de 0x602E
+0x645B   # entrada 6 de la tabla de 0x602E
+0x64BA   # entrada 7 de la tabla de 0x602E
+0x64EA   # entrada 8 de la tabla de 0x602E
+0x656B   # entrada 9 de la tabla de 0x602E
+0x659F   # entrada 10 de la tabla de 0x602E
+
+# --- Una tabla que el trazador leia como codigo por un salto muerto: 0x6FE7
+# hace `cp 0Fh / jp z,7117h`, y 0x7117 es la tabla de guiones de ecuacion
+# (cinco pares de punteros y los guiones detras). Ningun guion lleva 0x0F,
+# asi que ese jp no salta nunca. Va en el .nocode.
+
+# --- Codigo al que no llega nadie (buscado: ni call/jp/jr ni la palabra cruda),
+# sembrado para que salga como codigo y se vea lo que es:
+0x4072   # `push iy / ret`: tres bytes sueltos antes de la salida corta de la interrupcion (sin llamadas)
+0x4917   # `ld a,0F0h`: entrada alternativa a 0x4919 (COLOR_FUENTE) con el color 0xF0 que nadie usa (sin llamadas)
+0x664F   # pintador de plataformas por lista (0x664F -> 0x6624 -> 0x65F8) que quedo sin usar: 0x6685 hace lo mismo (sin llamadas)
+0x6C80   # `ld e,(hl) / inc hl / ld d,(hl) / inc hl`: la entrada de RLE_A_VRAM que lee la VRAM delante de los datos, como en Athletic Land (sin llamadas)
+0x755C   # `dec (hl) / ld hl,0E0D4h / dec (hl) / pop hl / ld hl,758Dh`: nueve bytes que caen en 0x7565 y a los que no salta nadie (sin llamadas)

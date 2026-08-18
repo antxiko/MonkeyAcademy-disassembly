@@ -1,0 +1,118 @@
+<title>Hallazgos — Monkey Academy (1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html">El juego</a><a href="EL-CARTUCHO.html">El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html" style=color:var(--tinta)>Hallazgos</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../FINDINGS.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="hallazgos">Hallazgos</h1>
+<p>Lo que ha aparecido al desmontarlo y no se ve jugando. Cada cosa con su dirección; lo que se ha medido en el emulador, con la medida.</p>
+<h2 id="el-nunca-va-mas-alla-de-lo-que-vale-la-primera-cifra">El <code>?</code> nunca va más allá de lo que vale la primera cifra</h2>
+<p><code>ELIGE_INCOGNITA</code> (0x7253) elige la cifra que se tapa restando un número al azar de 0 a 15 al <b>valor</b> de la primera cifra de la ecuación, y toma eso como posición. Con un 9 delante el <code>?</code> puede caer en cualquiera de las diez primeras posiciones; con un 1 delante, solo en el primer operando. Medido con 400 ecuaciones del nivel 1 en el emulador: 0 excepciones, 238 de 400 con el <code>?</code> en las dos primeras posiciones y solo 67 en el resultado. La cifra que se tapa depende de la que se ve.</p>
+<h2 id="los-operandos-nunca-acaban-en-0-ni-en-1">Los operandos nunca acaban en 0 ni en 1</h2>
+<p><code>OPERANDO</code> (0x6F45) repite el azar hasta que las unidades salen entre 2 y 9. En 400 ecuaciones no hay ni un operando acabado en 0 ni en 1: 3?+7, 82+6, 89+9?… El resultado sí puede.</p>
+<h2 id="la-division-se-genera-al-reves">La división se genera al revés</h2>
+<p>Para el nivel 3 (<code>DIVISION</code>, 0x6EDE) no se dividen dos números: se eligen D y E entre 1 y 9, se escribe D × E, el signo de dividir, D, y el resultado es E. La división es siempre exacta porque se construye desde el cociente. Y el nivel 5 hace a × ( b + c ) con la multiplicación de 0x6EC1: sumar el número a sí mismo b − 1 veces, en BCD.</p>
+<h2 id="un-azar-de-guiones-anulado-con-un-xor-a">Un azar de guiones anulado con un <code>xor a</code></h2>
+<p><code>GENERA_ECUACION</code> (0x6FBC) hace <code>call AZAR / and 7 / xor a / call HL_MAS_A</code>: calcula un desplazamiento al azar de 0 a 7 y lo tira antes de usarlo, así que cada nivel usa siempre el primer guión de su tabla. La tabla de 0x7117 lleva un segundo puntero por nivel para esos desplazamientos, y apunta al 0 que cierra el propio guión.</p>
+<h2 id="los-cinco-niveles-son-cinco-guiones-de-tres-a-cinco-bytes">Los cinco niveles son cinco guiones de tres a cinco bytes</h2>
+<p><code>0A 0E</code> (+ =), <code>0B 0E</code> (− =), <code>0D 0E</code> (÷ =), <code>0C 0E</code> (× =) y <code>0C 10 0A 11 0E</code> (× ( + ) =) en 0x712B: eso es todo lo que distingue un nivel de otro. El resto —qué operandos, cuántas cifras, si hay signo— lo decide el generador al ver el símbolo. Un <code>jp z,7117h</code> para el símbolo 0x0F, que no aparece en ningún guión, salta a la tabla si alguna vez se diera.</p>
+<h2 id="los-22-sprites-estan-dos-veces-en-la-vram">Los 22 sprites están dos veces en la VRAM</h2>
+<p>INIT copia 0xC0 bytes de 0x56BF a 0x1800 y luego 0x2C0 a 0x18C0 sin volver a cargar HL: <code>COPIA_A_VRAM</code> (0x4894) lo guarda y lo devuelve. Los seis primeros sprites quedan en 0-5 y los 22 otra vez en 6-27, y el juego usa los segundos: el mono es el patrón 0x18, el cangrejo el 0x30. Los patrones 0-5 se pisan luego con el juego de sprites que toque (0x6044).</p>
+<h2 id="el-profesor-es-el-mono-del-jugador-en-rojo">El profesor es el mono del jugador, en rojo</h2>
+<p>Los sprites 8 y 9 (0x7ED9) tienen los patrones 0x00 y 0x0C del mono con los colores 6 y 15, y anda con las mismas fases (0x7585, 0x758D). El mono que trae la respuesta en globo al tercer fallo también es el jugador: los patrones de trepar espejados (0xC8/0xCC), con los brazos arriba agarrado al globo, en cyan y rojo claro (0x6D76).</p>
+<h2 id="el-canto-de-la-tarjeta-se-coloca-solo">El canto de la tarjeta se coloca solo</h2>
+<p><code>PINTA_TARJETAS</code> (0x4F42) calcula <code>8c + Y</code> en A —donde tendría que ir el canto según cuánto ha bajado la tarjeta— y no lo usa: llama a <code>PINTA_BLOQUE</code> con el D que había. Pero como <code>PINTA_BLOQUE</code> (0x6906) devuelve D avanzado tantas filas como ha pintado, el canto cae de todas formas justo debajo de la tarjeta. El cálculo sobra y el resultado es el correcto.</p>
+<h2 id="solo-el-tercer-cangrejo-salta-y-por-eso-solo-el-tira-frutas">Solo el tercer cangrejo salta, y por eso solo él tira frutas</h2>
+<p><code>ACTOR_ANDA_X</code> (0x616F) solo deja que el tipo 3 se pare al azar y ponga el bit 4, que para un cangrejo es el disparo. Como saltar es la única forma de coger una fruta colgada, la fruta que lleva un cangrejo sigue siempre al sprite de 0xE0C8 (0x7371): el del actor 4, que es el del tipo 3. El código lo da por hecho en vez de mirar quién la lleva.</p>
+<h2 id="el-sonido-0xa1-es-el-silencio">El sonido 0xA1 es el silencio</h2>
+<p>Las tres entradas de 0xA1 en la tabla de 0x7A7B apuntan al mismo byte, un 0xFF en 0x7B1B: tres pistas mudas que callan los tres canales. Es lo que suena al arrancar el título y cuando el mono va con el profesor. Y el 0xA0 (perder la vida) entra sobre cualquier cosa pero se apunta como 0x20 (0x7929), así que después lo pisa lo que venga.</p>
+<h2 id="los-efectos-son-del-mono">Los efectos son del mono</h2>
+<p><code>SONIDO_DEL_ACTOR</code> (0x78F7): un efecto pedido desde un actor solo suena si el actor es el mono, con una excepción, el 9, el del cangrejo que se muere. Los pasos, los saltos y las caídas de los cangrejos no suenan.</p>
+<h2 id="los-cangrejos-aceleran-por-tabla-no-por-velocidad">Los cangrejos aceleran por tabla, no por velocidad</h2>
+<p>No hay velocidad: <code>MONO_Y_CANGREJOS</code> (0x4850) llama a <code>ACTOR_PASO</code> para cada cangrejo fase/8 + 1 veces por fotograma, como mucho cuatro, y uno de cada cuatro fotogramas solo una. Y esperan escondidos (16 − fase) × 16 + 17 fotogramas hasta la fase 19; desde la 20, uno (0x6585).</p>
+<h2 id="al-ready-se-le-puede-meter-prisa">Al READY se le puede meter prisa</h2>
+<p>El READY (0x43EE) cuenta 15 segundos en BCD (0xE242) y arranca solo al llegar a cero, o antes con cualquier botón nuevo. Y el LEVEL SELECT (0x762F) espera 0x0F00 fotogramas —64 segundos— y sigue con el nivel que hubiera.</p>
+<h2 id="el-generador-de-azar-lee-la-bios">El generador de azar lee la BIOS</h2>
+<p><code>AZAR</code> (0x6F0D) coge una palabra de la ROM del sistema en 0x0000-0x3FFF, usando la semilla como dirección, y la mezcla con la semilla y con el registro R. La BIOS hace de tabla de ruido. Y el <code>daa</code> de la mezcla deja los nibbles entre 0 y 9: el azar sale ya en BCD.</p>
+<h2 id="no-hay-creditos">No hay créditos</h2>
+<p>En el binario no hay iniciales ni nombres: solo el KONAMI grande de los tiles 0x16-0x2F, que sube al arrancar, y el &quot;©Konami 1984&quot; en letra pequeña (0x3A-0x3F), escrito bajo el título y en el pie del panel.</p>
+<h2 id="sobras">Sobras</h2>
+<p>Un pintador de plataformas por lista (0x664F → 0x6624 → 0x65F8) que hace lo mismo que 0x6685 y al que no llama nadie; ocho listas de posiciones alineadas con las ocho fases (0x67C2) que nadie apunta, entre las plataformas y las frutas; y 287 bytes a 0xFF al final.</p>
+<footer><p><em>Monkey Academy</em> lo publico Konami en 1984 para MSX; su numero de catalogo es RC-702. El cartucho firma tres veces, y las tres en tiles corrientes: el <b>KONAMI</b> que sube al arrancar, el <b>©Konami 1984</b> bajo el titulo y el del pie del marcador. No hay creditos ni iniciales en ninguna parte del binario. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion.</p></footer></div>

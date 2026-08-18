@@ -1,0 +1,114 @@
+<title>El juego — Monkey Academy (1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html" style=color:var(--tinta)>El juego</a><a href="EL-CARTUCHO.html">El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-GAME.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-juego">El juego</h1>
+<p>Un mono en una escuela de tres pisos, una cuenta con una cifra tapada, diez tarjetas colgadas de las plataformas y cangrejos que van a por él. Todo lo de esta página sale de leer el código que lo hace y de medirlo en el emulador.</p>
+<h2 id="la-pantalla">La pantalla</h2>
+<p><img src="../imagenes/fase_1.png" alt="La fase 1"></p>
+<p>Arriba, la ecuación en cifras grandes de 2×2 tiles (0x7207), con un <code>?</code> en la cifra que hay que encontrar. Debajo, cuatro plataformas —el suelo, la de arriba y dos entre medias, con huecos— y colgadas de ellas las diez tarjetas de la fase, que se ven solo por el canto (el 2×2 rojo de 0x5082). Ocho frutas cuelgan también, tres flores adornan, y a la derecha el panel: TIME, HI, los puntos, las vidas, STAGE y el ©Konami 1984.</p>
+<p>Arriba a la derecha pasea el profesor, que es el mismo sprite del mono en rojo oscuro (0x7ED9). Va de 0xB8 a 0xE8 y vuelve, cada dos fotogramas un pixel.</p>
+<h2 id="que-hay-que-hacer">Qué hay que hacer</h2>
+<ol><li>Ponerte debajo de una tarjeta y saltar: si el canto está justo encima (0x6A1F mira el tile en Y+7, X+8), la tarjeta baja tres filas y enseña su cifra. Bajas con ella (estado 5) y la llevas cogida (0xE1AF).</li><li>Con el segundo botón (SELECT, o el 0x20 del guión de la demo) respondes: la tarjeta parpadea cinco veces (0x7760) y su cifra se compara con la escondida (0xE1CD). Si acierta, 500 puntos, sonido 0x95 y la tarjeta se cierra y <b>cae al suelo</b> (0x7899, 0x787E) como un sprite plano amarillo (0xFC). Si falla, una cara llorando más en el panel (0xE057) y sonido 0x0E; <b>al tercer fallo</b> un mono cyan entra por la izquierda colgado de un globo, se pone bajo el <code>?</code>, el globo sube y la cifra se revela (0x6D27): pierdes la vida.</li><li>Recoger la tarjeta caída (0x6ABB): el mono la lleva en alto (juego de sprites 2, 0x5BFF) y una flecha roja parpadea en la fila 6, columna 23 (0x6CA6): hay que subírsela al profesor.</li><li>Tocar al profesor con ella (0x6ADB): la tarjeta sube sola hasta arriba, 500 puntos más, el profesor la lleva andando hasta el <code>?</code> y la escribe (0x74D5), vuelve a su sitio y los dos se ponen a bailar con la cara grande (0x6DFC). Tres ecuaciones así y la fase está superada: el tiempo que queda se convierte en puntos, 10 por segundo (0x77ED).</li></ol>
+<p>Entre medias, los cangrejos.</p>
+<h2 id="moverse">Moverse</h2>
+<p>Izquierda y derecha andan (estado 2, un pixel por paso, sonido 3 cada cuatro). El botón de disparo salta: sin dirección, en vertical (estado 3, la tabla de 24 desplazamientos de 0x6423: sube 3 3 3 2 1 1 1 0 1 0 1 0 y baja 0 1 0 1 0 1 1 1 2 3 3 3, uno cada dos fotogramas); con dirección y a más de 12 pixels del borde, hacia arriba por un hueco (estado 4): trepa cuatro pixels por fotograma moviéndose un pixel al lado, y si encuentra plataforma a menos de 17 pixels por encima que le cubra (0x696B) se sube. Si no, cae. Al salirte de una plataforma por el borde caes (estado 6), cuatro pixels por fotograma.</p>
+<p>No hay escaleras: se sube por los huecos y se baja por los bordes.</p>
+<h2 id="los-cangrejos">Los cangrejos</h2>
+<p>Tres actores más, con el mismo estado que el mono (0x602E) y su tipo en el nibble bajo de +0x5B: 1, 2 y 3. Los tres empiezan escondidos con temporizadores de 0x20, 0x40 y 0x60 (0x4B24), aparecen arriba en el centro (Y = 0x10, X = 0x60), se descuelgan a través de la plataforma de arriba (estado 7, un pixel cada cuatro fotogramas mientras el tile no esté vacío) y caen al primer suelo.</p>
+<ul><li><b>El tipo 1</b> anda hasta un borde y se cae.</li><li><b>El tipo 2</b> en el borde lo piensa: la mitad de las veces se cae y la otra mitad da la vuelta.</li><li><b>El tipo 3</b> es el único que salta (0x616F: una vez de cada 256 se para y se pone el bit 4, que para un cangrejo es el disparo), y por eso el único que puede coger una fruta colgada y tirártela.</li><li><b>Desde la fase 18</b> el primero es del tipo 4 (0x47E9: 0x44) y patrulla la segunda plataforma: en el borde da la vuelta si está a esa altura (Y = 0x38) y si no se deja caer hasta ella.</li></ul>
+<p>Cuántas veces por fotograma se mueven lo dice la fase (0x4850): fase/8 + 1, como mucho 4, y uno de cada cuatro fotogramas solo una. Y cuánto esperan escondidos antes de volver, (16 - fase) × 16 + 17 fotogramas hasta la fase 19, uno desde la 20 (0x6585). Al llegar al borde izquierdo del suelo se van por él (0x61C2).</p>
+<p>Si uno te toca a menos de 16 pixels (0x69B0), cara de susto (0x65AE), sonido 0xA0 y una vida menos.</p>
+<h2 id="las-frutas">Las frutas</h2>
+<p>Ocho por fase (0x6806): manzanas (0xF8), plátanos (0x78) y uvas (0x7C), colgadas en las filas 3, 10 y 17. Se cogen <b>saltando</b> contra ellas (0x5FA7): 100 puntos, sonido 7, y el mono la lleva en la cabeza (bits 2-3 de 0xE260, juego de sprites 1 con los brazos arriba). Con la fruta en la cabeza el disparo no salta: la <b>tira</b> hacia donde mira (estado 8, 0x64EA), y la fruta vuela por una de las dos parábolas de 0x742F/0x7451, ocho pasos y a caer.</p>
+<p>Una fruta que va por el aire mata a lo que toque: al cangrejo, que se muere enseñando un &quot;500&quot; blanco durante 0x20 fotogramas (0x5FF5); o al mono, que pierde la vida (0x5FE8). Los cangrejos del tipo 3 hacen exactamente lo mismo contigo. Al caer sobre una fruta desde arriba la descuelgas (0x6496), y la que se sale de la pantalla desaparece.</p>
+<h2 id="el-tiempo-las-vidas-y-los-puntos">El tiempo, las vidas y los puntos</h2>
+<p>Cada vida empieza con <b>5:00</b> en el reloj (0x47E1) y pierde un segundo cada 64 fotogramas (0x6CC6); a menos de diez segundos suena el aviso 0x0C cada fotograma, y a cero se pierde la vida. Al volver a jugar, si quedaba menos de 0:30 se pone en 0:30 (0x6CEF). Al superar la fase el reloj se descuenta a puntos, un segundo por cada cuatro fotogramas, y vuelve a 5:00.</p>
+<p>Tres vidas (0x47E1). Una más cada 20.000 puntos (0x4974: 0xE052 lleva las decenas de millar de la siguiente), sonido 0x10. Puntos: 100 la fruta cogida, 500 el cangrejo, 500 la respuesta acertada, 500 al entregarla, 10 por segundo sobrante. El récord se guarda en 0xE040 y se pinta al momento.</p>
+<h2 id="los-niveles">Los niveles</h2>
+<p>Al empezar la partida, y otra vez tras cada fase superada, aparece el LEVEL SELECT: teclas 1 a 5 (0x765F), un minuto de espera y sigue con el que hubiera. Cada jugador elige el suyo (0xE153/0xE154). El nivel es el guión de la ecuación (0x7117):</p>
+<table><tr><th>nivel</th><th>guión</th><th>forma</th><th>ejemplo medido</th></tr><tr><td>1</td><td><code>0A 0E</code></td><td>A + B = R</td><td>89+9?=188</td></tr><tr><td>2</td><td><code>0B 0E</code></td><td>A − B = R, con signo si sale negativo</td><td>89−9?=−10</td></tr><tr><td>3</td><td><code>0D 0E</code></td><td>(D × E) ÷ D = E</td><td>72÷?=9</td></tr><tr><td>4</td><td><code>0C 0E</code></td><td>A × b = R, b de una cifra</td><td>?3×3=129</td></tr><tr><td>5</td><td><code>0C 10 0A 11 0E</code></td><td>a × ( b + c ) = R, todo de una cifra</td><td>7×(?+4)=56</td></tr></table>
+<p>A y B son de dos cifras en BCD, con las unidades entre 2 y 9. La cifra que se tapa se elige restando un número al azar de 0 a 15 al <b>valor</b> de la primera cifra de la ecuación (0x7253), así que nunca cae más allá de esa posición: con un 1 delante el <code>?</code> va siempre en el primer operando, y en 400 ecuaciones muestreadas solo 67 lo llevan en el resultado.</p>
+<h2 id="el-titulo-y-la-demo">El título y la demo</h2>
+<p>Al arrancar el KONAMI sube desde la fila 21 (0x6C42), sale VIDEO CARTRIDGE, y el rótulo &quot;Monkey Academy&quot; se pinta <b>fila de pixels a fila de pixels</b> (0x4C77) en los tiles 0xB8-0xFF con tres bandas de color. Debajo, PLAY SELECT: 1 y 2 con joystick, 3 y 4 con teclado, para uno o dos jugadores. Sin tocar nada, a los 256 fotogramas arranca la demo: la ecuación 3 + ? = 5, con la cifra 2 escondida, jugada por el guión de 120 bytes de 0x4B78, un mando cada ocho fotogramas.</p>
+<p>Con dos jugadores se alternan al perder la vida (estado 14 intercambia 0xE050-0xE06F con 0xE080-0xE09F), cada uno con su joystick (0x4905 elige el puerto) y con sus propias tarjetas y su propia ecuación.</p>
+<footer><p><em>Monkey Academy</em> lo publico Konami en 1984 para MSX; su numero de catalogo es RC-702. El cartucho firma tres veces, y las tres en tiles corrientes: el <b>KONAMI</b> que sube al arrancar, el <b>©Konami 1984</b> bajo el titulo y el del pie del marcador. No hay creditos ni iniciales en ninguna parte del binario. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion.</p></footer></div>

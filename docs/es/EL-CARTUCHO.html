@@ -1,0 +1,106 @@
+<title>El cartucho — Monkey Academy (1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html">El juego</a><a href="EL-CARTUCHO.html" style=color:var(--tinta)>El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-CARTRIDGE.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-cartucho">El cartucho</h1>
+<h2 id="la-cabecera-y-la-maquina">La cabecera y la máquina</h2>
+<p>Los 16384 bytes empiezan por <code>AB</code>: la BIOS los reconoce como cartucho, los mapea en la página 1 (0x4000-0x7FFF) y, cuando acaba de arrancar la máquina, llama al punto de entrada de la cabecera, <b>0x40AF</b>. STATEMENT, DEVICE y TEXT van a cero. Los cinco talones de ocho bytes que siguen a la cabecera (<code>pop hl / ld (0),hl / ret</code>) no los usa nadie: son el relleno de los ganchos que la cabecera deja vacíos.</p>
+<p>INIT (0x40AF) deshabilita interrupciones, escribe <code>jp 0x4038</code> en el gancho H.KEYI (0xFD9A), pone la pila en 0xE400, carga la memoria de vídeo, borra la RAM del juego, habilita las interrupciones y se queda en un <code>jr $</code> de dos bytes (0x419B). A partir de ahí <b>todo el juego corre dentro de la interrupción</b>, un paso por fotograma. 0xE005 es el candado: si un paso tarda más de un fotograma, la interrupción siguiente toca la música, vuelca los sprites y se va.</p>
+<h2 id="la-memoria-de-video">La memoria de vídeo</h2>
+<p>SCREEN 2 con sprites de 16×16 (0x488C: R0=02, R1=A2, R2=0E, R3=7F, R4=07, R5=76, R6=03, R7=E1).</p>
+<table><tr><th>VRAM</th><th>qué hay</th></tr><tr><td>0x0000</td><td>los colores de los tiles, tres tercios iguales</td></tr><tr><td>0x1800</td><td>los patrones de los 64 sprites</td></tr><tr><td>0x2000</td><td>los patrones de los tiles, tres tercios iguales</td></tr><tr><td>0x3800</td><td>la tabla de nombres</td></tr><tr><td>0x3B00</td><td>los atributos de sprites</td></tr></table>
+<p>Los tiles 0x00-0xB7 vienen comprimidos: los patrones en 0x5156 (0x515 bytes) y los colores en 0x566B (84 bytes), los dos con el mismo RLE (0x6C84: 0 fin; n &lt; 0x80 repite n veces el byte siguiente; n ≥ 0x80 copia n &amp; 0x7F bytes tal cual). Descomprimidos dan 1472 bytes cada uno, exactamente 184 tiles, y los dos bloques cierran donde empieza el siguiente. Los tiles 0xB8-0xC3 los carga después 0x4728 desde 0x5EFF: son las piezas de las cifras grandes de la ecuación que no cabían en el primer bloque, y comparten número con el rótulo del título, que se dibuja en los tiles 0xB8-0xFF fila de pixels a fila de pixels (0x4C77).</p>
+<p><img src="../imagenes/tiles.png" alt="Los tiles"></p>
+<p>De los tiles: 0x00 vacío, 0x01-0x04 el canto de las tarjetas, 0x05-0x08 las cuatro barras de plataforma (una por color), 0x09-0x0C la flecha roja, 0x0D-0x14 las caras del mono del panel (normal y llorando), 0x15 la flor, 0x16-0x2F el KONAMI grande, 0x30-0x5B cifras, ©, letras y guión en ASCII, 0x5C-0x5F &quot;key&quot; y &quot;with&quot; en letra pequeña, 0x60 azul, 0x61-0x7A las tarjetas con sus cifras, 0x7B-0xB7 las cifras y signos grandes.</p>
+<h2 id="los-sprites">Los sprites</h2>
+<p>INIT copia a 0x1800 los seis primeros sprites de 0x56BF, y luego los 22 del mismo bloque <b>otra vez</b> a partir de 0x18C0, porque COPIA_A_VRAM deja HL como estaba (0x40CF). Así el sprite n de la VRAM, para n de 6 a 27, es el n − 6 del cartucho: por eso el mono está en los patrones 0x00 y 0x18, y el cangrejo en 0x30. Los mismos 22 se espejan bit a bit (0x4107) y van a 0x1CC0: el espejo del sprite k es el patrón 0x98 + 4k. Aparte, 0x597F (500, 100, plátano y uvas) a 0x1B80, 0x59FF (el mono andando hacia la izquierda, dibujado aparte) a 0x1C00 y 0x5ABF (la cara grande, la manzana y la tarjeta) a 0x1F80.</p>
+<p><img src="../imagenes/sprites.png" alt="Los sprites"></p>
+<p>Cada personaje son dos sprites superpuestos: el cuerpo de un color y los detalles de otro (el mono azul y blanco, el cangrejo rojo y amarillo, el profesor rojo oscuro y blanco). Y el juego cambia bloques enteros según lo que lleve el mono: 0x6044 apunta tres juegos —normal, con la fruta en la cabeza (0x5B3F) y con la tarjeta en alto (0x5BFF)—, y 0x5F80 carga el que pida 0xE10E en 0x1800 y 0x1C00. Los globos (0x5E3F) pisan el 500 en 0x1B80 mientras la ecuación sube, y la cara grande de 0x5E7F pisa el mono en 0x1800 al entregar la respuesta.</p>
+<p>La tabla de sprites vive en 0xE0B0 (24 × 4 bytes) y 0x46BA la vuelca cada fotograma <b>empezando por uno distinto cada vez</b> (0xE1B2 baja de 23 a 0): así el límite de cuatro sprites por línea del TMS9918 va rotando y ninguno desaparece siempre.</p>
+<h2 id="el-mapa-de-la-ram">El mapa de la RAM</h2>
+<p>Todo en 0xE000-0xE3FF, borrado por INIT. Lo importante:</p>
+<table><tr><th></th><th></th></tr><tr><td>0xE000</td><td>el estado del juego, índice de la tabla de 0x4226</td></tr><tr><td>0xE002</td><td>opciones: bit 4 teclado, bit 5 dos jugadores, bit 6 partida en marcha, bit 7 el jugador</td></tr><tr><td>0xE008/9</td><td>los mandos, antes y ahora, en formato de joystick</td></tr><tr><td>0xE010</td><td>los tres canales de sonido, 10 bytes cada uno</td></tr><tr><td>0xE040</td><td>el récord; 0xE043 y 0xE046 los puntos de cada jugador (BCD, 6 cifras)</td></tr><tr><td>0xE050</td><td>el jugador en juego: vidas, fase, vida extra, ecuación nueva, resueltas, tiempo, fallos, símbolos; 0xE080 la copia del otro</td></tr><tr><td>0xE0B0</td><td>la tabla de sprites: 0-1 el mono, 2-7 los cangrejos, 8-9 el profesor, 10-17 las frutas, 18 la tarjeta</td></tr><tr><td>0xE108</td><td>los cuatro actores, 8 bytes cada uno, que el código lee desde su sprite como IX+0x58</td></tr><tr><td>0xE140</td><td>la semilla del azar</td></tr><tr><td>0xE142</td><td>el resultado de la ecuación; 0xE144 la ecuación en símbolos</td></tr><tr><td>0xE15A</td><td>las diez tarjetas de la fase (Y, X)</td></tr><tr><td>0xE1AF</td><td>la tarjeta que lleva el mono (0xFF ninguna)</td></tr><tr><td>0xE1B5 / 0xE1C1</td><td>la ecuación de cada jugador; 0xE1CD/E la cifra escondida</td></tr><tr><td>0xE1E4 / 0xE20E</td><td>las tarjetas de cada jugador: estado y cifra</td></tr><tr><td>0xE24C</td><td>el estado de cada globo</td></tr><tr><td>0xE260</td><td>las ocho frutas: estado y contador</td></tr><tr><td>0xE270, 0xE276</td><td>las banderas de la respuesta y del profesor</td></tr></table>
+<h2 id="de-que-esta-hecho">De qué está hecho</h2>
+<table><tr><th></th><th>bytes</th></tr><tr><td>código</td><td>8.962</td></tr><tr><td>datos</td><td>7.422</td></tr><tr><td>sin identificar</td><td>0</td></tr></table>
+<p>De los datos: 1.472 + 84 de tiles comprimidos (0x5156, 0x566B), 2.688 de sprites (0x56BF-0x5F5F), 504 del rótulo del título (0x4CD0), 1.044 de sonido (0x7A71-0x7E85), 287 de relleno a 0xFF al final, y el resto tablas y listas: las posiciones de las tarjetas por fase (0x50AE, 21 bytes por fase), las plataformas (0x6705), las frutas (0x6806, 32 bytes por fase), las flores (0x6B42), los guiones de ecuación (0x712B), los símbolos (0x7207), los textos de todos los rótulos y las tablas de los dos despachadores.</p>
+<p>Hay cinco trozos de código a los que no salta nadie, sembrados en el trazado para que salgan como lo que son: <code>push iy / ret</code> en 0x4072, un <code>ld a,0F0h</code> en 0x4917 que nadie usa, un pintador de plataformas por lista (0x664F, 0x6624, 0x65F8) que 0x6685 dejó sin trabajo, la entrada de RLE_A_VRAM que lee la dirección delante de los datos (0x6C80) y nueve bytes en 0x755C que caen en 0x7565.</p>
+<footer><p><em>Monkey Academy</em> lo publico Konami en 1984 para MSX; su numero de catalogo es RC-702. El cartucho firma tres veces, y las tres en tiles corrientes: el <b>KONAMI</b> que sube al arrancar, el <b>©Konami 1984</b> bajo el titulo y el del pie del marcador. No hay creditos ni iniciales en ninguna parte del binario. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion.</p></footer></div>

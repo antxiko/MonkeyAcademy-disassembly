@@ -1,0 +1,110 @@
+<title>The code — Monkey Academy (1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html">The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html" style=color:var(--tinta)>The code</a><a href="FINDINGS.html">Findings</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/EL-CODIGO.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="the-code">The code</h1>
+<p>How the program is put together, with addresses. The names are the ones in the listing.</p>
+<h2 id="the-interrupt-is-the-program">The interrupt is the program</h2>
+<p><code>INTERRUPCION</code> (0x4038), every frame:</p>
+<ol><li>acknowledges the VDP interrupt by reading its status;</li><li><code>SUENA</code> (0x796F), always;</li><li><code>VUELCA_SPRITES</code> (0x46BA), always;</li><li>if 0xE005 is zero, sets it, enables interrupts and takes one step: <code>LEE_MANDOS</code> (0x41A7) from state 7 on and <code>PASO_DEL_JUEGO</code> (0x4209);</li><li>restores everything and returns with <code>reti</code>.</li></ol>
+<p><code>PASO_DEL_JUEGO</code> counts the clock (0xE003), blinks the 1UP during play, reads keys 1-5 outside it (<code>TECLAS_1_A_5</code>, 0x4678) and dispatches state 0xE000.</p>
+<h2 id="the-dispatcher">The dispatcher</h2>
+<p><code>DESPACHA</code> (0x419D) is the <code>call</code> followed by a table: <code>add a,a / pop hl / call HL_MAS_A / ld e,(hl) / inc hl / ld d,(hl) / ex de,hl / jp (hl)</code>. The return address <b>is</b> the table of words, so it never returns to the <code>call</code>. Two places use it: 0x4223 with the 20-state table at 0x4226, and 0x602B with the 11 actor states at 0x602E.</p>
+<h2 id="the-twenty-states">The twenty states</h2>
+<table><tr><th></th><th></th><th></th></tr><tr><td>0</td><td><code>ESTADO_0_TITULO</code></td><td>screen off, sprites and names cleared, music 0xA1 (which is silence)</td></tr><tr><td>2</td><td><code>ESTADO_2_LOGO</code></td><td>the KONAMI rises one row every two frames (0x6C42)</td></tr><tr><td>3, 4</td><td>wait and <code>ESTADO_4_TITULO</code></td><td>the sign, one pixel row at a time (0x4C77)</td></tr><tr><td>5</td><td><code>ESTADO_5_MENU</code></td><td>256 frames of menu</td></tr><tr><td>6</td><td><code>ESTADO_6_DEMO_MONTA</code></td><td>wipe, scoreboard and the equation 3 + ? = 5</td></tr><tr><td>1</td><td><code>ESTADO_1_GLOBOS</code></td><td>the balloons rise (0x713D); the same state serves the demo and the game</td></tr><tr><td>7</td><td><code>ESTADO_7_DEMO</code></td><td>the demo, with the inputs of the script at 0x4B78</td></tr><tr><td>18</td><td><code>ESTADO_18_OPCION</code></td><td>the chosen option blinks for 0x60 frames</td></tr><tr><td>8</td><td><code>LEVEL_SELECT</code></td><td>starts the game the first time, and keys 1-5</td></tr><tr><td>9</td><td><code>ESTADO_9_PLAYER_N</code></td><td>spends the life, and PLAYER n / LEVEL n for 0x65 frames</td></tr><tr><td>10</td><td><code>ESTADO_10_MONTA_FASE</code></td><td>cards, a new equation if due, shuffled digits, balloons</td></tr><tr><td>11</td><td><code>ESTADO_11_READY</code></td><td>balloons, and READY counting down 15 seconds or until a button</td></tr><tr><td>12</td><td><code>ESTADO_12_PARTIDA</code></td><td>the game</td></tr><tr><td>13</td><td><code>ESTADO_13_VIDA_O_RESUELTA</code></td><td>life lost or equation solved; GAME OVER with no lives</td></tr><tr><td>14, 15</td><td>player swap and decide</td><td></td></tr><tr><td>16</td><td><code>ESTADO_16_FASE_SUPERADA</code></td><td>stage + 1 and back to LEVEL SELECT</td></tr><tr><td>17, 19</td><td>waits</td><td>for the sound to end; 0x80 frames</td></tr></table>
+<p>States chain through <code>SIGUIENTE_ESTADO</code> (0x4661): most end with an <code>inc (hl)</code> on 0xE000. And one trap: <code>ESTADO_9_PLAYER_N</code> <b>spends a life</b> every time it is entered, so whoever goes there without having died (equation solved, 0x6E4A; stage cleared, 0x45C1) adds one first.</p>
+<h2 id="the-actors">The actors</h2>
+<p><code>MONO_Y_CANGREJOS</code> (0x4822) passes the controls to 0xE10B, repaints the cards every eight frames, checks the collision (0x69B0) and calls <code>ACTOR_PASO</code> (0x5F5F) with B = 1 (the monkey) and 2 to 4 (the crabs), the latter between one and four times per frame depending on the stage.</p>
+<p><code>ACTOR_PASO</code> sets IX to the actor&#x27;s two sprites (0xE0B0 + 8(B−1)) and reads its record at IX+0x58..0x5F: facing, animation phase, type, state, timer, load. Before the state, the fruit: <code>ACTOR_TOCA_FRUTA</code> (0x6A4F) returns carry, D and E if one is within 0x16 pixels, and with that the actor picks it up (jumping), dies or loses a life (if it is in the air). Then the eleven states of 0x602E:</p>
+<table><tr><th></th><th></th><th></th></tr><tr><td>0</td><td><code>ACTOR_ESCONDIDO</code></td><td>waits and appears at the top centre</td></tr><tr><td>1</td><td><code>ACTOR_PARADO</code></td><td>fire jumps, a direction walks</td></tr><tr><td>2</td><td><code>ACTOR_ANDA</code></td><td>one pixel, the animation, the floor and the edges</td></tr><tr><td>3</td><td><code>ACTOR_SALTANDO</code></td><td>the table at 0x6423; at the top, the card; touching the professor, the delivery</td></tr><tr><td>4</td><td><code>ACTOR_SUBE_HUECO</code></td><td>climbs through a gap in the platform above</td></tr><tr><td>5</td><td><code>ACTOR_SE_HUNDE</code></td><td>comes down slowly with the card just grabbed</td></tr><tr><td>6</td><td><code>ACTOR_CAE_ESTADO</code></td><td>four pixels a frame down to the floor</td></tr><tr><td>7</td><td><code>ACTOR_SE_DESCUELGA</code></td><td>the crab crosses the top platform</td></tr><tr><td>8</td><td><code>ACTOR_TIRA_FRUTA</code></td><td>the fruit flies off</td></tr><tr><td>9</td><td><code>CANGREJO_MUERE</code></td><td>the 500 and back into hiding</td></tr><tr><td>10</td><td><code>ACTOR_LE_DA_LA_FRUTA</code></td><td>fright and life lost</td></tr></table>
+<p>The stage&#x27;s platforms are the only geometry: <code>HAY_SUELO</code> (0x6924) walks the list of (Y, X, width) at 0x66F5 looking for one at Y + 0x10 that covers the X, and <code>HAY_PLATAFORMA_ARRIBA</code> (0x696B) does the same upwards. There is no collision map: the table is consulted.</p>
+<h2 id="the-cards-and-the-answer">The cards and the answer</h2>
+<p><code>PINTA_TARJETAS</code> (0x4EC8) walks the ten at 0xE15A and repaints those with bit 7: the bottom 3 − c rows of a 3×2 block (blank or with the digit, alternating) and the edge under it. The edge&#x27;s position comes from <code>PINTA_BLOQUE</code> (0x6906) returning D advanced by as many rows as it painted; the 8c + Y computed at 0x4F42 stays in A and nobody uses it.</p>
+<p><code>RESPONDE</code> (0x7708) starts the blinking, <code>TARJETA_COMPARA</code> (0x7796) decides, and the answer card is sprite 18 driven by the bits of 0xE270 (<code>TARJETA_PASO</code>, 0x7834): 4 waits for the card to close, 3 falls, 1 rides on the monkey&#x27;s head, 0 rises on its own. The professor (<code>PROFESOR</code>, 0x7473) watches the same bits.</p>
+<h2 id="the-equation">The equation</h2>
+<p><code>GENERA_ECUACION</code> (0x6F96) writes symbols into 0xE144 following the level&#x27;s script (0x7117) with the BCD arithmetic of 0x6E6E-0x6EDB: add, subtract, multiply by repeated addition and division done backwards (D × E ÷ D = E). <code>ELIGE_INCOGNITA</code> (0x7253) covers a digit, <code>MONTA_GLOBOS</code> (0x7297) prepares a two-sprite balloon per symbol, off screen at the bottom, and <code>GLOBOS_SUBEN</code> (0x713D) releases them at random one at a time; <code>GLOBO_LLEGA</code> (0x71BF) paints the symbol in 2×2 where each one arrives.</p>
+<p><code>AZAR</code> (0x6F0D) mixes the seed at 0xE140 with the R register and with a word from the system ROM (0x0000-0x3FFF), and remixes with <code>daa</code>: the nibbles come out between 0 and 9, which is what the BCD arithmetic needs.</p>
+<h2 id="the-sound">The sound</h2>
+<p><code>SONIDO</code> (0x78DF) starts sound A if a game is on (<code>SONIDO_YA</code>, without checking). 1 to 0x10 are one-channel effects (channel C); 0x91 to 0x9B two-channel tunes, and from 0x9D three. The table at 0x7A7B gives the first channel&#x27;s track and the following words the others&#x27;, which is why tune numbers go in twos. Priority is by number: if the channel is playing something equal or higher, nothing, except 2, which always gets in. <code>SUENA</code> (0x796F) is the player: per channel a note counter, the track, octave, volume and an envelope of three steps down when the note starts and two at the end. Effects are volume/period pairs; music is notes in one nibble with the duration in the other over the period table at 0x7A71.</p>
+<h2 id="what-gets-painted">What gets painted</h2>
+<p><code>VPOKE</code> (0x4082) and <code>RELLENA_VRAM</code> (0x48AA) are the base; <code>PINTA_LISTA_TILES</code> (0x48E9) walks lists of address + tiles with 0xFE to change place and 0xFF to end, and every sign is written with it. <code>PINTA_BLOQUE</code> (0x6906) paints B×C tiles at pixel coordinates, <code>PINTA_RECUADRO</code> (0x66BB) fills rectangles, <code>PIXELS_A_VRAM</code> (0x6605) turns (Y, X) into a name-table address. <code>RLE_A_VRAM</code> (0x6C84) decompresses the tiles, <code>ESPEJA_SPRITES</code> (0x4107) flips 22 sprites bit by bit, and <code>TITULO_UNA_FILA</code> (0x4C77) paints the title sign one pixel row every eight frames.</p>
+<footer><p><em>Monkey Academy</em> was published by Konami in 1984 for the MSX; its catalogue number is RC-702. The cartridge signs itself three times, all in plain tiles: the <b>KONAMI</b> that rises at boot, the <b>©Konami 1984</b> under the title and the one at the foot of the scoreboard. There are no credits and no initials anywhere in the binary. All rights in the game remain with their holders. This is preservation, study and documentation work.</p></footer></div>

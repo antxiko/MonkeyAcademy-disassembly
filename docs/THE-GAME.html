@@ -1,0 +1,114 @@
+<title>The game — Monkey Academy (1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html" style=color:var(--tinta)>The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html">Findings</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/EL-JUEGO.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="the-game">The game</h1>
+<p>A monkey in a three-storey school, a sum with one digit covered, ten cards hanging from the platforms and crabs after him. Everything on this page comes from reading the code that does it and measuring it in the emulator.</p>
+<h2 id="the-screen">The screen</h2>
+<p><img src="imagenes/fase_1.png" alt="Stage 1"></p>
+<p>At the top, the equation in big 2×2-tile digits (0x7207), with a <code>?</code> on the digit you have to find. Below, four platforms —the floor, the top one and two in between, with gaps— and hanging from them the ten cards of the stage, visible only by their edge (the red 2×2 of 0x5082). Eight fruits hang too, three flowers decorate, and on the right the panel: TIME, HI, the score, the lives, STAGE and the ©Konami 1984.</p>
+<p>Top right paces the professor, who is the player&#x27;s monkey sprite in dark red (0x7ED9). He goes from 0xB8 to 0xE8 and back, one pixel every two frames.</p>
+<h2 id="what-to-do">What to do</h2>
+<ol><li>Stand under a card and jump: if the edge is right above (0x6A1F checks the tile at Y+7, X+8), the card slides down three rows and shows its digit. You come down with it (state 5) and now hold it (0xE1AF).</li><li>With the second button (SELECT, or the 0x20 of the demo script) you answer: the card blinks five times (0x7760) and its digit is compared with the hidden one (0xE1CD). Right: 500 points, sound 0x95, and the card closes and <b>drops to the floor</b> (0x7899, 0x787E) as a flat yellow sprite (0xFC). Wrong: one more crying face on the panel (0xE057) and sound 0x0E; <b>on the third miss</b> a cyan monkey walks in from the left hanging from a balloon, stops under the <code>?</code>, the balloon rises and the digit is revealed (0x6D27): you lose a life.</li><li>Pick up the fallen card (0x6ABB): the monkey carries it overhead (sprite set 2, 0x5BFF) and a red arrow blinks at row 6, column 23 (0x6CA6): take it up to the professor.</li><li>Touch the professor with it (0x6ADB): the card rises to the top on its own, 500 more points, the professor walks it to the <code>?</code> and writes it in (0x74D5), goes back to his spot and both dance with the big face (0x6DFC). Three equations like that and the stage is cleared: the time left turns into points, 10 per second (0x77ED).</li></ol>
+<p>In between, the crabs.</p>
+<h2 id="moving">Moving</h2>
+<p>Left and right walk (state 2, one pixel per step, sound 3 every four). Fire jumps: with no direction, straight up (state 3, the 24-delta table of 0x6423: up 3 3 3 2 1 1 1 0 1 0 1 0 and down 0 1 0 1 0 1 1 1 2 3 3 3, one every two frames); with a direction and more than 12 pixels from the edge, up through a gap (state 4): it climbs four pixels a frame moving one pixel sideways, and if it finds a platform less than 17 pixels above that covers it (0x696B) it gets on. Otherwise it falls. Walk off a platform&#x27;s edge and you fall (state 6), four pixels a frame.</p>
+<p>There are no ladders: you go up through the gaps and down over the edges.</p>
+<h2 id="the-crabs">The crabs</h2>
+<p>Three more actors, with the same states as the monkey (0x602E) and their type in the low nibble of +0x5B: 1, 2 and 3. All three start hidden with timers of 0x20, 0x40 and 0x60 (0x4B24), appear at the top centre (Y = 0x10, X = 0x60), lower themselves through the top platform (state 7, one pixel every four frames while the tile is not empty) and drop to the first floor.</p>
+<ul><li><b>Type 1</b> walks to an edge and falls off.</li><li><b>Type 2</b> thinks about it at the edge: half the time it falls, half it turns round.</li><li><b>Type 3</b> is the only one that jumps (0x616F: once in 256 it stops and sets bit 4, which for a crab is the fire button), and so the only one that can grab a hanging fruit and throw it at you.</li><li><b>From stage 18</b> the first one is type 4 (0x47E9: 0x44) and patrols the second platform: at the edge it turns round if it is at that height (Y = 0x38) and otherwise lets itself fall to it.</li></ul>
+<p>How many times per frame they move depends on the stage (0x4850): stage/8 + 1, at most 4, and one frame in four only once. And how long they wait hidden before coming back: (16 − stage) × 16 + 17 frames up to stage 19, one from stage 20 (0x6585). Reaching the left edge of the floor they leave through it (0x61C2).</p>
+<p>If one touches you within 16 pixels (0x69B0): scared face (0x65AE), sound 0xA0 and one life less.</p>
+<h2 id="the-fruit">The fruit</h2>
+<p>Eight per stage (0x6806): apples (0xF8), bananas (0x78) and grapes (0x7C), hanging in rows 3, 10 and 17. You pick one by <b>jumping</b> into it (0x5FA7): 100 points, sound 7, and the monkey carries it on his head (bits 2-3 of 0xE260, sprite set 1 with the arms up). With a fruit on his head fire does not jump: it <b>throws</b> it the way he faces (state 8, 0x64EA), and the fruit flies along one of the two arcs of 0x742F/0x7451, eight steps and then falls.</p>
+<p>A fruit in the air kills whatever it hits: a crab, which dies showing a white &quot;500&quot; for 0x20 frames (0x5FF5); or the monkey, who loses a life (0x5FE8). Type 3 crabs do exactly the same to you. Landing on a fruit from above knocks it down (0x6496), and one that leaves the screen disappears.</p>
+<h2 id="time-lives-and-points">Time, lives and points</h2>
+<p>Each life starts with <b>5:00</b> on the clock (0x47E1) and loses a second every 64 frames (0x6CC6); under ten seconds the 0x0C warning sounds every frame, and at zero the life is lost. Coming back to play, if less than 0:30 was left it is set to 0:30 (0x6CEF). Clearing the stage counts the clock down into points, one second every four frames, and back to 5:00.</p>
+<p>Three lives (0x47E1). One more every 20,000 points (0x4974: 0xE052 holds the ten-thousands of the next one), sound 0x10. Points: 100 a fruit picked, 500 a crab, 500 the right answer, 500 for delivering it, 10 per second left over. The high score lives at 0xE040 and is painted at once.</p>
+<h2 id="the-levels">The levels</h2>
+<p>At the start of the game, and again after every stage cleared, LEVEL SELECT appears: keys 1 to 5 (0x765F), a minute of waiting and it goes on with whatever was set. Each player picks their own (0xE153/0xE154). The level is the script of the equation (0x7117):</p>
+<table><tr><th>level</th><th>script</th><th>shape</th><th>measured example</th></tr><tr><td>1</td><td><code>0A 0E</code></td><td>A + B = R</td><td>89+9?=188</td></tr><tr><td>2</td><td><code>0B 0E</code></td><td>A − B = R, signed if negative</td><td>89−9?=−10</td></tr><tr><td>3</td><td><code>0D 0E</code></td><td>(D × E) ÷ D = E</td><td>72÷?=9</td></tr><tr><td>4</td><td><code>0C 0E</code></td><td>A × b = R, b one digit</td><td>?3×3=129</td></tr><tr><td>5</td><td><code>0C 10 0A 11 0E</code></td><td>a × ( b + c ) = R, all one digit</td><td>7×(?+4)=56</td></tr></table>
+<p>A and B are two BCD digits with units between 2 and 9. The digit that gets covered is chosen by subtracting a random 0-15 from the <b>value</b> of the first digit of the equation (0x7253), so it never falls beyond that position: with a 1 in front the <code>?</code> is always in the first operand, and in 400 sampled equations only 67 have it in the result.</p>
+<h2 id="the-title-and-the-demo">The title and the demo</h2>
+<p>At boot the KONAMI rises from row 21 (0x6C42), VIDEO CARTRIDGE appears, and the &quot;Monkey Academy&quot; sign is painted <b>one pixel row at a time</b> (0x4C77) into tiles 0xB8-0xFF with three colour bands. Below, PLAY SELECT: 1 and 2 with joystick, 3 and 4 with keyboard, for one or two players. Touch nothing and after 256 frames the demo starts: the equation 3 + ? = 5, with the digit 2 hidden, played by the 120-byte script at 0x4B78, one input every eight frames.</p>
+<p>With two players they alternate on losing a life (state 14 swaps 0xE050-0xE06F with 0xE080-0xE09F), each with their own joystick (0x4905 picks the port), their own cards and their own equation.</p>
+<footer><p><em>Monkey Academy</em> was published by Konami in 1984 for the MSX; its catalogue number is RC-702. The cartridge signs itself three times, all in plain tiles: the <b>KONAMI</b> that rises at boot, the <b>©Konami 1984</b> under the title and the one at the foot of the scoreboard. There are no credits and no initials anywhere in the binary. All rights in the game remain with their holders. This is preservation, study and documentation work.</p></footer></div>
