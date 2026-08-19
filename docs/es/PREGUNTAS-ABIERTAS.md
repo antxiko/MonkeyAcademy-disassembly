@@ -23,11 +23,14 @@ dejó el nivel 5 con su único guión de cinco símbolos, el binario no lo dice.
 
 La fase es BCD y `PINTA_FASE` (0x4A24) la devuelve a 0 al llegar a 100, y las
 tablas de plataformas, tarjetas y frutas se indexan con (fase − 1) & 7, así
-que las ocho fases se repiten. Lo que sube es la velocidad de los cangrejos
-(hasta la fase 24, que da las cuatro pasadas por fotograma) y lo poco que
-esperan (desde la 20, un fotograma). Queda por jugar de verdad hasta ahí
-para ver si el juego se vuelve injugable antes o si la vuelta a la fase 0
-tiene algún efecto que el código no deja ver.
+que las ocho fases se repiten. Lo que sube es cuántos cangrejos juegan (uno
+hasta la fase 7, dos en la 8 y la 9, los tres desde la 10; 0x4850) y lo poco
+que esperan escondidos (desde la 20, un fotograma). Queda por jugar de verdad
+hasta ahí para ver si el juego se vuelve injugable antes o si la vuelta a la
+fase 0 tiene algún efecto que el código no deja ver. Una medida, por ahora:
+una partida de un jugador novato, en los niveles 4 y 5, duró 5 min 37 s desde
+el LEVEL SELECT hasta el GAME OVER, con una fase superada y 8.360 puntos
+(replay en `work/omsx/partida`).
 
 ## Los dos guiones de la demo que no cuadran
 

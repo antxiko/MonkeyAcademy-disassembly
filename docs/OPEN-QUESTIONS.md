@@ -23,11 +23,14 @@ with its single five-symbol script, the binary does not say.
 
 The stage is BCD and `PINTA_FASE` (0x4A24) resets it to 0 on reaching 100,
 and the tables of platforms, cards and fruit are indexed by (stage − 1) & 7,
-so the eight stages repeat. What grows is the crabs' speed (up to stage 24,
-which gives the four passes per frame) and how little they wait (from stage
-20, one frame). It remains to actually play that far to see whether the game
-becomes unplayable before that or whether the wrap to stage 0 has any effect
-the code does not show.
+so the eight stages repeat. What grows is how many crabs are in play (one up
+to stage 7, two in stages 8 and 9, all three from stage 10; 0x4850) and how
+little they wait hidden (from stage 20, one frame). It remains to actually
+play that far to see whether the game becomes unplayable before that or
+whether the wrap to stage 0 has any effect the code does not show. One
+measurement so far: a novice player's game, at levels 4 and 5, lasted 5 min
+37 s from LEVEL SELECT to GAME OVER, with one stage cleared and 8,360 points
+(replay in `work/omsx/partida`).
 
 ## The demo's fixed script against random crabs
 
