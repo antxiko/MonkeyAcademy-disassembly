@@ -75,8 +75,13 @@ caen al primer suelo.
   segunda plataforma: en el borde da la vuelta si está a esa altura (Y = 0x38)
   y si no se deja caer hasta ella.
 
-Cuántas veces por fotograma se mueven lo dice la fase (0x4850): fase/8 + 1,
-como mucho 4, y uno de cada cuatro fotogramas solo una. Y cuánto esperan
+Cuántos de ellos juegan lo dice la fase (0x4850: fase/8 + 2 actores, el mono
+incluido, tope 4): **uno solo hasta la fase 7**, dos en la 8 y la 9, los tres
+desde la 10. El bucle de 0x4860 llama a `ACTOR_PASO` con el número de actor
+en B, del último al primero; y uno de cada cuatro fotogramas (0xE272) solo se
+mueve el mono. Medido en una partida: en las fases 1 y 2 el mono dio 1003
+pasos en 1003 fotogramas, el primer cangrejo 752, los otros dos ninguno. Y
+cuánto esperan
 escondidos antes de volver, (16 - fase) × 16 + 17 fotogramas hasta la fase 19,
 uno desde la 20 (0x6585). Al llegar al borde izquierdo del suelo se van por
 él (0x61C2).
@@ -108,8 +113,10 @@ fotograma, y a cero se pierde la vida. Al volver a jugar, si quedaba menos de
 0:30 se pone en 0:30 (0x6CEF). Al superar la fase el reloj se descuenta a
 puntos, un segundo por cada cuatro fotogramas, y vuelve a 5:00.
 
-Tres vidas (0x47E1). Una más cada 20.000 puntos (0x4974: 0xE052 lleva las
-decenas de millar de la siguiente), sonido 0x10. Puntos: 100 la fruta
+Tres vidas (0x47E1). Una más al pasar de 10.000 puntos y después cada 20.000
+(30.000, 50.000...; 0x4974: 0xE052 lleva las decenas de millar de la
+siguiente, arranca en 0 y sube de 2 en 2), sonido 0x10. Medida: la primera
+llegó con 10.260. Puntos: 100 la fruta
 cogida, 500 el cangrejo, 500 la respuesta acertada, 500 al entregarla, 10 por
 segundo sobrante. El récord se guarda en 0xE040 y se pinta al momento.
 

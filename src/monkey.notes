@@ -349,7 +349,7 @@ C 0x47AB Con dos jugadores, la misma copia para el 2P
 L 0x47BA LEVEL_SELECT_PINTA Fuente blanca, fondo azul (R7 = 4), el texto de 0x7595, 0x0F00 fotogramas de espera y a esperar la tecla
 C 0x47C4 R7 = 4: fondo azul oscuro
 L 0x47D7 LEVEL_SELECT_ESPERA 0x762F: con la tecla pulsada (carry) pasa a parpadear
-D 0x47E1 0x47E9 jugador_nuevo Los 8 bytes de E050 al empezar: 3 vidas, fase 1, sin vida extra pendiente, ecuacion nueva (E053 = 1), 0 resueltas, tiempo 05:00 (E055 = 00, E056 = 05), 0 fallos
+D 0x47E1 0x47E9 jugador_nuevo Los 8 bytes de E050 al empezar: 3 vidas, fase 1, E052 = 0 (la primera vida extra al pasar de 10000), ecuacion nueva (E053 = 1), 0 resueltas, tiempo 05:00 (E055 = 00, E056 = 05), 0 fallos
 L 0x47E9 SPRITES_DE_JUEGO  Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de sprites (0x4B04) a E0B0 y los cuatro actores (0x4B24) a E108; el mono en Y = 0xA8; a partir de la fase 18 el cangrejo 1 es del tipo 4 y patrulla la segunda plataforma
 C 0x4809 El mono, en el suelo (Y = 0xA8)
 C 0x4811 Fase 18 en adelante (BCD): el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
@@ -358,17 +358,18 @@ B 0x4822 EL MONO Y LOS CANGREJOS, cada fotograma de partida. Los mandos van
 B 0x4822 a E10B (nibble alto: bit4 disparo, bit5 boton 2, bit6 izquierda,
 B 0x4822 bit7 derecha, en el mismo formato que el guion de la demo). Cada 8
 B 0x4822 fotogramas repinta las tarjetas. Si un cangrejo pilla al mono
-B 0x4822 (0x69B0), cara de susto y estado 10. Y luego 0x5F5F por actor: el
-B 0x4822 mono una vez y los cangrejos entre 1 y 4 veces segun la fase (mas
-B 0x4822 rapidos cuanto mas alta), y solo una cada cuatro fotogramas.
+B 0x4822 (0x69B0), cara de susto y estado 10. Y luego 0x5F5F por actor, del
+B 0x4822 ultimo al primero: la fase dice CUANTOS juegan (un cangrejo hasta la
+B 0x4822 7, dos en la 8 y la 9, los tres desde la 10), y un fotograma de cada
+B 0x4822 cuatro solo se mueve el mono. Medido en una partida (2026-08-19).
 B 0x4822 ----------------------------------------------------------------------
 L 0x4822 MONO_Y_CANGREJOS  El reloj, los mandos a E10B, las tarjetas cada 8 fotogramas, la colision y un paso de cada actor
 C 0x4825 Izquierda, derecha y los dos botones (bits 2-5) suben al nibble alto
 C 0x483F 0x69B0 devuelve carry si no hay colision
 C 0x4844 Le han pillado: cara de susto y estado 10 del mono (el mismo que cuando le da una fruta)
-C 0x4850 Cuantas veces por fotograma se mueve cada cangrejo: (fase/8 + 1), como mucho 4; y cada cuatro fotogramas solo una
-L 0x4860 ACTORES_PASO      B veces cada actor (0x5F5F recorre los cuatro)
-L 0x486E ACTORES_PASO_4    Cuatro veces
+C 0x4850 CUANTOS actores juegan: A = fase(BCD)/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos); el bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
+L 0x4860 ACTORES_PASO      Un paso de los actores A..1 (B baja con el djnz y es el numero de actor de 0x5F5F); con E272 & 3 == 0 (un fotograma de cada cuatro) solo el mono
+L 0x486E ACTORES_PASO_4    Los cuatro actores (fase 16 en adelante)
 L 0x4872 VDP_R7            Registro 7 = A (color de fondo y borde)
 L 0x487B VDP_REGISTROS     Los 8 registros del VDP desde la tabla de 0x488C
 D 0x488C 0x4894 registros_vdp R0-R7 de arranque: 02 (SCREEN 2), A2 (16K, pantalla apagada, interrupciones, sprites 16x16), 0E (nombres en 0x3800), 7F (colores en 0x0000), 07 (patrones en 0x2000), 76 (atributos en 0x3B00), 03 (patrones de sprites en 0x1800), E1 (fondo negro)
@@ -396,7 +397,7 @@ L 0x4945 SUMA_PUNTOS       CDE (BCD) a E043 (1P) o E046 (2P); solo con partida e
 C 0x4948 Bit 6 al carry: sin partida (la demo) no se suman
 C 0x494F Bit 7 al carry: E046 para el 2P
 C 0x4965 Mas de 999999: se clava el record en 999999
-L 0x4974 VIDA_EXTRA        Al pasar las decenas de millar de E052 (20000, 40000...): una vida mas, se pintan y sonido 0x10
+L 0x4974 VIDA_EXTRA        Cuando las decenas de millar de los puntos (E045) superan E052: una vida mas, se pintan, sonido 0x10 y E052 += 2. E052 arranca en 0: la primera a los 10000, luego cada 20000 (30000, 50000...). Medido: vida extra con 010260
 C 0x497C La siguiente, 20000 mas alla
 L 0x4995 RECORD            Si los puntos superan el record, se copian y se pinta
 L 0x49B4 PINTA_MARCADOR    La pantalla de juego entera: plataformas de la fase, panel azul, TIME, HI, STAGE, 1UP (y 2UP), record, puntos, vidas, fase, flores, y las tablas de sprites y actores
@@ -1044,8 +1045,8 @@ L 0x46FE VUELCA_SPRITES_FIN Listo
 L 0x471C PINTA_MENU_FILAS  Todas las filas del titulo de golpe
 L 0x4757 LEVEL_SELECT_BITS Cortinilla ya pasada: los bits 4, 6 y 3
 L 0x483F MONO_COLISION     La colision con los cangrejos y, si no, el paso de los actores
-L 0x484C MONO_ACTORES      Cuantas veces se mueven los cangrejos esta vez
-L 0x4868 ACTORES_BUCLE     Un paso de los cuatro actores, B veces
+L 0x484C MONO_ACTORES      Cuantos actores se mueven este fotograma (E272 cuenta los fotogramas)
+L 0x4868 ACTORES_BUCLE     Un paso del actor B, y el anterior, hasta el mono (B = 1)
 L 0x4882 VDP_REGISTROS_BUCLE Registro por registro (D = 0x80 + n)
 L 0x489E COPIA_A_VRAM_BUCLE Byte a byte al puerto 0x98
 L 0x48B6 RELLENA_VRAM_BUCLE El mismo byte BC veces

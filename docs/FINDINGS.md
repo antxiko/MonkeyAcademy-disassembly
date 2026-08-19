@@ -73,7 +73,10 @@ anyway. The calculation is redundant and the result is correct.
 fire button— when the random byte at 0xE140 comes out zero. Since jumping is the only way to grab a
 hanging fruit, a fruit carried by a crab always follows the sprite at 0xE0C8
 (0x7371): actor 4's, which is type 3's. The code takes it for granted instead
-of checking who carries it.
+of checking who carries it. And since the third crab does not enter play
+until stage 10 (see below), before that no crab throws anything: in 900
+measured seconds of stages 1 and 2 none jumped, although 0xE140 did come out
+zero (9 times in 592 rolls).
 
 ## Sound 0xA1 is silence
 
@@ -89,12 +92,18 @@ so afterwards whatever comes overrides it.
 the actor is the monkey, with one exception, number 9, the crab dying. Crab
 footsteps, jumps and falls make no sound.
 
-## The crabs speed up by table, not by velocity
+## Up to stage 7 there is only one crab
 
-There is no velocity: `MONO_Y_CANGREJOS` (0x4850) calls `ACTOR_PASO` for each
-crab stage/8 + 1 times per frame, at most four, and one frame in four only
-once. And they wait hidden (16 − stage) × 16 + 17 frames up to stage 19; from
-20, one (0x6585).
+`MONO_Y_CANGREJOS` (0x4850) computes stage/8 + 2 (capped at 4) and the loop
+at 0x4860 calls `ACTOR_PASO` with that number in B, counting down to 1; and
+`ACTOR_PASO` moves **actor number B** (IX = 0xE0B0 + 8·(B−1), 0x5F68). So it
+is not how many times each crab moves but how many are in play: one up to
+stage 7, two in stages 8 and 9, all three from stage 10. One frame in four
+(0xE272) only the monkey moves. It was first read the other way round
+("stage/8 + 1 times per frame"); a measured game exposed it: in 1003 frames
+of stage 1 the monkey took 1003 steps, the first crab 752 and the other two
+zero. They wait hidden (16 − stage) × 16 + 17 frames up to stage 19; from 20,
+one (0x6585).
 
 ## READY can be hurried
 

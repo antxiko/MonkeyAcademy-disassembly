@@ -73,7 +73,10 @@ tarjeta. El cálculo sobra y el resultado es el correcto.
 cangrejo es el disparo— cuando el azar de 0xE140 sale a cero. Como saltar es la única forma de
 coger una fruta colgada, la fruta que lleva un cangrejo sigue siempre al
 sprite de 0xE0C8 (0x7371): el del actor 4, que es el del tipo 3. El código
-lo da por hecho en vez de mirar quién la lleva.
+lo da por hecho en vez de mirar quién la lleva. Y como el tercer cangrejo no
+entra en juego hasta la fase 10 (ver abajo), antes de ella ningún cangrejo
+tira nada: en 900 segundos medidos en las fases 1 y 2 no saltó ninguno,
+aunque 0xE140 sí salió a cero (9 veces en 592 tiradas).
 
 ## El sonido 0xA1 es el silencio
 
@@ -89,12 +92,18 @@ que después lo pisa lo que venga.
 actor es el mono, con una excepción, el 9, el del cangrejo que se muere. Los
 pasos, los saltos y las caídas de los cangrejos no suenan.
 
-## Los cangrejos aceleran por tabla, no por velocidad
+## Hasta la fase 7 solo hay un cangrejo
 
-No hay velocidad: `MONO_Y_CANGREJOS` (0x4850) llama a `ACTOR_PASO` para cada
-cangrejo fase/8 + 1 veces por fotograma, como mucho cuatro, y uno de cada
-cuatro fotogramas solo una. Y esperan escondidos (16 − fase) × 16 + 17
-fotogramas hasta la fase 19; desde la 20, uno (0x6585).
+`MONO_Y_CANGREJOS` (0x4850) calcula fase/8 + 2 (tope 4) y el bucle de 0x4860
+llama a `ACTOR_PASO` con ese número en B, bajando hasta 1; y `ACTOR_PASO`
+mueve **al actor número B** (IX = 0xE0B0 + 8·(B−1), 0x5F68). Así que no es
+cuántas veces se mueve cada cangrejo, sino cuántos juegan: uno hasta la fase
+7, dos en la 8 y la 9, los tres desde la 10. Un fotograma de cada cuatro
+(0xE272) solo se mueve el mono. Primero se leyó al revés ("fase/8 + 1 veces
+por fotograma"); lo destapó una partida medida: en 1003 fotogramas de la
+fase 1, el mono dio 1003 pasos, el primer cangrejo 752 y los otros dos cero.
+Esperan escondidos (16 − fase) × 16 + 17 fotogramas hasta la fase 19; desde
+la 20, uno (0x6585).
 
 ## Al READY se le puede meter prisa
 

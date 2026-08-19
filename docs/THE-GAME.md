@@ -73,8 +73,13 @@ frames while the tile is not empty) and drop to the first floor.
   second platform: at the edge it turns round if it is at that height
   (Y = 0x38) and otherwise lets itself fall to it.
 
-How many times per frame they move depends on the stage (0x4850): stage/8 +
-1, at most 4, and one frame in four only once. And how long they wait hidden
+How many of them are in play depends on the stage (0x4850: stage/8 + 2
+actors, monkey included, capped at 4): **just one up to stage 7**, two in
+stages 8 and 9, all three from stage 10. The loop at 0x4860 calls
+`ACTOR_PASO` with the actor number in B, last to first; and one frame in four
+(0xE272) only the monkey moves. Measured in a real game: in stages 1 and 2 the
+monkey took 1003 steps in 1003 frames, the first crab 752, the other two
+none. And how long they wait hidden
 before coming back: (16 − stage) × 16 + 17 frames up to stage 19, one from
 stage 20 (0x6585). Reaching the left edge of the floor they leave through it
 (0x61C2).
@@ -104,8 +109,10 @@ and at zero the life is lost. Coming back to play, if less than 0:30 was left
 it is set to 0:30 (0x6CEF). Clearing the stage counts the clock down into
 points, one second every four frames, and back to 5:00.
 
-Three lives (0x47E1). One more every 20,000 points (0x4974: 0xE052 holds the
-ten-thousands of the next one), sound 0x10. Points: 100 a fruit picked, 500 a
+Three lives (0x47E1). One more on passing 10,000 points and then every
+20,000 (30,000, 50,000...; 0x4974: 0xE052 holds the ten-thousands of the
+next one, starts at 0 and grows by 2), sound 0x10. Measured: the first came
+at 10,260. Points: 100 a fruit picked, 500 a
 crab, 500 the right answer, 500 for delivering it, 10 per second left over.
 The high score lives at 0xE040 and is painted at once.
 

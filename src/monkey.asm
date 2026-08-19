@@ -1221,9 +1221,9 @@ LEVEL_SELECT_ESPERA:		; 0x762F: con la tecla pulsada (carry) pasa a parpadear
 	ret			;47e0
 
 ; ----------------------------------------------------------------------
-; DATOS jugador_nuevo: Los 8 bytes de E050 al empezar: 3 vidas, fase 1, sin
-;   vida extra pendiente, ecuacion nueva (E053 = 1), 0 resueltas, tiempo 05:00
-;   (E055 = 00, E056 = 05), 0 fallos
+; DATOS jugador_nuevo: Los 8 bytes de E050 al empezar: 3 vidas, fase 1, E052 =
+;   0 (la primera vida extra al pasar de 10000), ecuacion nueva (E053 = 1), 0
+;   resueltas, tiempo 05:00 (E055 = 00, E056 = 05), 0 fallos
 ;   0x47e1..0x47e9  (8 bytes)
 DATA_jugador_nuevo:
 	defb 003h,001h,000h,001h,000h,000h,005h,000h	; 47e1  ........
@@ -1265,9 +1265,10 @@ SPRITES_DE_JUEGO:		; Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de 
 ; a E10B (nibble alto: bit4 disparo, bit5 boton 2, bit6 izquierda,
 ; bit7 derecha, en el mismo formato que el guion de la demo). Cada 8
 ; fotogramas repinta las tarjetas. Si un cangrejo pilla al mono
-; (0x69B0), cara de susto y estado 10. Y luego 0x5F5F por actor: el
-; mono una vez y los cangrejos entre 1 y 4 veces segun la fase (mas
-; rapidos cuanto mas alta), y solo una cada cuatro fotogramas.
+; (0x69B0), cara de susto y estado 10. Y luego 0x5F5F por actor, del
+; ultimo al primero: la fase dice CUANTOS juegan (un cangrejo hasta la
+; 7, dos en la 8 y la 9, los tres desde la 10), y un fotograma de cada
+; cuatro solo se mueve el mono. Medido en una partida (2026-08-19).
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 MONO_Y_CANGREJOS:		; El reloj, los mandos a E10B, las tarjetas cada 8 fotogramas, la colision y un paso de cada actor
@@ -1292,10 +1293,10 @@ MONO_COLISION:		; La colision con los cangrejos y, si no, el paso de los actores
 	call CARA_DE_SUSTO		;4844   ; Le han pillado: cara de susto y estado 10 del mono (el mismo que cuando le da una fruta)
 	ld hl,0e10ch		;4847
 	ld (hl),00ah		;484a
-MONO_ACTORES:		; Cuantas veces se mueven los cangrejos esta vez
+MONO_ACTORES:		; Cuantos actores se mueven este fotograma (E272 cuenta los fotogramas)
 	ld hl,0e272h		;484c
 	inc (hl)			;484f
-	ld a,(0e051h)		;4850   ; Cuantas veces por fotograma se mueve cada cangrejo: (fase/8 + 1), como mucho 4; y cada cuatro fotogramas solo una
+	ld a,(0e051h)		;4850   ; CUANTOS actores juegan: A = fase(BCD)/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos); el bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
 	rra			;4853
 	rra			;4854
 	rra			;4855
@@ -1305,17 +1306,17 @@ MONO_ACTORES:		; Cuantas veces se mueven los cangrejos esta vez
 	jr nc,ACTORES_PASO_4		;485b
 	and 003h		;485d
 	inc a			;485f
-ACTORES_PASO:		; B veces cada actor (0x5F5F recorre los cuatro)
+ACTORES_PASO:		; Un paso de los actores A..1 (B baja con el djnz y es el numero de actor de 0x5F5F); con E272 & 3 == 0 (un fotograma de cada cuatro) solo el mono
 	ld b,a			;4860
 	ld a,(hl)			;4861
 	and 003h		;4862
 	jr nz,ACTORES_BUCLE		;4864
 	ld b,001h		;4866
-ACTORES_BUCLE:		; Un paso de los cuatro actores, B veces
+ACTORES_BUCLE:		; Un paso del actor B, y el anterior, hasta el mono (B = 1)
 	call ACTOR_PASO		;4868
 	djnz ACTORES_BUCLE		;486b
 	ret			;486d
-ACTORES_PASO_4:		; Cuatro veces
+ACTORES_PASO_4:		; Los cuatro actores (fase 16 en adelante)
 	ld a,004h		;486e
 	jr ACTORES_PASO		;4870
 VDP_R7:		; Registro 7 = A (color de fondo y borde)
@@ -1523,7 +1524,7 @@ SUMA_PUNTOS_BCD:		; La suma en BCD de las tres parejas
 	jp PINTA_RECORD		;4970
 SUMA_PUNTOS_ALTO:		; Al byte alto para la vida extra
 	inc hl			;4973
-VIDA_EXTRA:		; Al pasar las decenas de millar de E052 (20000, 40000...): una vida mas, se pintan y sonido 0x10
+VIDA_EXTRA:		; Cuando las decenas de millar de los puntos (E045) superan E052: una vida mas, se pintan, sonido 0x10 y E052 += 2. E052 arranca en 0: la primera a los 10000, luego cada 20000 (30000, 50000...). Medido: vida extra con 010260
 	ld a,(0e052h)		;4974
 	cp (hl)			;4977
 	push de			;4978
