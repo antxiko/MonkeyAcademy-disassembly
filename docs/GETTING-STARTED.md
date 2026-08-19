@@ -20,7 +20,7 @@ you in one line.
 make          # trace, generate the listing and check everything
 make verify   # assemble the listing and compare its sha256 with the cartridge
 make sanity   # what reassembly cannot catch
-make test     # the 17 tests on the listing, which do not need the cartridge
+make test     # the 18 tests on the listing, which do not need the cartridge
 make web      # the pictures and these pages
 ```
 
@@ -42,7 +42,7 @@ OK: reproducible byte a byte
 | `src/monkey.entries` | the entry points the trace cannot deduce, each with its justification |
 | `src/monkey.nocode` | the zones the tracer must not read as code |
 | `tools/` | the tracer, the listing generator, the checks and the drawing tools |
-| `tests/` | 17 tests on the listing and the notes |
+| `tests/` | 18 tests on the listing and the notes |
 | `docs/` | this site |
 | `work/` | what `make` produces along the way |
 

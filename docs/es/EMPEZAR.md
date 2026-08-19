@@ -20,7 +20,7 @@ línea.
 make          # traza, genera el listado y lo comprueba todo
 make verify   # ensambla el listado y compara el sha256 con el cartucho
 make sanity   # lo que el reensamblado no puede cazar
-make test     # los 17 tests del listado, que no necesitan el cartucho
+make test     # los 18 tests del listado, que no necesitan el cartucho
 make web      # las imágenes y estas páginas
 ```
 
@@ -42,7 +42,7 @@ OK: reproducible byte a byte
 | `src/monkey.entries` | los puntos de entrada que el trazado no puede deducir, cada uno con su justificación |
 | `src/monkey.nocode` | las zonas que el trazador no debe leer como código |
 | `tools/` | el trazador, el generador del listado, las comprobaciones y las herramientas de dibujo |
-| `tests/` | 17 tests sobre el listado y las notas |
+| `tests/` | 18 tests sobre el listado y las notas |
 | `docs/` | esta web |
 | `work/` | lo que `make` genera por el camino |
 

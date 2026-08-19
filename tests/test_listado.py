@@ -65,6 +65,13 @@ class TestListado(unittest.TestCase):
         self.assertEqual(repetidas, [], "etiquetas repetidas: %s"
                          % " ".join(repetidas))
 
+    def test_ningun_comentario_de_linea_repetido(self):
+        """Dos C en la misma direccion: la segunda pisa a la primera en el
+        listado y la cifra publicada cuenta las dos. Solo puede haber una."""
+        dirs = [l.split()[1].upper() for l in directivas("C")]
+        repes = sorted({d for d in dirs if dirs.count(d) > 1})
+        self.assertEqual(repes, [], "comentarios repetidos en %s" % " ".join(repes))
+
     def test_ninguna_direccion_bautizada_dos_veces(self):
         """Dos L para la misma direccion: una de las dos se pierde en silencio."""
         dirs = [l.split()[1] for l in directivas("L")]
@@ -160,7 +167,7 @@ class TestListado(unittest.TestCase):
             "comentarios": len(directivas("C")),
             "rangos": len(directivas("D")),
         }
-        esperado = {"etiquetas": 498, "comentarios": 215, "rangos": 121}
+        esperado = {"etiquetas": 498, "comentarios": 353, "rangos": 121}
         self.assertEqual(cuentas, esperado,
                          "las cifras del arbol han cambiado: hay que "
                          "actualizar README.md y README.es.md")
@@ -170,7 +177,7 @@ class TestListado(unittest.TestCase):
         for fichero, sep in (("README.md", ","), ("README.es.md", ".")):
             with open(os.path.join(RAIZ, fichero), encoding="utf-8") as f:
                 texto = f.read()
-            for cifra in ("7%s422" % sep, "8%s962" % sep, "498", "215", "121"):
+            for cifra in ("7%s422" % sep, "8%s962" % sep, "498", "353", "121"):
                 self.assertIn(cifra, texto, "%s no publica %s" % (fichero, cifra))
 
 

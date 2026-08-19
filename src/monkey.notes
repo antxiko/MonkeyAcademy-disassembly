@@ -469,22 +469,17 @@ B 0x4EC8 ----------------------------------------------------------------------
 L 0x4EC8 PINTA_TARJETAS    Recorre las tarjetas de E15A (0xFF fin); las que llevan el bit 7 se repintan en su fase de apertura y avanzan un paso
 C 0x4EE2 Bit 7: hay que repintarla
 C 0x4EEF Fuera del estado 10 (montar la fase) suena el 0x0A al moverse
-C 0x4EF7 La cifra (byte siguiente) elige el bloque de 3x2 de 0x5040
 C 0x4F04 Bit 4 a cero: el bloque en blanco de 0x507C
-C 0x4F2B Cuanto asoma: 3 - (bits 0-1) filas de la cifra
 L 0x4F30 TARJETA_CANTO     Debajo de lo pintado (D ya va avanzado), el canto: 0x5082 o, con el bit 4, 0x5086
 L 0x4F4F TARJETA_ASOMA     Las 3 - c filas de abajo del bloque, desde Y; D queda debajo
 L 0x4F59 TARJETA_AVANZA    Un paso mas: cambia el bit 4 (por eso alterna blanco y cifra) y baja o sube c segun el bit 6; al llegar al tope (0 abriendose, 3 cerrandose) se para: fuera los bits 7 y 6, cambia el 4
 C 0x4F60 Con el bit 4 el tope es 0 (abierta del todo); sin el, 3 (metida)
-C 0x4F79 Llego: fuera los bits 7 y 6, cambia el 4 (0x13 metida, 0x40 abierta)
 L 0x4F7D TARJETA_SIGUIENTE La siguiente
 L 0x4F81 TARJETAS_DE_LA_FASE Las 10 posiciones de la fase ((E051-1) & 7 de 0x509E) a E15A, todas metidas y por pintar (0xC3: al pintarlas pasan a 0x13), pintadas, y el mono sin tarjeta
 C 0x4F9F 0xC3: metida (c = 3), con los bits 7 y 6; el primer pintado la deja en 0x13
 L 0x4FAE COGE_TARJETA      El mono coge la tarjeta A: si llevaba otra la deja (bit 7 para repintarla) y apunta la nueva en E1AF
 L 0x4FCC BARAJA_CIFRAS     Las diez cifras en E1CF, empezando por una al azar; 64 barajadas al azar; y a las tarjetas del jugador (E1E4 o E20E) con estado 0x13, cifra a cifra
 C 0x4FCF Empieza por una cifra al azar y sigue en orden 0-9
-C 0x4FE3 64 vueltas: mueve la primera cifra a una posicion al azar (1-9)
-C 0x5011 Diez tarjetas: estado 0x13 (metida) y su cifra
 L 0x502E TARJETAS_DEL_JUGADOR HL = E1E4 para el 1P, E20E (0x2A mas alla) para el 2P
 D 0x5040 0x507C tarjetas_con_cifra Diez bloques de 3x2 tiles, uno por cifra 0-9: la fila de arriba es 61 61 (el borde blanco de la tarjeta) y las dos de abajo la cifra en azul sobre blanco (tiles 0x62-0x7A). 0x508A los apunta
 F 0x5040 6
@@ -569,21 +564,15 @@ C 0x60A2 Los cangrejos y la demo: bit 4 de +0x5B
 C 0x60A6 Con una tarjeta abriendose (E238) no se salta
 L 0x60AC ACTOR_SALTA       Arranca el salto: sonido 4, fase 0; con direccion y sitio (X entre 0x0C y 0xB4), sube por el hueco (estado 4); si no, salto vertical (3)
 C 0x60AF Bit 0 de +0x5E: va cargado con una fruta; el boton la tira (estado 8)
-C 0x60C6 Hacia la derecha hace falta X < 0xB4; hacia la izquierda, X >= 0x0C
 L 0x60CF ACTOR_ESTADO_D    +0x59 = la direccion si la hay, y el estado D
 L 0x60DB ACTOR_SALTA_IZQ   Lo mismo hacia la izquierda
 L 0x60E6 ACTOR_ANDA_SI_HAY Sin disparo: con direccion, a andar (estado 2)
 L 0x60EF ACTOR_CARGADO_TIRA Con la fruta encima no salta: la tira (estado 8 durante 0x10 fotogramas)
 L 0x60F9 RESPUESTA_ENTREGADA Borra la flecha roja (2x2 en la fila 6, columna 23) y esconde a los cangrejos
 L 0x610A ACTOR_ANDA        Estado 2: tres pasos por delante; disparo salta; sin direccion se para; con ella avanza un pixel con la animacion de 0x65C3 (derecha) o 0x65D3 (izquierda) y suena el paso cada 4
-C 0x610A +0x5F = 3: cuantos pasos antes de que el cangrejo se plantee girar
 C 0x6134 Sin direccion: parado (estado 1)
-C 0x613B 0x65C3: los patrones de andar hacia la derecha; 0x65D3 los de la izquierda (E = +1 o -1)
-C 0x614E Cada 4 pixels el sonido del paso (3)
-C 0x615A 0x6924: hay suelo debajo (NC) o no (C)
 C 0x6160 X entre 8 y 0xB8: dentro de la pantalla de juego
 L 0x6168 ACTOR_ANDA_X      X nueva a los dos sprites; el cangrejo del tipo 3, cuando el azar (E140) sale a cero, se pone el bit 4: para el, el disparo
-C 0x616F Solo el tipo 3 (el cangrejo que se para)
 C 0x6176 Solo cuando E140 sale exactamente 0: se pone el bit 4 (saltara en cuanto este parado)
 L 0x618D ACTOR_SIN_SUELO   Sin suelo debajo: el mono y el tipo 1 se caen (estado 6); los tipos 2 y 3 lo piensan (0x6205)
 L 0x6197 ACTOR_CAE         Un pixel mas alla del borde y a caer (estado 6) con el sonido 5
@@ -596,21 +585,13 @@ L 0x6212 CANGREJO_GIRA     Cambia de sentido sin caer (estado 4 = sube por el hu
 L 0x6220 CANGREJO_44       El de la fase 18: da la vuelta si su Y es la de +0x58 (0x38, la segunda plataforma), si no cae
 L 0x6229 ACTOR_ANIMACION   Los dos patrones de la fase de andar (X/4 & 3) de la tabla HL (+8 para los cangrejos)
 L 0x6244 ACTOR_SALTANDO    Estado 3: si el mono lleva la respuesta y toca al profesor (0x6ADB), entregada (E108 = 0x33). Sube y baja con la tabla de 0x6423; en lo alto (paso 11) coge la tarjeta si la hay (0x6A1F); al ultimo paso (23) al estado 6
-C 0x6249 Bit 0 de E270: la respuesta sube sola; E108 = 0x33: entregada; E10E = 0: los sprites normales
 C 0x625C Bit 7 de +0x5A: la bajada; si no, los primeros 8 pasos suben 4 pixels cada uno
 C 0x6261 Al octavo paso, empieza la tabla (bit 7)
 L 0x6269 ACTOR_SALTO_Y     Y nueva a los dos sprites y un paso mas
 L 0x6279 ACTOR_SALTO_TABLA El desplazamiento del paso (+0x5A/2) de 0x6423; el 23 aterriza (estado 6); el 11 (lo alto) mira la tarjeta
-C 0x628E 0x6A1F: hay un canto de tarjeta (tiles 1-2) justo encima; D = fila de tiles, E = columna
-C 0x6293 0x65E7 pasa la posicion a (fila - 7) x 8 y columna x 8; con la segunda mitad del canto, 8 pixels menos
 L 0x62A3 BUSCA_TARJETA     Busca en E15A la tarjeta que cuelga en (D, E) y la coge (0x4FAE): repintar y estado 5 (se hunde con ella)
 L 0x62CB ACTOR_ATERRIZA    Estado 6 (cayendo) con +0x5A = 0xFF
 L 0x62D6 ACTOR_SUBE_HUECO  Estado 4: sube por un hueco de la plataforma de arriba trepando (patrones 0x65E3/0x65E5); si no hay hueco, salto corto y vuelta
-C 0x62DA +0x59: hacia donde
-C 0x62F3 Bit 7 de +0x5A: bajando por la tabla; bit 6: cayendo recto
-C 0x62FD Los seis primeros pasos, el mono sin mando se planta (0x80)
-C 0x6324 Sube 4 pixels y se mueve un pixel hacia el lado, entre 8 y 0xB8
-C 0x634E 0x696B: hay plataforma 0x18 por encima y 6 pixels al lado (C = si)
 L 0x6312 ACTOR_HUECO_PARA  Se queda con el bit 7: baja
 L 0x636B ACTOR_HUECO_CAE   Cae recto (4 pixels, alineado) moviendose un pixel al lado
 L 0x6399 ACTOR_HUECO_BAJA  La bajada por la tabla de 0x6423 moviendose un pixel al lado; en el paso 0x18 deja de bajar y en el 0x12 cae recto
@@ -628,7 +609,6 @@ L 0x64BA ACTOR_SE_DESCUELGA Estado 7: cada 4 fotogramas baja un pixel mientras e
 L 0x64E9 RET_3             `ret` de espera para el VDP
 L 0x64EA ACTOR_TIRA_FRUTA  Estado 8: la fruta que lleva (E260 con 0x0C el mono, 0x04 el cangrejo) sale volando (bit 1) hacia donde mira (bit 5). El mono se queda +0x5D fotogramas con los brazos de tirar (los sprites 18-19 de 0x56BF: 0x60/0x64, o sus espejos 0xE0/0xE4) y vuelve a estar parado (1); el cangrejo con los suyos (20-21: 0x68/0x6C, o 0xE8/0xEC)
 C 0x64EF 0x0C: la lleva el mono; 0x04: un cangrejo
-C 0x6506 La fruta pasa a caer (bit 1), sin dueno (bits 2, 3 y 5 fuera), y con el sentido (bit 5)
 L 0x6534 ACTOR_TIRA_FIN    El mono vuelve a estar parado (estado 1) con sus patrones (0x00/0x0C o 0x80/0x8C) y sin carga
 L 0x654A CANGREJO_TIRA     El cangrejo, con los patrones 0xE8/0xEC (o 0x68/0x6C) mientras cuenta
 L 0x655D CANGREJO_TIRA_FIN Y a estar parado con 0x30/0x3C (o 0xB0/0xBC)
@@ -1227,3 +1207,167 @@ L 0x788E TARJETA_CAE_SUELO En el suelo: soltada
 L 0x78AC TARJETA_SE_SUELTA_YA Cerrada: la suelta
 L 0x7919 SONIDO_UN_CANAL   Un canal, el C (E026)
 L 0x7EAC FRUTAS_ESTADOS    Los ocho estados a (0, 1)
+
+# --- segunda pasada de comentarios de linea: los actores (0x5F5F-0x62D6)
+C 0x5F5F B se recupera al final de cada estado con el pop bc
+C 0x5F73 IX = E0B0 + 8 (B - 1): el primer sprite del actor
+C 0x5FA7 Carry: toca alguna; D = cual, E = 1 quieta / 0 en el aire
+C 0x5FBE HL = el estado de esa fruta en E260
+C 0x5FD2 Un cangrejo que la coge no suma nada
+C 0x5FF6 D x 2: la pareja [estado, contador] de la fruta
+C 0x5FFE 0x80: fruta gastada, ya no la toca nadie
+C 0x6001 Y x 4: sus cuatro bytes de atributo en E0D8 (+2 es el patron)
+C 0x600E Patron 0x70 (el "500") en blanco (0x0F)
+C 0x6020 Estado 9 durante 0x20 fotogramas
+C 0x6050 Los dos sprites fuera de la pantalla
+C 0x6058 +0x5D a cero: le toca aparecer
+C 0x605E Cuenta solo en los fotogramas impares
+C 0x606B Y = 0x10 (encima de la plataforma de arriba), X = 0x60 (el centro)
+C 0x607B Estado 7: se descuelga
+C 0x6081 0x33 en E108: la respuesta esta entregada, el mono ya no juega
+C 0x608B Nibble bajo a cero: es el mono
+C 0x6097 E008 = antes, E009 = ahora: pulsado ahora y no antes
+C 0x609E Bit 4: el disparo
+C 0x60AC Con carga (bit 0 de +0x5E) el disparo tira la fruta
+C 0x60B7 Fase del salto a cero
+C 0x60BB Bits 6-7 de +0x5B: hacia donde mira; sin ninguno, salto vertical (3)
+C 0x60C3 Bit 7 al carry: hacia la derecha
+C 0x60C6 A menos de 0xB4 hay sitio para subir por el hueco (estado 4)
+C 0x60CF La direccion, si la hay, a +0x59
+C 0x60DB Hacia la izquierda: hace falta X >= 0x0C
+C 0x60E6 Sin disparo: con direccion a andar (2), sin ella nada
+C 0x60EF Estado 8 (tirar) durante 0x10 fotogramas
+C 0x60F9 El bloque vacio de 2x2 borra la flecha roja (fila 6, columna 23)
+C 0x610A Tres pasos antes de que un cangrejo se plantee girar
+C 0x611D El disparo recien pulsado salta
+C 0x612A Para un cangrejo el disparo es el bit 4 de +0x5B
+C 0x612F Sin direccion (bits 6-7): a parado (1)
+C 0x613B Hacia la derecha: la tabla de 0x65C3 y E = +1
+C 0x6143 Hacia la izquierda: la de 0x65D3 y E = -1
+C 0x6148 B = Y, C = X; la X nueva
+C 0x614E Cada cuatro pixels suena el paso (3)
+C 0x6157 Los dos patrones de la fase de andar (X / 4 & 3)
+C 0x615A Carry: no hay suelo debajo
+C 0x615F X entre 8 y 0xB8: dentro
+C 0x6168 La X a los dos sprites
+C 0x616F El mono (tipo 0) acaba aqui; de los cangrejos, solo el tipo 3 sigue
+C 0x6179 Solo cuando E140 sale a cero: se pone el bit 4 (saltara)
+C 0x618D Tipos 2 y 3 (y 4) lo piensan; el mono y el tipo 1 caen
+C 0x6197 Un pixel mas alla del borde: 6 hacia la derecha (bit 7), -6 (0xFA) hacia la izquierda
+C 0x61A1 Estado 6 (caer) con el sonido 5
+C 0x61AC El mono no da la vuelta: se queda en el borde
+C 0x61B1 Bits 6-7 al reves: el cangrejo cambia de sentido
+C 0x61BB Deshace el pixel que se habia movido
+C 0x61C7 Y = 0xA8: en el suelo; por encima da la vuelta como en el borde derecho
+C 0x61CC En el suelo se marcha por la izquierda: suelta la fruta y a esperar escondido
+C 0x61D8 Bit 0 de +0x5E: va cargado
+C 0x61E2 Mira 8 pixels por encima de su Y (donde va la fruta que lleva)
+C 0x61F8 La fruta a estado 0 y su sprite fuera (Y = 0xE1)
+C 0x6205 Tipo 4: el de la fase 18
+C 0x620C El bit 0 del azar decide: cae o gira
+C 0x6212 Girar sin caer es el estado 4 (subir por el hueco) hacia el otro lado
+C 0x6220 +0x58 = 0x38: la Y de la segunda plataforma; a esa altura gira, si no cae
+C 0x6229 (X & 0x0C) / 2: dos bytes por fase, cuatro fases
+C 0x6235 Los cangrejos, ocho bytes mas alla (su tabla va detras)
+C 0x6244 NC: el mono lleva la tarjeta y toca al profesor
+C 0x6249 Bit 0 de E270: la tarjeta sube sola; E108 = 0x33; y los sprites normales
+C 0x6259 Bit 7 de +0x5A: ya va por la tabla
+C 0x625F Los pasos pares hasta el 8: cuatro pixels arriba cada uno
+C 0x6269 La Y nueva a los dos sprites
+C 0x6274 Del octavo paso en adelante, la tabla (bit 7)
+C 0x6279 Indice = +0x5A / 2 (un paso de tabla cada dos fotogramas)
+C 0x6285 El paso 23 es el suelo; el 11 lo alto
+C 0x628E Carry: no hay tarjeta encima
+C 0x6293 D = fila x 8 (menos 7 filas), E = columna x 8; con la segunda mitad del canto, 8 pixels menos
+C 0x629D H cuenta las tarjetas; IY recorre E15A desde el principio
+C 0x62AA 0xFF: fin de la lista, no era ninguna
+C 0x62AF Misma Y y misma X que la tarjeta H
+C 0x62BA La coge (E1AF = H, y suelta la anterior)
+C 0x62C4 Bit 7: repintarla (empieza a bajar)
+C 0x62C6 Estado 5: bajar con ella
+
+# --- segunda pasada: actores, estados 4-10 (0x62CB-0x65C3)
+C 0x62CB Estado 6 (cayendo) con la fase a 0xFF
+C 0x62D6 Tres pasos antes de girar, como al andar
+C 0x62DA Bit 7 de +0x59 al carry: hacia la derecha (0x65E3); si no, hacia la izquierda (0x65E5)
+C 0x62E6 Solo en el primer paso (bits 1-3 a cero) se ponen los patrones de trepar
+C 0x62F3 Bit 7 de +0x5A: bajando por la tabla; bit 6: cayendo recto
+C 0x62FD En los seis primeros pasos, el mono sin mando (bits 4-7 de +0x5B a cero) se planta
+C 0x6312 0x80: se acabo la subida, a bajar por la tabla
+C 0x6318 Un paso mas; en el 15 se planta
+C 0x6324 Cuatro pixels arriba
+C 0x632F Y un pixel al lado segun +0x59 (bit 7: derecha)
+C 0x633C La X entre 8 y 0xB8
+C 0x634E La plataforma que busca: 0x18 por encima, y 6 pixels hacia donde va (0xFA = -6)
+C 0x6363 Carry: la hay, y se sube (0x63D9); si no, se planta
+C 0x636B Cuatro pixels abajo, alineado a cuatro
+C 0x6378 Un pixel al lado, entre 8 y 0xB8
+C 0x6399 Un pixel al lado por fotograma
+C 0x63AC El desplazamiento de la tabla del salto (indice en los bits 0-5)
+C 0x63C4 En el paso 0x18 deja de bajar por la tabla (bit 7 fuera)
+C 0x63D1 Del paso 0x12 en adelante cae recto (bit 6)
+C 0x63D9 D = 1 (parado) si hay suelo
+C 0x63E3 Sin suelo: fuera de la pantalla se recoloca y cae (6); si no, sigue
+C 0x63FF Con sentido (bits 6-7 de +0x59) los patrones de andar; sin el, se quedan
+C 0x641A Fase a cero y el estado D
+C 0x643B Cada ocho fotogramas
+C 0x6442 Cuatro pixels abajo
+C 0x6450 Con suelo debajo, parado (1)
+C 0x645B Cuatro pixels abajo, alineado a cuatro
+C 0x646B Sin suelo sigue cayendo
+C 0x6472 Con suelo: parado (1)
+C 0x647E El cangrejo sale hacia la derecha (bit 7)...
+C 0x6484 ...o hacia la izquierda si el azar sale impar (bits 6-7 al reves)
+C 0x6496 Cada tres pasos de caida
+C 0x649B En el suelo (Y = 0xA8) no mira
+C 0x64A0 Mira 0x18 pixels por debajo de su Y
+C 0x64B0 La fruta que hay ahi pasa a caer (bit 0)
+C 0x64BA Cada cuatro fotogramas
+C 0x64C5 Un pixel abajo
+C 0x64D3 El tile bajo el sprite: distinto de cero es la plataforma; cero, ya la ha cruzado y cae (6)
+C 0x64EA Ocho frutas; busca la que lleva: 0x0C el mono, 0x04 un cangrejo
+C 0x6506 Bit 1: vuela; fuera los bits 2, 3 y 5; el bit 5 dice hacia donde (bit 7 de +0x59, derecha)
+C 0x6514 El cangrejo va por CANGREJO_TIRA
+C 0x651B Mientras cuenta +0x5D, la pose de tirar: 0x60/0x64 hacia la derecha, 0xE0/0xE4 hacia la izquierda
+C 0x6534 Se acabo: los patrones de parado (0x00/0x0C o 0x80/0x8C)
+C 0x6540 Parado (1) y sin carga
+C 0x654A El cangrejo: 0xE8/0xEC hacia la derecha, 0x68/0x6C hacia la izquierda
+C 0x655D Y de vuelta a los suyos, 0x30/0x3C o 0xB0/0xBC
+C 0x656B B recuperado antes: este estado no pasa por ACTOR_DESPACHA al volver
+C 0x6570 El puntero al sprite del "500" (guardado en +0x59/+0x5A, apuntaba al patron): dos menos es su Y
+C 0x657A Escondido (0) a esperar lo que diga la fase
+C 0x6585 Fases 1-19: (16 - fase) x 16 + 17; desde la 20 (0x20 en BCD), 1
+C 0x659F El sonido de perder la vida
+C 0x65AE Bit 7 de E109 (hacia donde miraba el mono): 0x58/0x5C o sus espejos 0xD8/0xDC
+
+# --- segunda pasada: las tarjetas (0x4EC8-0x5040)
+C 0x4ECA B x 2: la pareja (Y, X) de la tarjeta en E15A
+C 0x4ED4 0xFF cierra la lista de la fase
+C 0x4ED8 HL = las tarjetas del jugador (E1E4 o E20E); B x 2 es la suya
+C 0x4EE7 C = el estado de la tarjeta
+C 0x4EF7 El byte siguiente es su cifra: x 2 en la tabla de punteros 0x508A
+C 0x4F03 HL = el bloque de 3x2 de la cifra
+C 0x4F0B Tres pushes: BC, el bloque dos veces (uno para el bloque, otro para el canto)
+C 0x4F16 D = Y, E = X de la tarjeta
+C 0x4F22 C = cuanto ha bajado (0-3): HL = el bloque + 2C, o sea sin sus C primeras filas
+C 0x4F2B A = 3 - C filas que asoman; ninguna si esta metida
+C 0x4F30 De nuevo el estado, por el bit 4: canto normal (0x5082) o abierto (0x5086)
+C 0x4F42 8C + Y en A, que nadie usa: PINTA_BLOQUE va con el D que trae, ya avanzado
+C 0x4F47 2x2 en (D, E)
+C 0x4F4F B = filas, C = 2 columnas, en (Y, X); PINTA_BLOQUE deja D debajo
+C 0x4F59 HL = el estado de la tarjeta (el push de 0x4F0D)
+C 0x4F5B A = cuanto ha bajado; el tope es 0 con el bit 4 y 3 sin el
+C 0x4F69 Cambia el bit 4 (por eso alterna blanco y cifra); si queda a 1 sube uno, y si el bit 6 esta a cero baja uno: neto -1 abriendose, +1 cerrandose
+C 0x4F79 En el tope: fuera bits 7 y 6, cambia el 4: 0x13 metida, 0x40 abierta
+C 0x4F81 (Fase - 1) & 7: la lista de la fase, 21 bytes a E15A
+C 0x4F9A Las diez del jugador: estado 0xC3 (por pintar, boca abajo, metida) sin tocar la cifra
+C 0x4FA5 Se pintan (y pasan a 0x13)
+C 0x4FA8 El mono no lleva ninguna
+C 0x4FAE D = la tarjeta nueva; si E1AF ya tenia una, esa se marca para repintar (se cierra)
+C 0x4FCC La primera cifra al azar (nibble bajo, 0-9)
+C 0x4FD9 Y las diez seguidas en orden, dando la vuelta en el 9
+C 0x4FE3 64 barajadas
+C 0x4FEC Suma de los dos nibbles del azar en BCD; el nibble bajo, y 9 si sale 0: la posicion (1-9)
+C 0x4FFF Mueve la primera cifra a esa posicion: las de en medio suben una
+C 0x5011 Las diez tarjetas del jugador: estado 0x13 (metida) y su cifra detras
+C 0x502E Bit 7 de E002 al carry: el 2P tiene las suyas 0x2A mas alla (E20E)

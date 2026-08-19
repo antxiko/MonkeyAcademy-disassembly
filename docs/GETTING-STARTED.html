@@ -91,14 +91,14 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <pre><code>make          # trace, generate the listing and check everything
 make verify   # assemble the listing and compare its sha256 with the cartridge
 make sanity   # what reassembly cannot catch
-make test     # the 17 tests on the listing, which do not need the cartridge
+make test     # the 18 tests on the listing, which do not need the cartridge
 make web      # the pictures and these pages</code></pre>
 <p><code>make</code> chains the first four. If all goes well, the line that matters is this one:</p>
 <pre><code>  ensamblado : 16384 bytes  fdf62cfa...20b16b01
   original   : 16384 bytes  fdf62cfa...20b16b01
 OK: reproducible byte a byte</code></pre>
 <h2 id="what-is-in-each-folder">What is in each folder</h2>
-<table><tr><th></th><th></th></tr><tr><td><code>src/monkey.asm</code></td><td>the commented listing, generated; never edited by hand</td></tr><tr><td><code>src/monkey.notes</code></td><td>the annotations: labels, comments, headers and data ranges, anchored to addresses</td></tr><tr><td><code>src/monkey.entries</code></td><td>the entry points the trace cannot deduce, each with its justification</td></tr><tr><td><code>src/monkey.nocode</code></td><td>the zones the tracer must not read as code</td></tr><tr><td><code>tools/</code></td><td>the tracer, the listing generator, the checks and the drawing tools</td></tr><tr><td><code>tests/</code></td><td>17 tests on the listing and the notes</td></tr><tr><td><code>docs/</code></td><td>this site</td></tr><tr><td><code>work/</code></td><td>what <code>make</code> produces along the way</td></tr></table>
+<table><tr><th></th><th></th></tr><tr><td><code>src/monkey.asm</code></td><td>the commented listing, generated; never edited by hand</td></tr><tr><td><code>src/monkey.notes</code></td><td>the annotations: labels, comments, headers and data ranges, anchored to addresses</td></tr><tr><td><code>src/monkey.entries</code></td><td>the entry points the trace cannot deduce, each with its justification</td></tr><tr><td><code>src/monkey.nocode</code></td><td>the zones the tracer must not read as code</td></tr><tr><td><code>tools/</code></td><td>the tracer, the listing generator, the checks and the drawing tools</td></tr><tr><td><code>tests/</code></td><td>18 tests on the listing and the notes</td></tr><tr><td><code>docs/</code></td><td>this site</td></tr><tr><td><code>work/</code></td><td>what <code>make</code> produces along the way</td></tr></table>
 <h2 id="how-to-read-the-listing">How to read the listing</h2>
 <p>Every routine has an uppercase name and a comment saying what it does and what it takes. Data blocks are labelled <code>DATA_&lt;use&gt;</code>, with the width of their structure, and each has an explanation of what it is and how that is known. Addresses are the real ones of the cartridge in page 1: 0x4000-0x7FFF.</p>
 <p>To change anything, edit <code>src/monkey.notes</code> and run <code>make</code> again: the listing is regenerated and the checks say whether it still holds.</p>

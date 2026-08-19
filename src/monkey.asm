@@ -2048,15 +2048,15 @@ DATA_dibujo_del_titulo:
 PINTA_TARJETAS:		; Recorre las tarjetas de E15A (0xFF fin); las que llevan el bit 7 se repintan en su fase de apertura y avanzan un paso
 	ld b,000h		;4ec8
 PINTA_TARJETA:		; La tarjeta B
-	ld a,b			;4eca
+	ld a,b			;4eca   ; B x 2: la pareja (Y, X) de la tarjeta en E15A
 	sla a		;4ecb
 	ld hl,0e15ah		;4ecd
 	call HL_MAS_A		;4ed0
 	ld a,(hl)			;4ed3
-	cp 0ffh		;4ed4
+	cp 0ffh		;4ed4   ; 0xFF cierra la lista de la fase
 	ret z			;4ed6
 	push bc			;4ed7
-	call TARJETAS_DEL_JUGADOR		;4ed8
+	call TARJETAS_DEL_JUGADOR		;4ed8   ; HL = las tarjetas del jugador (E1E4 o E20E); B x 2 es la suya
 	ld a,b			;4edb
 	add a,a			;4edc
 	call HL_MAS_A		;4edd
@@ -2064,7 +2064,7 @@ PINTA_TARJETA:		; La tarjeta B
 	pop bc			;4ee1
 	bit 7,a		;4ee2   ; Bit 7: hay que repintarla
 	jp z,TARJETA_SIGUIENTE		;4ee4
-	ld c,a			;4ee7
+	ld c,a			;4ee7   ; C = el estado de la tarjeta
 	ld a,(0e000h)		;4ee8
 	cp 00ah		;4eeb
 	jr z,PINTA_TARJETA_BLOQUE		;4eed
@@ -2074,26 +2074,26 @@ PINTA_TARJETA_BLOQUE:		; Elige el bloque: cifra o cerrada
 	ld a,c			;4ef4
 	push hl			;4ef5
 	inc hl			;4ef6
-	ld a,(hl)			;4ef7   ; La cifra (byte siguiente) elige el bloque de 3x2 de 0x5040
+	ld a,(hl)			;4ef7   ; El byte siguiente es su cifra: x 2 en la tabla de punteros 0x508A
 	sla a		;4ef8
 	ld hl,0508ah		;4efa
 	call HL_MAS_A		;4efd
 	ld e,(hl)			;4f00
 	inc hl			;4f01
 	ld d,(hl)			;4f02
-	ex de,hl			;4f03
+	ex de,hl			;4f03   ; HL = el bloque de 3x2 de la cifra
 	bit 4,c		;4f04   ; Bit 4 a cero: el bloque en blanco de 0x507C
 	jr nz,PINTA_TARJETA_POS		;4f06
 	ld hl,0507ch		;4f08
 PINTA_TARJETA_POS:		; Su posicion (Y, X) y su estado
-	push bc			;4f0b
+	push bc			;4f0b   ; Tres pushes: BC, el bloque dos veces (uno para el bloque, otro para el canto)
 	push hl			;4f0c
 	push hl			;4f0d
 	ld a,b			;4f0e
 	add a,a			;4f0f
 	ld hl,0e15ah		;4f10
 	call HL_MAS_A		;4f13
-	ld d,(hl)			;4f16
+	ld d,(hl)			;4f16   ; D = Y, E = X de la tarjeta
 	inc hl			;4f17
 	ld e,(hl)			;4f18
 	pop hl			;4f19
@@ -2101,17 +2101,17 @@ PINTA_TARJETA_POS:		; Su posicion (Y, X) y su estado
 	ld a,b			;4f1d
 	add a,a			;4f1e
 	call HL_MAS_A		;4f1f
-	ld a,(hl)			;4f22
+	ld a,(hl)			;4f22   ; C = cuanto ha bajado (0-3): HL = el bloque + 2C, o sea sin sus C primeras filas
 	and 00fh		;4f23
 	ld c,a			;4f25
 	add a,a			;4f26
 	pop hl			;4f27
 	call HL_MAS_A		;4f28
-	ld a,003h		;4f2b   ; Cuanto asoma: 3 - (bits 0-1) filas de la cifra
+	ld a,003h		;4f2b   ; A = 3 - C filas que asoman; ninguna si esta metida
 	sub c			;4f2d
 	jr nz,TARJETA_ASOMA		;4f2e
 TARJETA_CANTO:		; Debajo de lo pintado (D ya va avanzado), el canto: 0x5082 o, con el bit 4, 0x5086
-	ld a,b			;4f30
+	ld a,b			;4f30   ; De nuevo el estado, por el bit 4: canto normal (0x5082) o abierto (0x5086)
 	add a,a			;4f31
 	call TARJETAS_DEL_JUGADOR		;4f32
 	call HL_MAS_A		;4f35
@@ -2120,25 +2120,25 @@ TARJETA_CANTO:		; Debajo de lo pintado (D ya va avanzado), el canto: 0x5082 o, c
 	jr z,TARJETA_CANTO_PINTA		;4f3d
 	ld hl,05086h		;4f3f
 TARJETA_CANTO_PINTA:		; El bloque de 2x2 en (D, E); el 8c + D de A no se usa
-	ld a,c			;4f42
+	ld a,c			;4f42   ; 8C + Y en A, que nadie usa: PINTA_BLOQUE va con el D que trae, ya avanzado
 	add a,a			;4f43
 	add a,a			;4f44
 	add a,a			;4f45
 	add a,d			;4f46
-	ld bc,00202h		;4f47
+	ld bc,00202h		;4f47   ; 2x2 en (D, E)
 	call PINTA_BLOQUE		;4f4a
 	jr TARJETA_AVANZA		;4f4d
 TARJETA_ASOMA:		; Las 3 - c filas de abajo del bloque, desde Y; D queda debajo
-	push bc			;4f4f
+	push bc			;4f4f   ; B = filas, C = 2 columnas, en (Y, X); PINTA_BLOQUE deja D debajo
 	ld b,a			;4f50
 	ld c,002h		;4f51
 	call PINTA_BLOQUE		;4f53
 	pop bc			;4f56
 	jr TARJETA_CANTO		;4f57
 TARJETA_AVANZA:		; Un paso mas: cambia el bit 4 (por eso alterna blanco y cifra) y baja o sube c segun el bit 6; al llegar al tope (0 abriendose, 3 cerrandose) se para: fuera los bits 7 y 6, cambia el 4
-	pop bc			;4f59
+	pop bc			;4f59   ; HL = el estado de la tarjeta (el push de 0x4F0D)
 	pop hl			;4f5a
-	ld a,(hl)			;4f5b
+	ld a,(hl)			;4f5b   ; A = cuanto ha bajado; el tope es 0 con el bit 4 y 3 sin el
 	and 00fh		;4f5c
 	bit 4,(hl)		;4f5e
 	ld d,000h		;4f60   ; Con el bit 4 el tope es 0 (abierta del todo); sin el, 3 (metida)
@@ -2147,7 +2147,7 @@ TARJETA_AVANZA:		; Un paso mas: cambia el bit 4 (por eso alterna blanco y cifra)
 TARJETA_AVANZA_MIRA:		; Si ya esta en el tope
 	cp d			;4f66
 	jr z,TARJETA_AVANZA_TOPE		;4f67
-	ld a,(hl)			;4f69
+	ld a,(hl)			;4f69   ; Cambia el bit 4 (por eso alterna blanco y cifra); si queda a 1 sube uno, y si el bit 6 esta a cero baja uno: neto -1 abriendose, +1 cerrandose
 	xor 010h		;4f6a
 	bit 4,a		;4f6c
 	jr z,TARJETA_AVANZA_PASO		;4f6e
@@ -2160,14 +2160,14 @@ TARJETA_AVANZA_GUARDA:		; El estado nuevo
 	ld (hl),a			;4f76
 	jr TARJETA_SIGUIENTE		;4f77
 TARJETA_AVANZA_TOPE:		; Llego al tope: bits 7 y 6 fuera, bit 4 cambia
-	ld a,(hl)			;4f79   ; Llego: fuera los bits 7 y 6, cambia el 4 (0x13 metida, 0x40 abierta)
+	ld a,(hl)			;4f79   ; En el tope: fuera bits 7 y 6, cambia el 4: 0x13 metida, 0x40 abierta
 	xor 0d0h		;4f7a
 	ld (hl),a			;4f7c
 TARJETA_SIGUIENTE:		; La siguiente
 	inc b			;4f7d
 	jp PINTA_TARJETA		;4f7e
 TARJETAS_DE_LA_FASE:		; Las 10 posiciones de la fase ((E051-1) & 7 de 0x509E) a E15A, todas metidas y por pintar (0xC3: al pintarlas pasan a 0x13), pintadas, y el mono sin tarjeta
-	ld a,(0e051h)		;4f81
+	ld a,(0e051h)		;4f81   ; (Fase - 1) & 7: la lista de la fase, 21 bytes a E15A
 	dec a			;4f84
 	and 007h		;4f85
 	add a,a			;4f87
@@ -2180,19 +2180,19 @@ TARJETAS_DE_LA_FASE:		; Las 10 posiciones de la fase ((E051-1) & 7 de 0x509E) a 
 	ld de,0e15ah		;4f92
 	ld bc,00015h		;4f95
 	ldir		;4f98
-	call TARJETAS_DEL_JUGADOR		;4f9a
+	call TARJETAS_DEL_JUGADOR		;4f9a   ; Las diez del jugador: estado 0xC3 (por pintar, boca abajo, metida) sin tocar la cifra
 	ld b,00ah		;4f9d
 TARJETAS_CERRADAS_BUCLE:		; Las diez a 0xC3
 	ld (hl),0c3h		;4f9f   ; 0xC3: metida (c = 3), con los bits 7 y 6; el primer pintado la deja en 0x13
 	inc hl			;4fa1
 	inc hl			;4fa2
 	djnz TARJETAS_CERRADAS_BUCLE		;4fa3
-	call PINTA_TARJETAS		;4fa5
-	ld a,0ffh		;4fa8
+	call PINTA_TARJETAS		;4fa5   ; Se pintan (y pasan a 0x13)
+	ld a,0ffh		;4fa8   ; El mono no lleva ninguna
 	ld (0e1afh),a		;4faa
 	ret			;4fad
 COGE_TARJETA:		; El mono coge la tarjeta A: si llevaba otra la deja (bit 7 para repintarla) y apunta la nueva en E1AF
-	push af			;4fae
+	push af			;4fae   ; D = la tarjeta nueva; si E1AF ya tenia una, esa se marca para repintar (se cierra)
 	ld d,a			;4faf
 	ld hl,0e1afh		;4fb0
 	ld a,0ffh		;4fb3
@@ -2213,13 +2213,13 @@ COGE_TARJETA_PRIMERA:		; Sin tarjeta anterior: solo apunta la nueva
 	pop af			;4fca
 	ret			;4fcb
 BARAJA_CIFRAS:		; Las diez cifras en E1CF, empezando por una al azar; 64 barajadas al azar; y a las tarjetas del jugador (E1E4 o E20E) con estado 0x13, cifra a cifra
-	call AZAR		;4fcc
+	call AZAR		;4fcc   ; La primera cifra al azar (nibble bajo, 0-9)
 	ld a,(0e140h)		;4fcf   ; Empieza por una cifra al azar y sigue en orden 0-9
 	and 00fh		;4fd2
 	ld hl,0e1cfh		;4fd4
 	ld b,00ah		;4fd7
 BARAJA_ORDEN:		; Las diez cifras en orden desde la primera
-	ld (hl),a			;4fd9
+	ld (hl),a			;4fd9   ; Y las diez seguidas en orden, dando la vuelta en el 9
 	inc hl			;4fda
 	inc a			;4fdb
 	cp 00ah		;4fdc
@@ -2227,12 +2227,12 @@ BARAJA_ORDEN:		; Las diez cifras en orden desde la primera
 	xor a			;4fe0
 BARAJA_ORDEN_SIGUE:		; La siguiente
 	djnz BARAJA_ORDEN		;4fe1
-	ld b,040h		;4fe3   ; 64 vueltas: mueve la primera cifra a una posicion al azar (1-9)
+	ld b,040h		;4fe3   ; 64 barajadas
 BARAJA_VUELTA:		; Una barajada: la primera cifra a una posicion al azar
 	push bc			;4fe5
 	call AZAR		;4fe6
 	ld a,(0e140h)		;4fe9
-	ld c,a			;4fec
+	ld c,a			;4fec   ; Suma de los dos nibbles del azar en BCD; el nibble bajo, y 9 si sale 0: la posicion (1-9)
 	and 00fh		;4fed
 	srl c		;4fef
 	srl c		;4ff1
@@ -2244,7 +2244,7 @@ BARAJA_VUELTA:		; Una barajada: la primera cifra a una posicion al azar
 	jr nz,BARAJA_MUEVE		;4ffb
 	ld a,009h		;4ffd
 BARAJA_MUEVE:		; La mueve
-	ld b,000h		;4fff
+	ld b,000h		;4fff   ; Mueve la primera cifra a esa posicion: las de en medio suben una
 	ld c,a			;5001
 	ld hl,0e1cfh		;5002
 	ld a,(hl)			;5005
@@ -2257,7 +2257,7 @@ BARAJA_MUEVE:		; La mueve
 	ld (de),a			;500d
 	pop bc			;500e
 	djnz BARAJA_VUELTA		;500f
-	call TARJETAS_DEL_JUGADOR		;5011   ; Diez tarjetas: estado 0x13 (metida) y su cifra
+	call TARJETAS_DEL_JUGADOR		;5011   ; Las diez tarjetas del jugador: estado 0x13 (metida) y su cifra detras
 	push hl			;5014
 	push hl			;5015
 	pop de			;5016
@@ -2278,7 +2278,7 @@ BARAJA_A_TARJETAS:		; Las diez cifras a las tarjetas del jugador
 	djnz BARAJA_A_TARJETAS		;502b
 	ret			;502d
 TARJETAS_DEL_JUGADOR:		; HL = E1E4 para el 1P, E20E (0x2A mas alla) para el 2P
-	push af			;502e
+	push af			;502e   ; Bit 7 de E002 al carry: el 2P tiene las suyas 0x2A mas alla (E20E)
 	ld a,(0e002h)		;502f
 	ld hl,0e1e4h		;5032
 	rl a		;5035
@@ -2659,7 +2659,7 @@ DATA_tiles_de_la_ecuacion:
 ; ######################################################################
 ; ----------------------------------------------------------------------
 ACTOR_PASO:		; Un paso del actor B (1 el mono, 2-4 los cangrejos)
-	push bc			;5f5f
+	push bc			;5f5f   ; B se recupera al final de cada estado con el pop bc
 	ld a,(0e10ch)		;5f60   ; Con el mono hundiendose (estado 5) no se puede responder
 	cp 005h		;5f63
 	call nz,RESPONDE		;5f65
@@ -2670,7 +2670,7 @@ ACTOR_PASO:		; Un paso del actor B (1 el mono, 2-4 los cangrejos)
 	add a,a			;5f6c
 	ld hl,0e0b0h		;5f6d
 	call HL_MAS_A		;5f70
-	push hl			;5f73
+	push hl			;5f73   ; IX = E0B0 + 8 (B - 1): el primer sprite del actor
 	pop ix		;5f74
 	ld a,(0e273h)		;5f76   ; E10E: el juego de sprites que pide el mono; E273 el que esta cargado
 	ld d,a			;5f79
@@ -2702,7 +2702,7 @@ CARGA_SPRITES_MONO:		; Los dos bloques de 0xC0 del juego E10E (tabla 0x6044) a 0
 	call COPIA_A_VRAM		;5fa3
 	ei			;5fa6
 ACTOR_FRUTAS:		; Si el actor toca una fruta (0x6A4F): E = 1 quieta (colgada o en el suelo), 0 en el aire (cae o vuela); D su indice
-	call ACTOR_TOCA_FRUTA		;5fa7
+	call ACTOR_TOCA_FRUTA		;5fa7   ; Carry: toca alguna; D = cual, E = 1 quieta / 0 en el aire
 	jp nc,ACTOR_DESPACHA		;5faa
 	ld a,e			;5fad   ; E = 0: la fruta va por el aire
 	or a			;5fae
@@ -2713,7 +2713,7 @@ ACTOR_FRUTAS:		; Si el actor toca una fruta (0x6A4F): E = 1 quieta (colgada o en
 	ld (ix+05eh),e		;5fb9   ; +0x5E = 1: el mono va cargado con ella
 	ld a,d			;5fbc
 	add a,a			;5fbd
-	ld hl,0e260h		;5fbe
+	ld hl,0e260h		;5fbe   ; HL = el estado de esa fruta en E260
 	call HL_MAS_A		;5fc1
 	ld d,00ch		;5fc4   ; 0x0C si es el mono (bits 2 y 3: la lleva en la cabeza), 0x44 si es un cangrejo (bit 6: la ha tirado el)
 	ld a,(ix+05bh)		;5fc6
@@ -2724,7 +2724,7 @@ ACTOR_FRUTA_MARCA:		; La fruta pasa a llevarla el actor
 	ld a,(hl)			;5fcf
 	or d			;5fd0
 	ld (hl),a			;5fd1
-	ld a,(ix+05bh)		;5fd2
+	ld a,(ix+05bh)		;5fd2   ; Un cangrejo que la coge no suma nada
 	and 00fh		;5fd5
 	jr nz,ACTOR_DESPACHA		;5fd7
 	ld a,007h		;5fd9   ; El mono: sonido 7 y 100 puntos
@@ -2741,18 +2741,18 @@ ACTOR_FRUTA_LE_DA:		; Una fruta en el aire le da: el mono pierde la vida (estado
 	jr ACTOR_DESPACHA		;5ff3
 CANGREJO_MUERE_POR_FRUTA:		; La fruta se da por gastada (0x80), su sprite pasa a ser el "500" blanco, sonido 9, 500 puntos, y el cangrejo al estado 9 durante 0x20 fotogramas
 	ld a,d			;5ff5
-	add a,a			;5ff6
+	add a,a			;5ff6   ; D x 2: la pareja [estado, contador] de la fruta
 	push af			;5ff7
 	ld hl,0e260h		;5ff8
 	call HL_MAS_A		;5ffb
-	ld (hl),080h		;5ffe
+	ld (hl),080h		;5ffe   ; 0x80: fruta gastada, ya no la toca nadie
 	pop af			;6000
-	add a,a			;6001
+	add a,a			;6001   ; Y x 4: sus cuatro bytes de atributo en E0D8 (+2 es el patron)
 	ld hl,0e0dah		;6002
 	call HL_MAS_A		;6005
 	ld (ix+059h),h		;6008   ; +0x59/+0x5A guardan el puntero al sprite de la fruta, para esconderlo al acabar
 	ld (ix+05ah),l		;600b
-	ld (hl),070h		;600e
+	ld (hl),070h		;600e   ; Patron 0x70 (el "500") en blanco (0x0F)
 	inc hl			;6010
 	ld (hl),00fh		;6011
 	ld a,009h		;6013
@@ -2760,7 +2760,7 @@ CANGREJO_MUERE_POR_FRUTA:		; La fruta se da por gastada (0x80), su sprite pasa a
 	ld de,00500h		;6018
 	ld c,000h		;601b
 	call SUMA_PUNTOS		;601d
-	ld (ix+05ch),009h		;6020
+	ld (ix+05ch),009h		;6020   ; Estado 9 durante 0x20 fotogramas
 	ld (ix+05dh),020h		;6024
 ACTOR_DESPACHA:		; El estado del actor (+0x5C) por la tabla de 0x602E
 	ld a,(ix+05ch)		;6028
@@ -2799,12 +2799,12 @@ DATA_juegos_de_sprites_del_mono:
 
 
 ACTOR_ESCONDIDO:		; Estado 0: fuera de la pantalla mientras +0x5D cuenta (uno cada dos fotogramas); al llegar a cero aparece arriba, en el centro (Y = 0x10, X = 0x60) y se descuelga (estado 7)
-	ld (ix+000h),0e1h		;6050
+	ld (ix+000h),0e1h		;6050   ; Los dos sprites fuera de la pantalla
 	ld (ix+004h),0e1h		;6054
-	ld a,(ix+05dh)		;6058
+	ld a,(ix+05dh)		;6058   ; +0x5D a cero: le toca aparecer
 	or a			;605b
 	jr z,ACTOR_APARECE		;605c
-	ld a,(0e003h)		;605e
+	ld a,(0e003h)		;605e   ; Cuenta solo en los fotogramas impares
 	rra			;6061
 	jr c,ACTOR_ESCONDIDO_CUENTA		;6062
 	pop bc			;6064
@@ -2814,30 +2814,30 @@ ACTOR_ESCONDIDO_CUENTA:		; Uno menos
 	pop bc			;6069
 	ret			;606a
 ACTOR_APARECE:		; Aparece arriba en el centro y se descuelga
-	ld (ix+000h),010h		;606b
+	ld (ix+000h),010h		;606b   ; Y = 0x10 (encima de la plataforma de arriba), X = 0x60 (el centro)
 	ld (ix+001h),060h		;606f
 	ld (ix+004h),010h		;6073
 	ld (ix+005h),060h		;6077
-	ld (ix+05ch),007h		;607b
+	ld (ix+05ch),007h		;607b   ; Estado 7: se descuelga
 	pop bc			;607f
 	ret			;6080
 ACTOR_PARADO:		; Estado 1: si el mono ya ha entregado la respuesta (E108 = 0x33), borra la flecha y esconde a los cangrejos; si no, disparo = salto, y con direccion, a andar
-	ld a,(ix+058h)		;6081
+	ld a,(ix+058h)		;6081   ; 0x33 en E108: la respuesta esta entregada, el mono ya no juega
 	cp 033h		;6084
 	jr z,RESPUESTA_ENTREGADA		;6086
 	ld d,(ix+05bh)		;6088   ; Bits 6-7 de +0x5B: hacia donde va
-	ld a,d			;608b
+	ld a,d			;608b   ; Nibble bajo a cero: es el mono
 	and 00fh		;608c
 	jr nz,ACTOR_PARADO_BIT4		;608e
 	ld a,(0e002h)		;6090   ; El mono, con partida en marcha: disparo recien pulsado (E008/E009)
 	bit 6,a		;6093
 	jr z,ACTOR_PARADO_BIT4		;6095
-	ld hl,0e008h		;6097
+	ld hl,0e008h		;6097   ; E008 = antes, E009 = ahora: pulsado ahora y no antes
 	ld a,(hl)			;609a
 	inc hl			;609b
 	and (hl)			;609c
 	xor (hl)			;609d
-	and 010h		;609e
+	and 010h		;609e   ; Bit 4: el disparo
 	jr z,ACTOR_ANDA_SI_HAY		;60a0
 ACTOR_PARADO_BIT4:		; Los cangrejos y la demo: el bit 4 es el disparo
 	bit 4,d		;60a2   ; Los cangrejos y la demo: bit 4 de +0x5B
@@ -2846,25 +2846,25 @@ ACTOR_PARADO_BIT4:		; Los cangrejos y la demo: el bit 4 es el disparo
 	or a			;60a9
 	jr nz,ACTOR_ANDA_SI_HAY		;60aa
 ACTOR_SALTA:		; Arranca el salto: sonido 4, fase 0; con direccion y sitio (X entre 0x0C y 0xB4), sube por el hueco (estado 4); si no, salto vertical (3)
-	ld a,(ix+05eh)		;60ac
+	ld a,(ix+05eh)		;60ac   ; Con carga (bit 0 de +0x5E) el disparo tira la fruta
 	rra			;60af   ; Bit 0 de +0x5E: va cargado con una fruta; el boton la tira (estado 8)
 	jr c,ACTOR_CARGADO_TIRA		;60b0
 	ld a,004h		;60b2
 	call SONIDO		;60b4
-	ld (ix+05ah),000h		;60b7
-	ld a,d			;60bb
+	ld (ix+05ah),000h		;60b7   ; Fase del salto a cero
+	ld a,d			;60bb   ; Bits 6-7 de +0x5B: hacia donde mira; sin ninguno, salto vertical (3)
 	and 0c0h		;60bc
 	ld e,a			;60be
 	ld d,003h		;60bf
 	jr z,ACTOR_ESTADO_D		;60c1
-	add a,a			;60c3
+	add a,a			;60c3   ; Bit 7 al carry: hacia la derecha
 	jr nc,ACTOR_SALTA_IZQ		;60c4
-	ld a,(ix+001h)		;60c6   ; Hacia la derecha hace falta X < 0xB4; hacia la izquierda, X >= 0x0C
+	ld a,(ix+001h)		;60c6   ; A menos de 0xB4 hay sitio para subir por el hueco (estado 4)
 	cp 0b4h		;60c9
 	jr nc,ACTOR_ESTADO_D		;60cb
 	ld d,004h		;60cd
 ACTOR_ESTADO_D:		; +0x59 = la direccion si la hay, y el estado D
-	ld a,e			;60cf
+	ld a,e			;60cf   ; La direccion, si la hay, a +0x59
 	or a			;60d0
 	jr z,ACTOR_ESTADO_D_PON		;60d1
 	ld (ix+059h),a		;60d3
@@ -2873,25 +2873,25 @@ ACTOR_ESTADO_D_PON:		; El estado D
 	pop bc			;60d9
 	ret			;60da
 ACTOR_SALTA_IZQ:		; Lo mismo hacia la izquierda
-	ld a,(ix+001h)		;60db
+	ld a,(ix+001h)		;60db   ; Hacia la izquierda: hace falta X >= 0x0C
 	cp 00ch		;60de
 	jr c,ACTOR_ESTADO_D		;60e0
 	ld d,004h		;60e2
 	jr ACTOR_ESTADO_D		;60e4
 ACTOR_ANDA_SI_HAY:		; Sin disparo: con direccion, a andar (estado 2)
-	ld a,d			;60e6
+	ld a,d			;60e6   ; Sin disparo: con direccion a andar (2), sin ella nada
 	ld d,002h		;60e7
 	and 0c0h		;60e9
 	jr nz,ACTOR_ESTADO_D_PON		;60eb
 	pop bc			;60ed
 	ret			;60ee
 ACTOR_CARGADO_TIRA:		; Con la fruta encima no salta: la tira (estado 8 durante 0x10 fotogramas)
-	ld (ix+05ch),008h		;60ef
+	ld (ix+05ch),008h		;60ef   ; Estado 8 (tirar) durante 0x10 fotogramas
 	ld (ix+05dh),010h		;60f3
 	pop bc			;60f7
 	ret			;60f8
 RESPUESTA_ENTREGADA:		; Borra la flecha roja (2x2 en la fila 6, columna 23) y esconde a los cangrejos
-	ld hl,078dbh		;60f9
+	ld hl,078dbh		;60f9   ; El bloque vacio de 2x2 borra la flecha roja (fila 6, columna 23)
 	ld de,030b8h		;60fc
 	ld bc,00202h		;60ff
 	call PINTA_BLOQUE		;6102
@@ -2899,7 +2899,7 @@ RESPUESTA_ENTREGADA:		; Borra la flecha roja (2x2 en la fila 6, columna 23) y es
 	pop bc			;6108
 	ret			;6109
 ACTOR_ANDA:		; Estado 2: tres pasos por delante; disparo salta; sin direccion se para; con ella avanza un pixel con la animacion de 0x65C3 (derecha) o 0x65D3 (izquierda) y suena el paso cada 4
-	ld (ix+05fh),003h		;610a   ; +0x5F = 3: cuantos pasos antes de que el cangrejo se plantee girar
+	ld (ix+05fh),003h		;610a   ; Tres pasos antes de que un cangrejo se plantee girar
 	ld d,(ix+05bh)		;610e
 	ld a,d			;6111
 	and 00fh		;6112
@@ -2907,7 +2907,7 @@ ACTOR_ANDA:		; Estado 2: tres pasos por delante; disparo salta; sin direccion se
 	ld a,(0e002h)		;6116
 	bit 6,a		;6119
 	jr z,ACTOR_ANDA_BIT4		;611b
-	ld hl,0e008h		;611d
+	ld hl,0e008h		;611d   ; El disparo recien pulsado salta
 	ld a,(hl)			;6120
 	inc hl			;6121
 	and (hl)			;6122
@@ -2916,51 +2916,51 @@ ACTOR_ANDA:		; Estado 2: tres pasos por delante; disparo salta; sin direccion se
 	jr nz,ACTOR_SALTA		;6126
 	jr ACTOR_ANDA_MIRA		;6128
 ACTOR_ANDA_BIT4:		; Bit 4: salta
-	bit 4,d		;612a
+	bit 4,d		;612a   ; Para un cangrejo el disparo es el bit 4 de +0x5B
 	jp nz,ACTOR_SALTA		;612c
 ACTOR_ANDA_MIRA:		; Con direccion sigue; sin ella se para
-	ld a,d			;612f
+	ld a,d			;612f   ; Sin direccion (bits 6-7): a parado (1)
 	and 0c0h		;6130
 	jr nz,ACTOR_ANDA_PASO		;6132
 	ld d,001h		;6134   ; Sin direccion: parado (estado 1)
 	jr ACTOR_ESTADO_D_PON		;6136
 ACTOR_ANDA_PASO:		; Un pixel hacia el lado con la animacion
 	ld (ix+059h),d		;6138
-	ld hl,065c3h		;613b   ; 0x65C3: los patrones de andar hacia la derecha; 0x65D3 los de la izquierda (E = +1 o -1)
+	ld hl,065c3h		;613b   ; Hacia la derecha: la tabla de 0x65C3 y E = +1
 	ld e,001h		;613e
 	add a,a			;6140
 	jr c,ACTOR_ANDA_MUEVE		;6141
-	ld hl,065d3h		;6143
+	ld hl,065d3h		;6143   ; Hacia la izquierda: la de 0x65D3 y E = -1
 	ld e,0ffh		;6146
 ACTOR_ANDA_MUEVE:		; X mas o menos uno
-	call ACTOR_BC		;6148
+	call ACTOR_BC		;6148   ; B = Y, C = X; la X nueva
 	ld a,c			;614b
 	add a,e			;614c
 	ld c,a			;614d
-	and 003h		;614e   ; Cada 4 pixels el sonido del paso (3)
+	and 003h		;614e   ; Cada cuatro pixels suena el paso (3)
 	jr nz,ACTOR_ANDA_SUELO		;6150
 	ld a,003h		;6152
 	call SONIDO		;6154
 ACTOR_ANDA_SUELO:		; La animacion y el suelo
-	call ACTOR_ANIMACION		;6157
-	call HAY_SUELO		;615a   ; 0x6924: hay suelo debajo (NC) o no (C)
+	call ACTOR_ANIMACION		;6157   ; Los dos patrones de la fase de andar (X / 4 & 3)
+	call HAY_SUELO		;615a   ; Carry: no hay suelo debajo
 	jr c,ACTOR_SIN_SUELO		;615d
-	ld a,c			;615f
+	ld a,c			;615f   ; X entre 8 y 0xB8: dentro
 	cp 008h		;6160   ; X entre 8 y 0xB8: dentro de la pantalla de juego
 	jr c,ACTOR_BORDE_IZQ		;6162
 	cp 0b9h		;6164
 	jr nc,ACTOR_BORDE_DER		;6166
 ACTOR_ANDA_X:		; X nueva a los dos sprites; el cangrejo del tipo 3, cuando el azar (E140) sale a cero, se pone el bit 4: para el, el disparo
-	ld (ix+001h),c		;6168
+	ld (ix+001h),c		;6168   ; La X a los dos sprites
 	ld (ix+005h),c		;616b
 	pop bc			;616e
-	ld a,d			;616f   ; Solo el tipo 3 (el cangrejo que se para)
+	ld a,d			;616f   ; El mono (tipo 0) acaba aqui; de los cangrejos, solo el tipo 3 sigue
 	and 00fh		;6170
 	ret z			;6172
 	cp 003h		;6173
 	ret nz			;6175
 	call AZAR		;6176   ; Solo cuando E140 sale exactamente 0: se pone el bit 4 (saltara en cuanto este parado)
-	ld a,(0e140h)		;6179
+	ld a,(0e140h)		;6179   ; Solo cuando E140 sale a cero: se pone el bit 4 (saltara)
 	or a			;617c
 	ret nz			;617d
 	ld a,(ix+05bh)		;617e
@@ -2970,34 +2970,34 @@ ACTOR_ANDA_X:		; X nueva a los dos sprites; el cangrejo del tipo 3, cuando el az
 	ld (ix+05ah),000h		;6188
 	ret			;618c
 ACTOR_SIN_SUELO:		; Sin suelo debajo: el mono y el tipo 1 se caen (estado 6); los tipos 2 y 3 lo piensan (0x6205)
-	ld a,(ix+05bh)		;618d
+	ld a,(ix+05bh)		;618d   ; Tipos 2 y 3 (y 4) lo piensan; el mono y el tipo 1 caen
 	ld d,a			;6190
 	and 00fh		;6191
 	cp 002h		;6193
 	jr nc,CANGREJO_LO_PIENSA		;6195
 ACTOR_CAE:		; Un pixel mas alla del borde y a caer (estado 6) con el sonido 5
-	ld a,006h		;6197
+	ld a,006h		;6197   ; Un pixel mas alla del borde: 6 hacia la derecha (bit 7), -6 (0xFA) hacia la izquierda
 	bit 7,d		;6199
 	jr nz,ACTOR_CAE_LADO		;619b
 	ld a,0fah		;619d
 ACTOR_CAE_LADO:		; El pixel de mas alla del borde
 	add a,c			;619f
 	ld c,a			;61a0
-	ld (ix+05ch),006h		;61a1
+	ld (ix+05ch),006h		;61a1   ; Estado 6 (caer) con el sonido 5
 	ld a,005h		;61a5
 	call SONIDO		;61a7
 	jr ACTOR_ANDA_X		;61aa
 ACTOR_BORDE_DER:		; Borde derecho: el cangrejo da la vuelta (bits 6-7 de +0x5B); el mono se queda
-	ld a,d			;61ac
+	ld a,d			;61ac   ; El mono no da la vuelta: se queda en el borde
 	and 00fh		;61ad
 	jr z,ACTOR_RETROCEDE		;61af
-	ld a,0c0h		;61b1
+	ld a,0c0h		;61b1   ; Bits 6-7 al reves: el cangrejo cambia de sentido
 	xor (ix+05bh)		;61b3
 	ld (ix+05bh),a		;61b6
 	pop bc			;61b9
 	ret			;61ba
 ACTOR_RETROCEDE:		; Deshace el pixel
-	ld a,e			;61bb
+	ld a,e			;61bb   ; Deshace el pixel que se habia movido
 	neg		;61bc
 	add a,c			;61be
 	ld c,a			;61bf
@@ -3006,22 +3006,22 @@ ACTOR_BORDE_IZQ:		; Borde izquierdo: el cangrejo da la vuelta si no esta en el s
 	ld a,d			;61c2
 	and 00fh		;61c3
 	jr z,ACTOR_RETROCEDE		;61c5
-	ld a,b			;61c7
+	ld a,b			;61c7   ; Y = 0xA8: en el suelo; por encima da la vuelta como en el borde derecho
 	cp 0a8h		;61c8
 	jr c,ACTOR_BORDE_DER		;61ca
-	call CANGREJO_SUELTA_FRUTA		;61cc
+	call CANGREJO_SUELTA_FRUTA		;61cc   ; En el suelo se marcha por la izquierda: suelta la fruta y a esperar escondido
 	ld (ix+05ch),000h		;61cf
 	call CANGREJO_ESPERA		;61d3
 	pop bc			;61d6
 	ret			;61d7
 CANGREJO_SUELTA_FRUTA:		; Si iba cargado (bit 0 de +0x5E) busca la fruta 8 pixels por encima (0x6A55) y la hace desaparecer con el
-	ld a,(ix+05eh)		;61d8
+	ld a,(ix+05eh)		;61d8   ; Bit 0 de +0x5E: va cargado
 	rra			;61db
 	ret nc			;61dc
 	ld a,(ix+000h)		;61dd
 	ld h,a			;61e0
 	push hl			;61e1
-	sub 008h		;61e2
+	sub 008h		;61e2   ; Mira 8 pixels por encima de su Y (donde va la fruta que lleva)
 	ld (ix+000h),a		;61e4
 	call TOCA_FRUTA_SIN_TARJETA		;61e7
 	pop hl			;61ea
@@ -3032,7 +3032,7 @@ CANGREJO_SUELTA_FRUTA:		; Si iba cargado (bit 0 de +0x5E) busca la fruta 8 pixel
 	push af			;61f1
 	ld hl,0e260h		;61f2
 	call HL_MAS_A		;61f5
-	ld (hl),000h		;61f8
+	ld (hl),000h		;61f8   ; La fruta a estado 0 y su sprite fuera (Y = 0xE1)
 	pop af			;61fa
 	add a,a			;61fb
 	ld hl,0e0d8h		;61fc
@@ -3040,31 +3040,31 @@ CANGREJO_SUELTA_FRUTA:		; Si iba cargado (bit 0 de +0x5E) busca la fruta 8 pixel
 	ld (hl),0e1h		;6202
 	ret			;6204
 CANGREJO_LO_PIENSA:		; Los tipos 2 y 3 al borde: el 4 (0x44, desde la fase 18) da la vuelta si esta en la altura de +0x58 (0x38: la segunda plataforma) y si no se deja caer; los demas caen o dan la vuelta al azar
-	cp 004h		;6205
+	cp 004h		;6205   ; Tipo 4: el de la fase 18
 	jr z,CANGREJO_44		;6207
 	call AZAR		;6209
-	ld a,(0e140h)		;620c
+	ld a,(0e140h)		;620c   ; El bit 0 del azar decide: cae o gira
 	rra			;620f
 	jr c,ACTOR_CAE		;6210
 CANGREJO_GIRA:		; Cambia de sentido sin caer (estado 4 = sube por el hueco)
-	ld (ix+059h),d		;6212
+	ld (ix+059h),d		;6212   ; Girar sin caer es el estado 4 (subir por el hueco) hacia el otro lado
 	ld (ix+05ch),004h		;6215
 	ld (ix+05ah),000h		;6219
 	jp ACTOR_ANDA_X		;621d
 CANGREJO_44:		; El de la fase 18: da la vuelta si su Y es la de +0x58 (0x38, la segunda plataforma), si no cae
-	ld a,(ix+058h)		;6220
+	ld a,(ix+058h)		;6220   ; +0x58 = 0x38: la Y de la segunda plataforma; a esa altura gira, si no cae
 	cp b			;6223
 	jr z,CANGREJO_GIRA		;6224
 	jp ACTOR_CAE		;6226
 ACTOR_ANIMACION:		; Los dos patrones de la fase de andar (X/4 & 3) de la tabla HL (+8 para los cangrejos)
-	ld a,c			;6229
+	ld a,c			;6229   ; (X & 0x0C) / 2: dos bytes por fase, cuatro fases
 	and 00ch		;622a
 	rra			;622c
 	call HL_MAS_A		;622d
 	ld a,d			;6230
 	and 00fh		;6231
 	jr z,ACTOR_ANIMACION_PON		;6233
-	ld a,008h		;6235
+	ld a,008h		;6235   ; Los cangrejos, ocho bytes mas alla (su tabla va detras)
 	call HL_MAS_A		;6237
 ACTOR_ANIMACION_PON:		; Los dos patrones
 	ld a,(hl)			;623a
@@ -3074,34 +3074,34 @@ ACTOR_ANIMACION_PON:		; Los dos patrones
 	ld (ix+006h),a		;6240
 	ret			;6243
 ACTOR_SALTANDO:		; Estado 3: si el mono lleva la respuesta y toca al profesor (0x6ADB), entregada (E108 = 0x33). Sube y baja con la tabla de 0x6423; en lo alto (paso 11) coge la tarjeta si la hay (0x6A1F); al ultimo paso (23) al estado 6
-	call TOCA_AL_PROFESOR		;6244
+	call TOCA_AL_PROFESOR		;6244   ; NC: el mono lleva la tarjeta y toca al profesor
 	jr c,ACTOR_SALTO_PASO		;6247
-	ld hl,0e270h		;6249   ; Bit 0 de E270: la respuesta sube sola; E108 = 0x33: entregada; E10E = 0: los sprites normales
+	ld hl,0e270h		;6249   ; Bit 0 de E270: la tarjeta sube sola; E108 = 0x33; y los sprites normales
 	set 0,(hl)		;624c
 	ld (ix+058h),033h		;624e
 	ld (ix+05eh),000h		;6252
 ACTOR_SALTO_PASO:		; Un paso del salto
 	call ACTOR_BC		;6256
-	ld a,(ix+05ah)		;6259
+	ld a,(ix+05ah)		;6259   ; Bit 7 de +0x5A: ya va por la tabla
 	add a,a			;625c   ; Bit 7 de +0x5A: la bajada; si no, los primeros 8 pasos suben 4 pixels cada uno
 	jr c,ACTOR_SALTO_TABLA		;625d
-	and 01eh		;625f
+	and 01eh		;625f   ; Los pasos pares hasta el 8: cuatro pixels arriba cada uno
 	cp 008h		;6261   ; Al octavo paso, empieza la tabla (bit 7)
 	jr z,ACTOR_SALTO_TABLA_EMPIEZA		;6263
 	ld a,b			;6265
 	sub 004h		;6266
 	ld b,a			;6268
 ACTOR_SALTO_Y:		; Y nueva a los dos sprites y un paso mas
-	ld (ix+000h),b		;6269
+	ld (ix+000h),b		;6269   ; La Y nueva a los dos sprites
 	ld (ix+004h),b		;626c
 	inc (ix+05ah)		;626f
 	pop bc			;6272
 	ret			;6273
 ACTOR_SALTO_TABLA_EMPIEZA:		; Al octavo paso empieza la tabla
-	ld (ix+05ah),080h		;6274
+	ld (ix+05ah),080h		;6274   ; Del octavo paso en adelante, la tabla (bit 7)
 	xor a			;6278
 ACTOR_SALTO_TABLA:		; El desplazamiento del paso (+0x5A/2) de 0x6423; el 23 aterriza (estado 6); el 11 (lo alto) mira la tarjeta
-	or a			;6279
+	or a			;6279   ; Indice = +0x5A / 2 (un paso de tabla cada dos fotogramas)
 	rra			;627a
 	ld d,a			;627b
 	ld hl,06423h		;627c
@@ -3109,59 +3109,59 @@ ACTOR_SALTO_TABLA:		; El desplazamiento del paso (+0x5A/2) de 0x6423; el 23 ater
 	ld a,(hl)			;6282
 	add a,b			;6283
 	ld b,a			;6284
-	ld a,d			;6285
+	ld a,d			;6285   ; El paso 23 es el suelo; el 11 lo alto
 	cp 017h		;6286
 	jr z,ACTOR_ATERRIZA		;6288
 	cp 00bh		;628a
 	jr nz,ACTOR_SALTO_Y		;628c
-	call HAY_TARJETA_ENCIMA		;628e   ; 0x6A1F: hay un canto de tarjeta (tiles 1-2) justo encima; D = fila de tiles, E = columna
+	call HAY_TARJETA_ENCIMA		;628e   ; Carry: no hay tarjeta encima
 	jr c,ACTOR_SALTO_Y		;6291
-	call TILE_A_PIXELS		;6293   ; 0x65E7 pasa la posicion a (fila - 7) x 8 y columna x 8; con la segunda mitad del canto, 8 pixels menos
+	call TILE_A_PIXELS		;6293   ; D = fila x 8 (menos 7 filas), E = columna x 8; con la segunda mitad del canto, 8 pixels menos
 	dec a			;6296
 	jr z,BUSCA_TARJETA_ENTRA		;6297
 	ld a,e			;6299
 	sub 008h		;629a
 	ld e,a			;629c
 BUSCA_TARJETA_ENTRA:		; Recorre E15A desde el principio
-	ld h,0ffh		;629d
+	ld h,0ffh		;629d   ; H cuenta las tarjetas; IY recorre E15A desde el principio
 	ld iy,0e158h		;629f
 BUSCA_TARJETA:		; Busca en E15A la tarjeta que cuelga en (D, E) y la coge (0x4FAE): repintar y estado 5 (se hunde con ella)
 	inc iy		;62a3
 	inc iy		;62a5
 	ld a,(iy+000h)		;62a7
-	cp 0ffh		;62aa
+	cp 0ffh		;62aa   ; 0xFF: fin de la lista, no era ninguna
 	jr z,ACTOR_SALTO_Y		;62ac
 	inc h			;62ae
-	cp d			;62af
+	cp d			;62af   ; Misma Y y misma X que la tarjeta H
 	jr nz,BUSCA_TARJETA		;62b0
 	ld a,(iy+001h)		;62b2
 	cp e			;62b5
 	jr nz,BUSCA_TARJETA		;62b6
 	ld a,h			;62b8
 	push bc			;62b9
-	call COGE_TARJETA		;62ba
+	call COGE_TARJETA		;62ba   ; La coge (E1AF = H, y suelta la anterior)
 	add a,a			;62bd
 	call TARJETAS_DEL_JUGADOR		;62be
 	call HL_MAS_A		;62c1
-	set 7,(hl)		;62c4
-	ld a,005h		;62c6
+	set 7,(hl)		;62c4   ; Bit 7: repintarla (empieza a bajar)
+	ld a,005h		;62c6   ; Estado 5: bajar con ella
 	pop bc			;62c8
 	jr ACTOR_SALTO_ACABA		;62c9
 ACTOR_ATERRIZA:		; Estado 6 (cayendo) con +0x5A = 0xFF
-	ld a,006h		;62cb
+	ld a,006h		;62cb   ; Estado 6 (cayendo) con la fase a 0xFF
 ACTOR_SALTO_ACABA:		; Estado A con +0x5A = 0xFF
 	ld (ix+05ah),0ffh		;62cd
 	ld (ix+05ch),a		;62d1
 	jr ACTOR_SALTO_Y		;62d4
 ACTOR_SUBE_HUECO:		; Estado 4: sube por un hueco de la plataforma de arriba trepando (patrones 0x65E3/0x65E5); si no hay hueco, salto corto y vuelta
-	ld (ix+05fh),003h		;62d6
-	ld a,(ix+059h)		;62da   ; +0x59: hacia donde
+	ld (ix+05fh),003h		;62d6   ; Tres pasos antes de girar, como al andar
+	ld a,(ix+059h)		;62da   ; Bit 7 de +0x59 al carry: hacia la derecha (0x65E3); si no, hacia la izquierda (0x65E5)
 	ld hl,065e3h		;62dd
 	add a,a			;62e0
 	jr c,ACTOR_HUECO_PATRONES		;62e1
 	ld hl,065e5h		;62e3
 ACTOR_HUECO_PATRONES:		; Los patrones de trepar en el primer paso
-	and 00eh		;62e6
+	and 00eh		;62e6   ; Solo en el primer paso (bits 1-3 a cero) se ponen los patrones de trepar
 	jr nz,ACTOR_HUECO_FASE		;62e8
 	ld a,(hl)			;62ea
 	ld (ix+002h),a		;62eb
@@ -3174,7 +3174,7 @@ ACTOR_HUECO_FASE:		; Bit 7 baja, bit 6 cae, si no sube
 	jp c,ACTOR_HUECO_BAJA		;62f7
 	add a,a			;62fa
 	jr c,ACTOR_HUECO_CAE		;62fb
-	ld a,(ix+05ah)		;62fd   ; Los seis primeros pasos, el mono sin mando se planta (0x80)
+	ld a,(ix+05ah)		;62fd   ; En los seis primeros pasos, el mono sin mando (bits 4-7 de +0x5B a cero) se planta
 	and 00fh		;6300
 	cp 006h		;6302
 	jr nc,ACTOR_HUECO_SUBE		;6304
@@ -3185,27 +3185,27 @@ ACTOR_HUECO_FASE:		; Bit 7 baja, bit 6 cae, si no sube
 	bit 4,d		;630e
 	jr nz,ACTOR_HUECO_SUBE		;6310
 ACTOR_HUECO_PARA:		; Se queda con el bit 7: baja
-	ld (ix+05ah),080h		;6312
+	ld (ix+05ah),080h		;6312   ; 0x80: se acabo la subida, a bajar por la tabla
 	pop bc			;6316
 	ret			;6317
 ACTOR_HUECO_SUBE:		; Un paso mas arriba
-	inc (ix+05ah)		;6318
+	inc (ix+05ah)		;6318   ; Un paso mas; en el 15 se planta
 	ld a,(ix+05ah)		;631b
 	and 00fh		;631e
 	cp 00fh		;6320
 	jr z,ACTOR_HUECO_PARA		;6322
-	ld a,(ix+000h)		;6324   ; Sube 4 pixels y se mueve un pixel hacia el lado, entre 8 y 0xB8
+	ld a,(ix+000h)		;6324   ; Cuatro pixels arriba
 	sub 004h		;6327
 	ld (ix+000h),a		;6329
 	ld (ix+004h),a		;632c
-	ld a,(ix+059h)		;632f
+	ld a,(ix+059h)		;632f   ; Y un pixel al lado segun +0x59 (bit 7: derecha)
 	add a,a			;6332
 	ld a,001h		;6333
 	jr c,ACTOR_HUECO_X		;6335
 	ld a,0ffh		;6337
 ACTOR_HUECO_X:		; La X con el desplazamiento
 	add a,(ix+001h)		;6339
-	cp 008h		;633c
+	cp 008h		;633c   ; La X entre 8 y 0xB8
 	jr nc,ACTOR_HUECO_X_MIN		;633e
 	ld a,008h		;6340
 ACTOR_HUECO_X_MIN:		; X = 8 como poco
@@ -3215,7 +3215,7 @@ ACTOR_HUECO_X_MIN:		; X = 8 como poco
 ACTOR_HUECO_X_PON:		; X a los dos sprites y mira la plataforma de arriba
 	ld (ix+001h),a		;6348
 	ld (ix+005h),a		;634b
-	ld a,(ix+000h)		;634e   ; 0x696B: hay plataforma 0x18 por encima y 6 pixels al lado (C = si)
+	ld a,(ix+000h)		;634e   ; La plataforma que busca: 0x18 por encima, y 6 pixels hacia donde va (0xFA = -6)
 	sub 018h		;6351
 	ld b,a			;6353
 	ld a,(ix+059h)		;6354
@@ -3227,16 +3227,16 @@ ACTOR_HUECO_MIRA_ARRIBA:		; Con la X mas o menos 6
 	ld a,(ix+001h)		;635e
 	add a,c			;6361
 	ld c,a			;6362
-	call HAY_PLATAFORMA_ARRIBA		;6363
+	call HAY_PLATAFORMA_ARRIBA		;6363   ; Carry: la hay, y se sube (0x63D9); si no, se planta
 	jp c,ACTOR_HUECO_SUELO		;6366
 	jr ACTOR_HUECO_PARA		;6369
 ACTOR_HUECO_CAE:		; Cae recto (4 pixels, alineado) moviendose un pixel al lado
-	ld a,(ix+000h)		;636b
+	ld a,(ix+000h)		;636b   ; Cuatro pixels abajo, alineado a cuatro
 	add a,004h		;636e
 	and 0fch		;6370
 	ld (ix+000h),a		;6372
 	ld (ix+004h),a		;6375
-	ld a,(ix+059h)		;6378
+	ld a,(ix+059h)		;6378   ; Un pixel al lado, entre 8 y 0xB8
 	add a,a			;637b
 	ld a,001h		;637c
 	jr c,ACTOR_HUECO_CAE_X		;637e
@@ -3255,7 +3255,7 @@ ACTOR_HUECO_CAE_X_PON:		; A los dos sprites
 	ld (ix+005h),a		;6394
 	jr ACTOR_HUECO_SUELO		;6397
 ACTOR_HUECO_BAJA:		; La bajada por la tabla de 0x6423 moviendose un pixel al lado; en el paso 0x18 deja de bajar y en el 0x12 cae recto
-	ld a,(ix+059h)		;6399
+	ld a,(ix+059h)		;6399   ; Un pixel al lado por fotograma
 	add a,a			;639c
 	ld a,001h		;639d
 	jr c,ACTOR_HUECO_BAJA_X		;639f
@@ -3264,7 +3264,7 @@ ACTOR_HUECO_BAJA_X:		; La X al bajar por la tabla
 	add a,(ix+001h)		;63a3
 	ld (ix+001h),a		;63a6
 	ld (ix+005h),a		;63a9
-	ld a,(ix+05ah)		;63ac
+	ld a,(ix+05ah)		;63ac   ; El desplazamiento de la tabla del salto (indice en los bits 0-5)
 	and 03fh		;63af
 	ld hl,06423h		;63b1
 	call HL_MAS_A		;63b4
@@ -3273,21 +3273,21 @@ ACTOR_HUECO_BAJA_X:		; La X al bajar por la tabla
 	ld (ix+000h),a		;63bb
 	ld (ix+004h),a		;63be
 	inc (ix+05ah)		;63c1
-	ld a,(ix+05ah)		;63c4
+	ld a,(ix+05ah)		;63c4   ; En el paso 0x18 deja de bajar por la tabla (bit 7 fuera)
 	and 03fh		;63c7
 	cp 018h		;63c9
 	jr c,ACTOR_HUECO_BAJA_PASO		;63cb
 	res 7,(ix+05ah)		;63cd
 ACTOR_HUECO_BAJA_PASO:		; En el paso 0x12, a caer recto
-	cp 012h		;63d1
+	cp 012h		;63d1   ; Del paso 0x12 en adelante cae recto (bit 6)
 	jr c,ACTOR_HUECO_SUELO		;63d3
 	set 6,(ix+05ah)		;63d5
 ACTOR_HUECO_SUELO:		; Con suelo debajo (0x6924): parado (estado 1) o cayendo (6) si se salio de la pantalla; los patrones de andar
-	call ACTOR_BC		;63d9
+	call ACTOR_BC		;63d9   ; D = 1 (parado) si hay suelo
 	call HAY_SUELO		;63dc
 	ld d,001h		;63df
 	jr nc,ACTOR_HUECO_SUELO_PATRONES		;63e1
-	ld a,c			;63e3
+	ld a,c			;63e3   ; Sin suelo: fuera de la pantalla se recoloca y cae (6); si no, sigue
 	cp 008h		;63e4
 	jp c,ACTOR_HUECO_TOPE_IZQ		;63e6
 	cp 0b8h		;63e9
@@ -3304,7 +3304,7 @@ ACTOR_HUECO_TOPE_DER:		; X = 0xB8 y a caer
 	ld a,0b8h		;63fb
 	jr ACTOR_HUECO_TOPE		;63fd
 ACTOR_HUECO_SUELO_PATRONES:		; Con suelo: los patrones de andar segun el sentido
-	ld a,(ix+059h)		;63ff
+	ld a,(ix+059h)		;63ff   ; Con sentido (bits 6-7 de +0x59) los patrones de andar; sin el, se quedan
 	ld c,a			;6402
 	and 00fh		;6403
 	jr nz,ACTOR_HUECO_FIN		;6405
@@ -3320,7 +3320,7 @@ ACTOR_HUECO_SUELO_PON:		; Los patrones
 	ld a,(hl)			;6416
 	ld (ix+006h),a		;6417
 ACTOR_HUECO_FIN:		; +0x5A = 0 y el estado D
-	ld (ix+05ah),000h		;641a
+	ld (ix+05ah),000h		;641a   ; Fase a cero y el estado D
 	ld (ix+05ch),d		;641e
 ACTOR_HUECO_SALE:		; Fuera
 	pop bc			;6421
@@ -3341,41 +3341,41 @@ DATA_arco_del_salto:
 
 
 ACTOR_SE_HUNDE:		; Estado 5: cada 8 fotogramas baja 4 pixels hasta tocar suelo (0x6924); entonces parado (1). Es el mono bajando con la tarjeta recien cogida
-	ld a,(0e003h)		;643b
+	ld a,(0e003h)		;643b   ; Cada ocho fotogramas
 	and 007h		;643e
 	jr nz,ACTOR_SE_HUNDE_FIN		;6440
-	ld a,(ix+000h)		;6442
+	ld a,(ix+000h)		;6442   ; Cuatro pixels abajo
 	add a,004h		;6445
 	ld (ix+000h),a		;6447
 	ld (ix+004h),a		;644a
 	call ACTOR_BC		;644d
-	call HAY_SUELO		;6450
+	call HAY_SUELO		;6450   ; Con suelo debajo, parado (1)
 	jr c,ACTOR_SE_HUNDE_FIN		;6453
 	ld (ix+05ch),001h		;6455
 ACTOR_SE_HUNDE_FIN:		; Fuera
 	pop bc			;6459
 	ret			;645a
 ACTOR_CAE_ESTADO:		; Estado 6: baja 4 pixels (alineado a 4) hasta el suelo; el cangrejo elige entonces sentido al azar y el mono se queda parado
-	ld a,(ix+000h)		;645b
+	ld a,(ix+000h)		;645b   ; Cuatro pixels abajo, alineado a cuatro
 	add a,004h		;645e
 	and 0fch		;6460
 	ld (ix+000h),a		;6462
 	ld (ix+004h),a		;6465
 	call ACTOR_BC		;6468
-	call HAY_SUELO		;646b
+	call HAY_SUELO		;646b   ; Sin suelo sigue cayendo
 	jr nc,ACTOR_CAE_SUELO		;646e
 	pop bc			;6470
 	ret			;6471
 ACTOR_CAE_SUELO:		; Con suelo: parado (1); el cangrejo elige sentido
-	ld (ix+05ch),001h		;6472
+	ld (ix+05ch),001h		;6472   ; Con suelo: parado (1)
 	ld a,(ix+05bh)		;6476
 	ld e,a			;6479
 	and 00fh		;647a   ; Los cangrejos salen andando hacia la derecha (bit 7)... o hacia la izquierda si sale impar
 	jr z,ACTOR_CAE_MONO		;647c
-	or 080h		;647e
+	or 080h		;647e   ; El cangrejo sale hacia la derecha (bit 7)...
 	ld (ix+05bh),a		;6480
 	ld e,a			;6483
-	call AZAR		;6484
+	call AZAR		;6484   ; ...o hacia la izquierda si el azar sale impar (bits 6-7 al reves)
 	ld a,(0e140h)		;6487
 	and 001h		;648a
 	jr z,ACTOR_CAE_MONO		;648c
@@ -3385,12 +3385,12 @@ ACTOR_CAE_SUELO:		; Con suelo: parado (1); el cangrejo elige sentido
 	pop bc			;6494
 	ret			;6495
 ACTOR_CAE_MONO:		; El mono: cada tres pasos de caida, si no esta en el suelo (Y = 0xA8), mira si hay una fruta 0x18 por debajo (0x6A5B) y la descuelga (bit 0 de E260: cae)
-	dec (ix+05fh)		;6496
+	dec (ix+05fh)		;6496   ; Cada tres pasos de caida
 	jr nz,ACTOR_CAE_FIN		;6499
-	ld a,b			;649b
+	ld a,b			;649b   ; En el suelo (Y = 0xA8) no mira
 	cp 0a8h		;649c
 	jr z,ACTOR_CAE_FIN		;649e
-	ld a,018h		;64a0
+	ld a,018h		;64a0   ; Mira 0x18 pixels por debajo de su Y
 	add a,b			;64a2
 	push bc			;64a3
 	ld (ix+000h),a		;64a4
@@ -3399,14 +3399,14 @@ ACTOR_CAE_MONO:		; El mono: cada tres pasos de caida, si no esta en el suelo (Y 
 	ld (ix+000h),b		;64ab
 	ld a,d			;64ae
 	add a,a			;64af
-	ld hl,0e260h		;64b0
+	ld hl,0e260h		;64b0   ; La fruta que hay ahi pasa a caer (bit 0)
 	call HL_MAS_A		;64b3
 	set 0,(hl)		;64b6
 ACTOR_CAE_FIN:		; Fuera
 	pop bc			;64b8
 	ret			;64b9
 ACTOR_SE_DESCUELGA:		; Estado 7: cada 4 fotogramas baja un pixel mientras el tile bajo el sprite no sea vacio (esta cruzando la plataforma de arriba); en el vacio, a caer (estado 6)
-	ld hl,0e274h		;64ba
+	ld hl,0e274h		;64ba   ; Cada cuatro fotogramas
 	inc (hl)			;64bd
 	ld a,(hl)			;64be
 	and 003h		;64bf
@@ -3414,13 +3414,13 @@ ACTOR_SE_DESCUELGA:		; Estado 7: cada 4 fotogramas baja un pixel mientras el til
 	pop bc			;64c3
 	ret			;64c4
 ACTOR_SE_DESCUELGA_PIXEL:		; Un pixel abajo y mira el tile
-	inc (ix+000h)		;64c5
+	inc (ix+000h)		;64c5   ; Un pixel abajo
 	ld a,(ix+000h)		;64c8
 	ld (ix+004h),a		;64cb
 	ld d,a			;64ce
 	ld a,(ix+001h)		;64cf
 	ld e,a			;64d2
-	call PIXELS_A_VRAM		;64d3
+	call PIXELS_A_VRAM		;64d3   ; El tile bajo el sprite: distinto de cero es la plataforma; cero, ya la ha cruzado y cae (6)
 	di			;64d6
 	call VDP_DIRECCION		;64d7
 	call RET_3		;64da
@@ -3434,7 +3434,7 @@ ACTOR_SE_DESCUELGA_FIN:		; Fuera
 RET_3:		; `ret` de espera para el VDP
 	ret			;64e9
 ACTOR_TIRA_FRUTA:		; Estado 8: la fruta que lleva (E260 con 0x0C el mono, 0x04 el cangrejo) sale volando (bit 1) hacia donde mira (bit 5). El mono se queda +0x5D fotogramas con los brazos de tirar (los sprites 18-19 de 0x56BF: 0x60/0x64, o sus espejos 0xE0/0xE4) y vuelve a estar parado (1); el cangrejo con los suyos (20-21: 0x68/0x6C, o 0xE8/0xEC)
-	ld b,008h		;64ea
+	ld b,008h		;64ea   ; Ocho frutas; busca la que lleva: 0x0C el mono, 0x04 un cangrejo
 	ld hl,0e260h		;64ec
 	ld d,00ch		;64ef   ; 0x0C: la lleva el mono; 0x04: un cangrejo
 	ld a,(ix+05bh)		;64f1
@@ -3451,7 +3451,7 @@ ACTOR_TIRA_BUSCA:		; Busca la fruta que lleva
 	djnz ACTOR_TIRA_BUSCA		;6502
 	jr ACTOR_TIRA_POSE		;6504
 ACTOR_TIRA_SUELTA:		; La fruta a volar
-	set 1,(hl)		;6506   ; La fruta pasa a caer (bit 1), sin dueno (bits 2, 3 y 5 fuera), y con el sentido (bit 5)
+	set 1,(hl)		;6506   ; Bit 1: vuela; fuera los bits 2, 3 y 5; el bit 5 dice hacia donde (bit 7 de +0x59, derecha)
 	ld a,(hl)			;6508
 	and 0d3h		;6509
 	ld (hl),a			;650b
@@ -3460,10 +3460,10 @@ ACTOR_TIRA_SUELTA:		; La fruta a volar
 	jr nc,ACTOR_TIRA_POSE		;6510
 	set 5,(hl)		;6512
 ACTOR_TIRA_POSE:		; El mono con los brazos de tirar mientras cuenta
-	ld a,(ix+05bh)		;6514
+	ld a,(ix+05bh)		;6514   ; El cangrejo va por CANGREJO_TIRA
 	and 00fh		;6517
 	jr nz,CANGREJO_TIRA		;6519
-	dec (ix+05dh)		;651b
+	dec (ix+05dh)		;651b   ; Mientras cuenta +0x5D, la pose de tirar: 0x60/0x64 hacia la derecha, 0xE0/0xE4 hacia la izquierda
 	jr z,ACTOR_TIRA_FIN		;651e
 	ld a,(ix+059h)		;6520
 	add a,a			;6523
@@ -3476,17 +3476,17 @@ ACTOR_TIRA_PATRONES:		; Los dos patrones
 	pop bc			;6532
 	ret			;6533
 ACTOR_TIRA_FIN:		; El mono vuelve a estar parado (estado 1) con sus patrones (0x00/0x0C o 0x80/0x8C) y sin carga
-	ld bc,0000ch		;6534
+	ld bc,0000ch		;6534   ; Se acabo: los patrones de parado (0x00/0x0C o 0x80/0x8C)
 	ld a,(ix+059h)		;6537
 	add a,a			;653a
 	jr c,ACTOR_TIRA_PARADO		;653b
 	ld bc,0808ch		;653d
 ACTOR_TIRA_PARADO:		; Parado (1) y sin carga
-	ld (ix+05ch),001h		;6540
+	ld (ix+05ch),001h		;6540   ; Parado (1) y sin carga
 	ld (ix+05eh),000h		;6544
 	jr ACTOR_TIRA_PATRONES		;6548
 CANGREJO_TIRA:		; El cangrejo, con los patrones 0xE8/0xEC (o 0x68/0x6C) mientras cuenta
-	dec (ix+05dh)		;654a
+	dec (ix+05dh)		;654a   ; El cangrejo: 0xE8/0xEC hacia la derecha, 0x68/0x6C hacia la izquierda
 	jr z,CANGREJO_TIRA_FIN		;654d
 	ld a,(ix+059h)		;654f
 	add a,a			;6552
@@ -3495,27 +3495,27 @@ CANGREJO_TIRA:		; El cangrejo, con los patrones 0xE8/0xEC (o 0x68/0x6C) mientras
 	ld bc,0686ch		;6558
 	jr ACTOR_TIRA_PATRONES		;655b
 CANGREJO_TIRA_FIN:		; Y a estar parado con 0x30/0x3C (o 0xB0/0xBC)
-	ld bc,0303ch		;655d
+	ld bc,0303ch		;655d   ; Y de vuelta a los suyos, 0x30/0x3C o 0xB0/0xBC
 	ld a,(ix+059h)		;6560
 	add a,a			;6563
 	jr c,ACTOR_TIRA_PARADO		;6564
 	ld bc,0b0bch		;6566
 	jr ACTOR_TIRA_PARADO		;6569
 CANGREJO_MUERE:		; Estado 9: cuando acaba +0x5D, esconde el "500" (el sprite de la fruta que lo mato, +0x59/+0x5A), vuelve a esconderse (estado 0) a esperar segun la fase (0x6585), y la fruta que llevara desaparece
-	pop bc			;656b
+	pop bc			;656b   ; B recuperado antes: este estado no pasa por ACTOR_DESPACHA al volver
 	dec (ix+05dh)		;656c
 	ret nz			;656f
-	ld h,(ix+059h)		;6570
+	ld h,(ix+059h)		;6570   ; El puntero al sprite del "500" (guardado en +0x59/+0x5A, apuntaba al patron): dos menos es su Y
 	ld l,(ix+05ah)		;6573
 	dec hl			;6576
 	dec hl			;6577
 	ld (hl),0e1h		;6578
-	ld (ix+05ch),000h		;657a
+	ld (ix+05ch),000h		;657a   ; Escondido (0) a esperar lo que diga la fase
 	call CANGREJO_ESPERA		;657e
 	call CANGREJO_SUELTA_FRUTA		;6581
 	ret			;6584
 CANGREJO_ESPERA:		; +0x5D = cuanto espera escondido: (16 - fase) x 16 + 17 fotogramas hasta la fase 19; desde la 20, uno
-	ld a,(0e051h)		;6585
+	ld a,(0e051h)		;6585   ; Fases 1-19: (16 - fase) x 16 + 17; desde la 20 (0x20 en BCD), 1
 	cp 020h		;6588
 	jr nc,CANGREJO_ESPERA_1		;658a
 	neg		;658c
@@ -3533,7 +3533,7 @@ CANGREJO_ESPERA_1:		; Desde la fase 20: un fotograma
 	ld a,001h		;659b
 	jr CANGREJO_ESPERA_PON		;659d
 ACTOR_LE_DA_LA_FRUTA:		; Estado 10: sonido 0xA0, cara de susto y se pierde la vida (E00C = 1)
-	ld a,0a0h		;659f
+	ld a,0a0h		;659f   ; El sonido de perder la vida
 	call SONIDO		;65a1
 	call CARA_DE_SUSTO		;65a4
 	pop bc			;65a7
@@ -3541,7 +3541,7 @@ ACTOR_LE_DA_LA_FRUTA:		; Estado 10: sonido 0xA0, cara de susto y se pierde la vi
 	ld (0e00ch),a		;65aa
 	ret			;65ad
 CARA_DE_SUSTO:		; Los patrones del mono a 0x58/0x5C (los sprites 16-17 de 0x56BF, la cara de susto) o sus espejos 0xD8/0xDC segun a donde mira
-	ld a,(0e109h)		;65ae
+	ld a,(0e109h)		;65ae   ; Bit 7 de E109 (hacia donde miraba el mono): 0x58/0x5C o sus espejos 0xD8/0xDC
 	add a,a			;65b1
 	ld bc,0585ch		;65b2
 	jr c,CARA_DE_SUSTO_PON		;65b5

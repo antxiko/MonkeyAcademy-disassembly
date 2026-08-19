@@ -54,7 +54,7 @@ levels.
 | bytes of data | 7,422 |
 | bytes unidentified | **0** |
 | named labels | 498 |
-| anchored comments | 215 |
+| anchored comments | 353 |
 | explained data ranges | 121 |
 
 ## Some things that turned up

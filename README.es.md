@@ -56,7 +56,7 @@ el emulador, en los cinco niveles.
 | bytes de datos | 7.422 |
 | bytes sin identificar | **0** |
 | etiquetas con nombre | 498 |
-| comentarios anclados | 215 |
+| comentarios anclados | 353 |
 | rangos de datos con explicación | 121 |
 
 ## Algunas cosas que han salido

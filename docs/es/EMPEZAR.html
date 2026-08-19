@@ -91,14 +91,14 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <pre><code>make          # traza, genera el listado y lo comprueba todo
 make verify   # ensambla el listado y compara el sha256 con el cartucho
 make sanity   # lo que el reensamblado no puede cazar
-make test     # los 17 tests del listado, que no necesitan el cartucho
+make test     # los 18 tests del listado, que no necesitan el cartucho
 make web      # las imágenes y estas páginas</code></pre>
 <p><code>make</code> encadena las cuatro primeras. Si todo va bien, la última línea que importa es esta:</p>
 <pre><code>  ensamblado : 16384 bytes  fdf62cfa...20b16b01
   original   : 16384 bytes  fdf62cfa...20b16b01
 OK: reproducible byte a byte</code></pre>
 <h2 id="que-hay-en-cada-carpeta">Qué hay en cada carpeta</h2>
-<table><tr><th></th><th></th></tr><tr><td><code>src/monkey.asm</code></td><td>el listado comentado, generado; no se edita a mano</td></tr><tr><td><code>src/monkey.notes</code></td><td>las anotaciones: etiquetas, comentarios, cabeceras y rangos de datos, ancladas a direcciones</td></tr><tr><td><code>src/monkey.entries</code></td><td>los puntos de entrada que el trazado no puede deducir, cada uno con su justificación</td></tr><tr><td><code>src/monkey.nocode</code></td><td>las zonas que el trazador no debe leer como código</td></tr><tr><td><code>tools/</code></td><td>el trazador, el generador del listado, las comprobaciones y las herramientas de dibujo</td></tr><tr><td><code>tests/</code></td><td>17 tests sobre el listado y las notas</td></tr><tr><td><code>docs/</code></td><td>esta web</td></tr><tr><td><code>work/</code></td><td>lo que <code>make</code> genera por el camino</td></tr></table>
+<table><tr><th></th><th></th></tr><tr><td><code>src/monkey.asm</code></td><td>el listado comentado, generado; no se edita a mano</td></tr><tr><td><code>src/monkey.notes</code></td><td>las anotaciones: etiquetas, comentarios, cabeceras y rangos de datos, ancladas a direcciones</td></tr><tr><td><code>src/monkey.entries</code></td><td>los puntos de entrada que el trazado no puede deducir, cada uno con su justificación</td></tr><tr><td><code>src/monkey.nocode</code></td><td>las zonas que el trazador no debe leer como código</td></tr><tr><td><code>tools/</code></td><td>el trazador, el generador del listado, las comprobaciones y las herramientas de dibujo</td></tr><tr><td><code>tests/</code></td><td>18 tests sobre el listado y las notas</td></tr><tr><td><code>docs/</code></td><td>esta web</td></tr><tr><td><code>work/</code></td><td>lo que <code>make</code> genera por el camino</td></tr></table>
 <h2 id="como-se-lee-el-listado">Cómo se lee el listado</h2>
 <p>Cada rutina lleva su nombre en mayúsculas y un comentario que dice qué hace y qué recibe. Los bloques de datos van etiquetados como <code>DATA_&lt;uso&gt;</code>, con la anchura de su estructura, y cada uno tiene una explicación de qué es y de cómo se sabe. Las direcciones son las reales del cartucho en la página 1: 0x4000-0x7FFF.</p>
 <p>Si quieres cambiar algo, tócalo en <code>src/monkey.notes</code> y vuelve a hacer <code>make</code>: el listado se regenera y las comprobaciones dicen si sigue en pie.</p>
