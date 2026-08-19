@@ -76,7 +76,11 @@ hanging fruit, a fruit carried by a crab always follows the sprite at 0xE0C8
 of checking who carries it. And since the third crab does not enter play
 until stage 10 (see below), before that no crab throws anything: in 900
 measured seconds of stages 1 and 2 none jumped, although 0xE140 did come out
-zero (9 times in 592 rolls).
+zero (9 times in 592 rolls). Forcing stage 10 from the emulator
+(`tools/omsx_fase_forzada.tcl`) showed the whole thing: the third crab jumped
+five times in eight seconds, grabbed a hanging fruit and threw it at the
+monkey, who lost a life (the fruit's state, 0x42: thrown by a crab and
+flying).
 
 ## Sound 0xA1 is silence
 

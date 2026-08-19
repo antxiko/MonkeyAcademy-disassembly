@@ -76,7 +76,11 @@ sprite de 0xE0C8 (0x7371): el del actor 4, que es el del tipo 3. El código
 lo da por hecho en vez de mirar quién la lleva. Y como el tercer cangrejo no
 entra en juego hasta la fase 10 (ver abajo), antes de ella ningún cangrejo
 tira nada: en 900 segundos medidos en las fases 1 y 2 no saltó ninguno,
-aunque 0xE140 sí salió a cero (9 veces en 592 tiradas).
+aunque 0xE140 sí salió a cero (9 veces en 592 tiradas). Forzando la fase 10
+desde el emulador (`tools/omsx_fase_forzada.tcl`) se vio entero: el tercer
+cangrejo saltó cinco veces en ocho segundos, cogió una fruta colgada y se la
+tiró al mono, que perdió la vida (el estado de la fruta, 0x42: la tiró un
+cangrejo y vuela).
 
 ## El sonido 0xA1 es el silencio
 
