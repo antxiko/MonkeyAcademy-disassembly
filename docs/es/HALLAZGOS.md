@@ -102,12 +102,14 @@ pasos, los saltos y las caídas de los cangrejos no suenan.
 llama a `ACTOR_PASO` con ese número en B, bajando hasta 1; y `ACTOR_PASO`
 mueve **al actor número B** (IX = 0xE0B0 + 8·(B−1), 0x5F68). Así que no es
 cuántas veces se mueve cada cangrejo, sino cuántos juegan: uno hasta la fase
-7, dos en la 8 y la 9, los tres desde la 10. Un fotograma de cada cuatro
+7, dos de la 8 a la 15 y los tres desde la 16. Un fotograma de cada cuatro
 (0xE272) solo se mueve el mono. Primero se leyó al revés ("fase/8 + 1 veces
 por fotograma"); lo destapó una partida medida: en 1003 fotogramas de la
 fase 1, el mono dio 1003 pasos, el primer cangrejo 752 y los otros dos cero.
-Esperan escondidos (16 − fase) × 16 + 17 fotogramas hasta la fase 19; desde
-la 20, uno (0x6585).
+Esperan escondidos ((8 − fase mod 8) mod 8) × 16 + 17 fotogramas: el `and
+070h` de 0x6592 se queda con tres bits, así que la espera baja de 129 a 17 en
+ocho fases y vuelve a empezar, en vez de bajar seguida. Desde la fase 32,
+uno (0x6585).
 
 ## Al READY se le puede meter prisa
 

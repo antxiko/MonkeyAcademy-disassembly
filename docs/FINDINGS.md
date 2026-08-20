@@ -102,11 +102,13 @@ footsteps, jumps and falls make no sound.
 at 0x4860 calls `ACTOR_PASO` with that number in B, counting down to 1; and
 `ACTOR_PASO` moves **actor number B** (IX = 0xE0B0 + 8·(B−1), 0x5F68). So it
 is not how many times each crab moves but how many are in play: one up to
-stage 7, two in stages 8 and 9, all three from stage 10. One frame in four
+stage 7, two from stage 8 to 15 and all three from stage 16. One frame in four
 (0xE272) only the monkey moves. It was first read the other way round
 ("stage/8 + 1 times per frame"); a measured game exposed it: in 1003 frames
 of stage 1 the monkey took 1003 steps, the first crab 752 and the other two
-zero. They wait hidden (16 − stage) × 16 + 17 frames up to stage 19; from 20,
+zero. They wait hidden ((8 − stage mod 8) mod 8) × 16 + 17 frames: the `and 070h`
+at 0x6592 keeps three bits, so the wait drops from 129 to 17 over eight
+stages and starts over instead of decreasing steadily. From stage 32,
 one (0x6585).
 
 ## READY can be hurried

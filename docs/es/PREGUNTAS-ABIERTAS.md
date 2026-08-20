@@ -24,7 +24,7 @@ dejó el nivel 5 con su único guión de cinco símbolos, el binario no lo dice.
 La fase es BCD y `PINTA_FASE` (0x4A24) la devuelve a 0 al llegar a 100, y las
 tablas de plataformas, tarjetas y frutas se indexan con (fase − 1) & 7, así
 que las ocho fases se repiten. Lo que sube es cuántos cangrejos juegan (uno
-hasta la fase 7, dos en la 8 y la 9, los tres desde la 10; 0x4850) y lo poco
+hasta la fase 7, dos de la 8 a la 15, los tres desde la 16; 0x4850) y lo poco
 que esperan escondidos (desde la 20, un fotograma). Queda por jugar de verdad
 hasta ahí para ver si el juego se vuelve injugable antes o si la vuelta a la
 fase 0 tiene algún efecto que el código no deja ver. Una medida, por ahora:

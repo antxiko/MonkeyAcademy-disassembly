@@ -34,7 +34,9 @@
 #   E00D fase superada   E00E/E00F cursor VRAM del logotipo que sube
 #   E010-E02D los tres canales del sonido, 10 bytes cada uno (ver 0x796F)
 #   E040-E042 record (BCD, 6 cifras)   E043-E045 puntos del 1P   E046-E048 los del 2P
-#   E050-E06F el jugador en juego: E050 vidas, E051 fase (BCD), E052 proxima vida
+#   E050-E06F el jugador en juego: E050 vidas, E051 fase (BINARIA, no BCD: el
+#        `inc (hl)` de 0x45C6 no lleva `daa` y PINTA_FASE la pasa a decimal
+#        restando diez en bucle), E052 proxima vida
 #        extra (decenas de millar, BCD), E053 hace falta ecuacion nueva, E054
 #        ecuaciones resueltas en esta fase (a las 3, fase superada), E055/E056
 #        tiempo que queda (segundos y minutos en BCD: 05:00), E057 fallos (a los
@@ -240,7 +242,7 @@ L 0x43BA ESTADO_10_MONTA_FASE Cuando E004 llega a cero: marcador, tiempo, tarjet
 C 0x43CB E053: hace falta ecuacion nueva (la primera del turno, o al resolver la anterior)
 C 0x43E2 Sonido 1: la ecuacion arranca
 L 0x43EE ESTADO_11_READY   Primero suben los globos (0x713D); despues el recuadro READY con la cuenta atras 15..0 en segundos, o hasta que se pulse un boton
-C 0x43FC Los cuatro sprites de 0x597F vuelven a 0x1B80 (los globos ya no hacen falta)
+C 0x43FC Solo 0x40 bytes: los patrones 0x70 y 0x74 (el 500 y el 100) vuelven a 0x1B80, que son los dos que pisaron los globos; el platano y las uvas siguen intactos
 C 0x4410 E00C = 0, E241 = 1: fase de la cuenta atras
 C 0x4418 15 segundos, en BCD
 C 0x441D El recuadro azul de 7x4 en la fila 11, columna 10, y "READY"
@@ -352,7 +354,7 @@ L 0x47D7 LEVEL_SELECT_ESPERA 0x762F: con la tecla pulsada (carry) pasa a parpade
 D 0x47E1 0x47E9 jugador_nuevo Los 8 bytes de E050 al empezar: 3 vidas, fase 1, E052 = 0 (la primera vida extra al pasar de 10000), ecuacion nueva (E053 = 1), 0 resueltas, tiempo 05:00 (E055 = 00, E056 = 05), 0 fallos
 L 0x47E9 SPRITES_DE_JUEGO  Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de sprites (0x4B04) a E0B0 y los cuatro actores (0x4B24) a E108; el mono en Y = 0xA8; a partir de la fase 18 el cangrejo 1 es del tipo 4 y patrulla la segunda plataforma
 C 0x4809 El mono, en el suelo (Y = 0xA8)
-C 0x4811 Fase 18 en adelante (BCD): el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
+C 0x4811 Fase 24 en adelante -0x18 leido en BINARIO, que es como va E051-: el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
 B 0x4822 ----------------------------------------------------------------------
 B 0x4822 EL MONO Y LOS CANGREJOS, cada fotograma de partida. Los mandos van
 B 0x4822 a E10B (nibble alto: bit4 disparo, bit5 boton 2, bit6 izquierda,
@@ -367,7 +369,7 @@ L 0x4822 MONO_Y_CANGREJOS  El reloj, los mandos a E10B, las tarjetas cada 8 foto
 C 0x4825 Izquierda, derecha y los dos botones (bits 2-5) suben al nibble alto
 C 0x483F 0x69B0 devuelve carry si no hay colision
 C 0x4844 Le han pillado: cara de susto y estado 10 del mono (el mismo que cuando le da una fruta)
-C 0x4850 CUANTOS actores juegan: A = fase(BCD)/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos); el bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
+C 0x4850 CUANTOS actores juegan: A = fase/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos). Y la fase va en BINARIO, asi que los escalones estan en 8 y en 16, no en 8 y en 10: un cangrejo hasta la fase 7, dos de la 8 a la 15 y tres desde la 16. El bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
 L 0x4860 ACTORES_PASO      Un paso de los actores A..1 (B baja con el djnz y es el numero de actor de 0x5F5F); con E272 & 3 == 0 (un fotograma de cada cuatro) solo el mono
 L 0x486E ACTORES_PASO_4    Los cuatro actores (fase 16 en adelante)
 L 0x4872 VDP_R7            Registro 7 = A (color de fondo y borde)
@@ -411,8 +413,8 @@ L 0x4A05 PINTA_RECORD      El record en la fila 6, columna 25
 L 0x4A0E PINTA_PUNTOS      Los puntos del jugador que juega
 L 0x4A11 PINTA_PUNTOS_DE   Los puntos del jugador del bit 7 de A: 1P en la fila 9, 2P en la 12, columna 25
 L 0x4A1F PINTA_3_BYTES_BCD Seis cifras (HL apunta al byte alto)
-L 0x4A24 PINTA_FASE        E051 (BCD, y si llega a 100 vuelve a 0) en la fila 20, columna 26
-C 0x4A2D Fase 100 (0x64 en binario, aunque E051 es BCD): vuelta a 0
+L 0x4A24 PINTA_FASE        E051 -que va en BINARIO- pasada a decimal restando diez en bucle, en la fila 20 columna 26; si llega a 100 vuelve a 0
+C 0x4A2D Fase 100 y vuelta a 0. El 0x64 es binario porque E051 lo es, y lo prueba lo de aqui abajo: pasarla a decimal restando diez en bucle solo tiene sentido con un numero binario
 L 0x4A33 FASE_DECENAS      Cuenta las decenas restando 10
 L 0x4A4F PINTA_BYTES_BCD   B bytes BCD desde HL hacia abajo, dos cifras cada uno, en la VRAM DE
 L 0x4A6C PARPADEA_1UP      Cada 32 fotogramas: "1UP" (fila 8) o "2UP" (fila 11) sobre los puntos del jugador que juega, alternando con el azul
@@ -627,12 +629,12 @@ D 0x65DB 0x65E3 patrones_cangrejo_izquierda Las cuatro fases del cangrejo hacia 
 F 0x65DB 2
 D 0x65E3 0x65E7 patrones_trepar Los dos patrones de trepar por el hueco: (48,4C) hacia la derecha, (C8,CC) hacia la izquierda (los sprites 12 y 14 de 0x56BF, con los brazos arriba, y sus espejos)
 F 0x65E3 2
-L 0x65E7 TILE_A_PIXELS     D = (fila - 7) x 8, E = columna x 8: de la posicion de un tile a los pixels de la tarjeta que cuelga ahi
+L 0x65E7 TILE_A_PIXELS     D = fila x 8, E = columna x 8: deshace 0x6605 y devuelve la esquina en pixels del tile cuya direccion de VRAM llega en DE (el `sub 0x38` solo le quita la base 0x3800)
 L 0x65F8 SIN_LLAMADAS_TILE_EN_PIXELS Pone el tile A en los pixels (D, E). Solo la llama 0x6624, y a esa nadie: un pintador de plataformas que quedo sin usar (0x664F -> 0x6624 -> aqui)
 L 0x6624 SIN_LLAMADAS_TRAMO B tiles seguidos de C desde (D, E), 8 pixels a la derecha cada uno
 L 0x664F SIN_LLAMADAS_LISTA_DE_TRAMOS Recorre una lista de (Y, X, ancho) hasta 0xFF pintando el tile C. Nadie la llama: 0x6685 hace lo mismo con las plataformas de la fase
 L 0x6605 PIXELS_A_VRAM     DE = 0x3800 + (D / 8) x 32 + E / 8: la direccion en la tabla de nombres del tile que cae en los pixels (D, E)
-L 0x661A DENTRO_DE         Carry si |H - L| >= B: H y L son dos coordenadas y B la distancia; NC si estan a menos de B
+L 0x661A DENTRO_DE         NC si L cae en el tramo [H - B, H], carry si no. No es una distancia a los dos lados: el tramo empieza en H, y por eso quien llama suma a H media anchura del sprite para centrarlo. H - L == B todavia vale
 L 0x663A RELLENA_RECTANGULO L filas de C tiles del byte A desde la VRAM DE (una fila cada 32)
 L 0x665A COLORES_DEL_PANEL R7 = 1, la fuente blanca sobre azul, y los colores de los tiles 0x40-0x5F: amarillo sobre azul en el segundo tercio (0x0A00), rojo sobre azul en el primero (0x0200) y cyan sobre azul en el tercero (0x1200): TIME, HI y STAGE de distinto color
 L 0x6685 PINTA_PLATAFORMAS Las plataformas de la fase (0x66F5 -> lista de Y, X, ancho hasta 0xFF) con el tile base mas (fase / 2) & 3: cuatro colores
@@ -652,7 +654,7 @@ L 0x6906 PINTA_BLOQUE      B filas x C columnas de tiles desde HL en los pixels 
 L 0x6924 HAY_SUELO         NC si en la fase hay una plataforma justo debajo de (B, C): a Y + 0x10 y con X entre su principio y su fin (0x661A con el ancho x 8 + 4)
 L 0x693D HAY_SUELO_BUSCA   Recorre las plataformas de la fase
 L 0x694C HAY_SUELO_X       Misma fila: la X del actor mas 10 contra el tramo
-L 0x696B HAY_PLATAFORMA_ARRIBA Carry si hay una plataforma a menos de 0x11 pixels por encima de (B, C) que cubra la X (mas 11): para saber si se puede subir por ahi
+L 0x696B HAY_PLATAFORMA_ARRIBA Carry si NO hay ninguna plataforma a la altura de (B, C) (tramo de 0x11 pixels) que cubra la X (mas 11); NC si la hay. El que trepa pregunta con B = su Y menos 0x18: con carry el hueco esta libre y sigue subiendo
 B 0x69B0 ----------------------------------------------------------------------
 B 0x69B0 LA COLISION CON LOS CANGREJOS. NC si un cangrejo vivo (estado ni 0
 B 0x69B0 ni 9) esta a menos de 16 pixels en X y de (0x6A0F + 16) en Y del
@@ -708,7 +710,7 @@ L 0x6D86 GLOBO_ANDA        Los cuatro sprites avanzan un pixel por fotograma has
 L 0x6DB6 GLOBO_YA_ESTA     E276: fuera el bit 1, dentro el 2: a subir
 L 0x6DBF GLOBO_SUBE        El globo (sprites 4 y 5) sube un pixel por fotograma hasta arriba; entonces se esconde, se escribe la cifra escondida (E1CD) sobre el ? con los bloques de 0x7207, sonido 2 y 0x6CFC
 L 0x6DFC FASE_RESUELTA_BAILE Con el bit 3 de E276: cada 16 fotogramas alterna los colores del mono y del profesor (los del bit 4) hasta que el nibble alto llega a 0x10; entonces la ecuacion cuenta (0x6E32)
-C 0x6E12 Bit 4 a 1: patrones 0x08 y color 0x0C; a 0: 0x00 y 0x04
+C 0x6E12 Bit 4 a 1: patrones 0x08 (cuerpo) y 0x0C (detalles); a 0: 0x00 y 0x04. Son las dos caras de 0x5E7F, y los dos bytes que se tocan son patrones, no colores
 L 0x6E32 ECUACION_RESUELTA En la partida (bit 6 de E002): banderas a cero, ecuacion nueva, vida devuelta (el estado 9 la gasta), una resuelta mas; a las tres, fase superada: al estado 12 con E23C (el tiempo a puntos)
 C 0x6E35 En la demo (sin bit 6) vuelve con carry al que llamo a 0x4337
 C 0x6E4A El estado 9 gasta una vida al entrar: se devuelve antes
@@ -1279,7 +1281,7 @@ C 0x6274 Del octavo paso en adelante, la tabla (bit 7)
 C 0x6279 Indice = +0x5A / 2 (un paso de tabla cada dos fotogramas)
 C 0x6285 El paso 23 es el suelo; el 11 lo alto
 C 0x628E Carry: no hay tarjeta encima
-C 0x6293 D = fila x 8 (menos 7 filas), E = columna x 8; con la segunda mitad del canto, 8 pixels menos
+C 0x6293 De vuelta a pixels: D = fila x 8, E = columna x 8; y si el tile leido era la segunda mitad del canto, 8 pixels menos
 C 0x629D H cuenta las tarjetas; IY recorre E15A desde el principio
 C 0x62AA 0xFF: fin de la lista, no era ninguna
 C 0x62AF Misma Y y misma X que la tarjeta H
@@ -1300,7 +1302,7 @@ C 0x6324 Cuatro pixels arriba
 C 0x632F Y un pixel al lado segun +0x59 (bit 7: derecha)
 C 0x633C La X entre 8 y 0xB8
 C 0x634E La plataforma que busca: 0x18 por encima, y 6 pixels hacia donde va (0xFA = -6)
-C 0x6363 Carry: la hay, y se sube (0x63D9); si no, se planta
+C 0x6363 Carry: NO hay plataforma delante, el hueco sigue libre y se sube (0x63D9); si la hay, 0x6312 corta la subida y le hace bajar
 C 0x636B Cuatro pixels abajo, alineado a cuatro
 C 0x6378 Un pixel al lado, entre 8 y 0xB8
 C 0x6399 Un pixel al lado por fotograma
@@ -1337,7 +1339,7 @@ C 0x655D Y de vuelta a los suyos, 0x30/0x3C o 0xB0/0xBC
 C 0x656B B recuperado antes: este estado no pasa por ACTOR_DESPACHA al volver
 C 0x6570 El puntero al sprite del "500" (guardado en +0x59/+0x5A, apuntaba al patron): dos menos es su Y
 C 0x657A Escondido (0) a esperar lo que diga la fase
-C 0x6585 Fases 1-19: (16 - fase) x 16 + 17; desde la 20 (0x20 en BCD), 1
+C 0x6585 La espera NO baja seguida con la fase: el `and 070h` de 0x6592 se queda con tres bits, asi que ((8 - fase mod 8) mod 8) x 16 + 17 va de 129 a 17 en ocho fases y vuelve a empezar -129, 113, 97, 81, 65, 49, 33, 17-. Desde la fase 32 (0x20 en BINARIO, que es como va E051) siempre 1
 C 0x659F El sonido de perder la vida
 C 0x65AE Bit 7 de E109 (hacia donde miraba el mono): 0x58/0x5C o sus espejos 0xD8/0xDC
 
@@ -1681,3 +1683,284 @@ C 0x4210 En el estado 18 (opcion recien elegida) las teclas no se miran
 C 0x4214 Del estado 11 en adelante ya hay partida: el 1UP parpadea
 C 0x421B Del 1 en adelante, las teclas 1-5
 C 0x4223 El estado manda, por la tabla que va justo detras
+
+# --- segunda pasada de C: los ayudantes de pantalla y las colisiones (0x65E7-0x6CC2)
+C 0x65E9 Le quita el 0x3800 de la tabla de nombres: DE queda en fila x 32 + columna
+C 0x65ED Por ocho: H pasa a ser la fila de tiles (0-23) y L la columna x 8
+C 0x65F0 Y la fila tambien por ocho: la esquina de arriba a la izquierda del tile, ya en pixels
+C 0x65F6 A sale intacto a proposito: el unico que llama (0x6293) trae ahi el tile que acaba de leer
+C 0x65F8 Lo conserva todo porque el bucle de 0x662B lleva la lista en HL
+C 0x65FB El tile A en el tile donde caen los pixels (D, E)
+C 0x6606 La fila en pixels; sus tres bits de abajo acabaran en la columna
+C 0x660B Los giros van entrelazados: D y E se corren tres bits juntos y E queda valiendo (fila de tiles & 7) x 32 + columna de tiles, que es el desplazamiento dentro de la pagina
+C 0x6613 De la fila solo quedan los bits 6-7: cada ocho filas de tiles son otros 256 bytes
+C 0x6615 La tabla de nombres empieza en 0x3800
+C 0x6618 A sale intacto: 0x65F8 trae ahi el tile que va a escribir
+C 0x661B H - L; si L pasa de H ya sale por fuera y ni se mira B
+C 0x6620 B menos esa diferencia: el tramo bueno es [H - B, H], no B pixels a cada lado. Por eso quien llama suma a H media anchura del sprite: asi el tramo queda centrado
+C 0x6626 De la lista: la Y, la X y cuantos tiles
+C 0x662C El VDP se toca con la interrupcion cerrada
+C 0x6631 Ocho pixels a la derecha: el tile de al lado
+C 0x663B El ancho viene en H: BC = los bytes de una fila
+C 0x663E El byte que se repite se aparca en H mientras RELLENA_VRAM gasta A
+C 0x6643 Treinta y dos bytes mas: la fila de abajo
+C 0x6649 Una fila menos, y el byte vuelve de H
+C 0x664F El primer byte de la lista es el tile con que se pinta
+C 0x6652 0xFF: se acabo la lista
+C 0x665A El borde y el fondo negros (registro 7 = 1)
+C 0x665F Las cifras y las letras, blanco sobre azul oscuro
+C 0x6664 0x0A00 cae en el segundo tercio de la tabla de colores (filas 8-15)
+C 0x6667 0x100 bytes son los 32 tiles del 0x40 al 0x5F de ese tercio
+C 0x666A Amarillo sobre azul: el rotulo TIME
+C 0x666F El mismo tramo de tiles en el primer tercio (filas 0-7)
+C 0x6675 Rojo claro sobre azul: el HI
+C 0x667A Y en el tercero (filas 16-23)
+C 0x6680 Cyan sobre azul: el STAGE. Un mismo tile sale de tres colores segun por que tercio de la pantalla se pinte
+C 0x6685 La fase en curso
+C 0x6688 (Fase - 1) & 7: las ocho listas se reparten y vuelven a empezar cada ocho fases
+C 0x668B Por dos, que la tabla son punteros
+C 0x6693 HL = la lista de plataformas de esa fase
+C 0x6697 Su primer byte es el tile base, siempre el 5
+C 0x6698 El tile se guarda en el juego alterno mientras HL recorre la lista
+C 0x669A La fase otra vez: fase / 2 & 3 elige entre los tiles 5 a 8, que son la misma barra de cuatro colores
+C 0x66A3 De la lista: la Y, la X y el ancho de la plataforma siguiente
+C 0x66A5 0xFF: no quedan mas
+C 0x66AC La esquina, de pixels a direccion de la tabla de nombres
+C 0x66B0 El ancho en tiles
+C 0x66B4 Una plataforma es una sola fila del mismo tile repetido
+C 0x66BC El ancho y el alto en tiles
+C 0x66C0 El tile con que se rellena
+C 0x66C3 Y la esquina en la VRAM, con el byte alto delante
+C 0x66C6 HL vuelve a ser el ancho y el alto, que es como los quiere 0x663A
+C 0x6906 Cada vuelta guarda las filas que faltan y el ancho, que el bucle de dentro se come
+C 0x6907 Y la esquina de esta fila, para volver a ella al bajar
+C 0x690A Tile a tile, cada uno con su direccion: un bloque puede cruzar de pagina de la tabla de nombres
+C 0x6913 Ocho pixels a la derecha
+C 0x691B La esquina de la fila otra vez, y ocho pixels mas abajo
+C 0x6926 La lista de plataformas de la fase, la misma de 0x6685
+C 0x6938 El tile base no pinta nada aqui
+C 0x6939 Se busca una plataforma dieciseis pixels por debajo: la altura justa a la que se pisa
+C 0x693D La Y de la plataforma
+C 0x693E 0xFF: se acabo la lista y no hay suelo
+C 0x6942 Solo cuenta la fila de tiles, no el pixel; y tiene que ser exactamente esa
+C 0x6947 No es: sus tres bytes de largo a la siguiente
+C 0x694C Se mira la X del actor mas diez, no la esquina de su sprite
+C 0x6953 El ancho en tiles
+C 0x6957 Por ocho y cuatro mas: el tramo bueno llega hasta el final de la barra y un poco despues
+C 0x695C Carry: ese punto no cae encima de la barra
+C 0x6963 Sin carry: hay suelo debajo
+C 0x696C La misma lista que 0x6685 y 0x6924, pero recorrida con DE
+C 0x697C Saltandose el tile base
+C 0x697D La Y de la plataforma
+C 0x6983 La Y que se pregunta, mas quince
+C 0x6988 Con 0x11 de tramo: vale desde dos pixels por encima hasta quince por debajo
+C 0x698E Esta a esa altura: falta ver si tapa la X
+C 0x6996 La X de la plataforma
+C 0x6998 Y la del actor mas once, casi el centro del sprite
+C 0x699E El ancho en tiles
+C 0x69A2 Por ocho y seis mas de holgura
+C 0x69A9 No la tapa: a la plataforma siguiente
+C 0x69AB Sin carry: hay plataforma delante y por ahi no se sube (0x6363 deja de trepar)
+C 0x69AD Carry: no hay ninguna, el hueco esta libre
+C 0x69B1 Atontado (estado 10): ya le han dado, no se vuelve a mirar
+C 0x69B8 0x33: la respuesta entregada, el mono ya no juega
+C 0x69BF El sprite del mono: la Y en D y la X en E
+C 0x69C9 El mono se queda en el juego alterno mientras B cuenta los cangrejos
+C 0x69CA Los tres cangrejos
+C 0x69CC Ocho bytes por actor: el primero es E0B8
+C 0x69D2 Estado 0 escondido y 9 muriendose: esos dos no tocan
+C 0x69DC Al cangrejo siguiente
+C 0x69E2 Carry: ninguno le ha tocado
+C 0x69E5 La X del mono mas ocho, el centro de su sprite
+C 0x69E9 Contra la X del cangrejo, con 0x10 de tramo: se tocan si no se pasan de ocho pixels
+C 0x69F3 La holgura vertical, una por tipo de actor (la tabla de 0x6A0F, ocho para todos)
+C 0x69FF El tramo de la Y son esos ocho mas dieciseis
+C 0x6A02 Pero el centro se pone en la Y del mono mas ocho, no mas doce: el tramo sale corrido y el cangrejo toca desde dieciseis pixels por encima hasta solo ocho por debajo
+C 0x6A0D Sin carry: le ha tocado
+C 0x6A20 La tarjeta suelta (sprite 18) tiene que estar escondida (Y = 0xE1): si ya hay una cayendo no se coge otra
+C 0x6A27 Y solo el mono (tipo 0) las coge
+C 0x6A2E Siete pixels por debajo de su Y y ocho a la derecha: ahi asoma el canto de la tarjeta metida
+C 0x6A39 El tile que hay pintado en ese sitio
+C 0x6A3C 1 y 2 son las dos mitades del canto (0x5082): hay tarjeta
+C 0x6A43 Cualquier otro tile: no hay
+C 0x6A48 La Y y la X del sprite del actor, que es lo que miran todas las colisiones
+C 0x6A4F 0x33: el mono ya entrego la respuesta y no coge nada
+C 0x6A55 Con la tarjeta en alto (+0x5E = 2) tampoco
+C 0x6A5C B va contando la fruta, de la 0 a la 7
+C 0x6A5F Los sprites de las ocho frutas
+C 0x6A65 La esquina del actor mas once en las dos coordenadas: su centro, para que el tramo de 0x16 quede simetrico
+C 0x6A6B La Y de la fruta
+C 0x6A6F 0x16 de tramo alrededor del centro: se tocan si no se alejan mas de once pixels
+C 0x6A76 Y lo mismo con la X
+C 0x6A80 Su estado en E260, dos bytes por fruta
+C 0x6A8B Bit 7: gastada, ya no esta
+C 0x6A8F Sin los bits 0-1 esta colgada quieta: se devuelve E = 1
+C 0x6A9A En el aire; el mono (tipo 0) coge cualquiera
+C 0x6AA1 Un cangrejo no se come la que ha tirado el (bit 6), pero si la que tiro otro
+C 0x6AA5 En el aire: E = 0
+C 0x6AAC Cuatro bytes: el sprite de la fruta siguiente
+C 0x6AB7 Las ocho miradas y ninguna: sin carry
+C 0x6ABB E10E es el juego de sprites del mono; con 0 va de vacio
+C 0x6AC1 El mono y la tarjeta suelta (sprite 18)
+C 0x6AC7 Las dos Y tienen que ser identicas: la tarjeta se recoge de pasada, andando a su misma altura
+C 0x6ACE La X del mono mas ocho para centrar el tramo de dieciseis
+C 0x6ADB E10E = 2: solo se le entrega llevando la tarjeta de la respuesta en alto
+C 0x6AE2 El mono y el profesor (sprite 8)
+C 0x6AE8 Las Y sin centrar: el mono vale desde la altura del profesor hasta 0x20 pixels por debajo, nunca por encima
+C 0x6AF6 Y las X con el mono corrido doce pixels: de doce a su izquierda a veinte a su derecha
+C 0x6B03 La fase, otra vez por (fase - 1) & 7 y por dos porque la tabla son direcciones
+C 0x6B10 La VRAM de la flor viene con el byte alto delante
+C 0x6B13 0x15 es el tile de la flor
+C 0x6B18 La segunda flor, con la misma cuenta y otra tabla
+C 0x6B2D Y la tercera: el mismo codigo copiado tres veces, sin bucle
+C 0x6C42 Lo que lleva subido el logotipo, contado en bytes de VRAM
+C 0x6C45 Treinta y dos mas: una fila de tiles por paso
+C 0x6C54 Los tiles del logotipo van seguidos desde el 0x16, y A no se reinicia entre las tres filas: son los 26 tiles del 0x16 al 0x2F
+C 0x6C56 Tres tiles la fila de arriba, once la de en medio y doce la de abajo
+C 0x6C65 Y doce tiles a cero justo debajo: borra la fila que el logotipo acaba de dejar
+C 0x6C6C Un paso menos de los 17 que puso 0x426C; a cero, 0x429E sigue
+C 0x6C72 Un tile
+C 0x6C76 El siguiente: van seguidos en la tabla de patrones
+C 0x6C7A Vuelta a la esquina y treinta y dos bytes: la fila de abajo
+C 0x6C80 Aqui la direccion de la VRAM viene delante de los datos
+C 0x6C84 La direccion se manda una vez y a partir de ahi se escribe seguido al puerto
+C 0x6C88 La marca
+C 0x6C8A 0: se acabo
+C 0x6C8C Bit 7: lo que viene detras va tal cual
+C 0x6C90 Si no, cuantas veces se repite el byte de detras
+C 0x6C93 Sin preguntarle al VDP: los dos nop son la espera entre escritura y escritura
+C 0x6C9B Fuera el bit 7: los que quedan
+C 0x6CA0 El VDP ya apunta donde toca
+C 0x6CA3 Y HL se salta los que se han copiado
+C 0x6CA6 Bit 1 de E270: el mono lleva la tarjeta de la respuesta
+C 0x6CAC Bit 3 del contador de fotogramas: la flecha se enciende y se apaga cada ocho
+C 0x6CB6 Apagada: los cuatro tiles a cero de 0x78DB
+C 0x6CB9 Un bloque de dos por dos
+C 0x6CBC Pixels (0x30, 0xB8): fila 6, columna 23, arriba a la derecha de la zona de juego
+C 0x6CC6 Los minutos en E056 y los segundos justo debajo, en E055
+C 0x6CCC A 00:00 no queda nada que descontar
+C 0x6CCE Un segundo del reloj cada 64 fotogramas: en una maquina PAL (50 fotogramas por segundo) eso son 1,28 segundos de verdad
+C 0x6CD4 Los segundos, en BCD
+C 0x6CD6 De 00 se pasa por 0x60 para que el daa lo deje en 59, y un minuto menos
+C 0x6CDC El daa es lo que hace la resta decimal
+C 0x6CDF Los minutos, se hayan tocado o no
+C 0x6CE0 HL viene apuntando a E056: 0x4A4F pinta los minutos y luego baja a los segundos
+C 0x6CE2 0x387A: fila 3, columna 26
+C 0x6CEA Un tile de por medio: los dos puntos ya estan pintados de 0x66CC y no se repintan
+C 0x6CEF Con algun minuto entero no hay nada que hacer
+C 0x6CF6 Menos de 0:30 se sube a 0:30: el tiempo se conserva de una vida a la siguiente, pero nunca se vuelve con menos de medio minuto
+C 0x6CFD Los fallos a cero: la ecuacion se acaba aqui, acertada o no
+C 0x6D00 E00C = 1 se pierde la vida, y E053 = 1 pide ecuacion nueva
+C 0x6D07 Los sprites de 0x597F (el 500, el 100, el platano y las uvas) vuelven a 0x1B80, que los globos habian pisado
+C 0x6D15 Sonido 2
+C 0x6D1A El 0x12 mas el inc de 0x4661: estado 19
+C 0x6D1F 0x80 fotogramas parado antes de seguir
+C 0x6D27 E276: las banderas del profesor que baja con la respuesta
+C 0x6D2C Se come la direccion de vuelta: con algo de esto en marcha, quien llamo no sigue
+C 0x6D2D Bit 0: montar el globo
+C 0x6D31 Bit 1: el globo anda hasta el ?
+C 0x6D33 Bit 2: sube y escribe la cifra
+C 0x6D38 E026 es el volumen del canal C: se espera a que se calle para no pisar el sonido anterior
+C 0x6D3D Los seis sprites de los tres cangrejos (E0B8-E0CF) fuera de la pantalla con Y = 0xE1, que es donde se van a montar los del globo
+C 0x6D4A Los cuatro atributos de 0x6D76 encima: el mono y su globo, en X = 0xFD, que al ir sumando de uno en uno da la vuelta y entra por la izquierda
+C 0x6D55 Los dos patrones del globo (0x5E3F) a 0x1B80
+C 0x6D63 Fuera el bit 0, dentro el 1: a andar
+C 0x6D6B E108 = 0x88: el mono del jugador se queda quieto mientras dura la escena
+C 0x6D70 Sonido 0x97
+C 0x6D86 E271 es la columna donde se pinto el ?; trece pixels antes (0xF3 = -13) es donde para
+C 0x6D8B La X del primero de los cuatro sprites
+C 0x6D8E Ya esta: no anda mas
+C 0x6D92 Los cuatro, un pixel a la derecha cada uno
+C 0x6D95 Cuatro bytes de un atributo al siguiente
+C 0x6D9B Bits 3-4 del contador de fotogramas: la fase de la animacion cambia cada ocho
+C 0x6DA0 Las mismas cuatro fases del cangrejo (0x65CB): este mono agarrado al globo anda con ellas
+C 0x6DA3 Los bits 3-4 bajados a 0-1: 0, 2, 4 o 6, la pareja de patrones
+C 0x6DAB El patron del cuerpo
+C 0x6DB1 Y el de los ojos, en el sprite de al lado
+C 0x6DB6 Fuera el bit 1 y dentro el 2: ya esta bajo el ?, ahora a subir
+C 0x6DBF La Y del primero de los dos sprites del globo
+C 0x6DC3 A cero se acabo la subida
+C 0x6DC6 Un pixel por fotograma, los dos
+C 0x6DCC Los dos globos fuera de la pantalla
+C 0x6DD4 D sigue valiendo 0 de la comparacion: la fila 0, arriba del todo
+C 0x6DD5 Y la columna donde estaba el ?
+C 0x6DDB Bit 7 de E002: cada jugador guarda su cifra escondida, E1CD o E1CE
+C 0x6DE5 La cifra que estaba detras del ?
+C 0x6DE9 Por cuatro: cada simbolo son cuatro tiles en 0x7207
+C 0x6DEE El bloque de 2 x 2, encima del ?
+C 0x6DF4 Sonido 2
+C 0x6DF9 Y de ahi al final de la ecuacion, el mismo que cuando se acaba el tiempo: la respuesta se ve, pero se pierde la vida
+C 0x6DFF Bit 3 de E276: la respuesta llego arriba y los dos monos estan de fiesta
+C 0x6E02 Otro que se come la vuelta
+C 0x6E03 Un cambio cada 16 fotogramas
+C 0x6E09 El nibble alto de E276 cuenta los cambios que faltan
+C 0x6E0E A 0x10 se acabo el baile
+C 0x6E14 El bit 4 bajado al 3
+C 0x6E17 Y el bit 2 puesto siempre
+C 0x6E19 Dos veces: el mono y el profesor
+C 0x6E1B El patron del cuerpo del mono
+C 0x6E1F Cuatro bytes: el sprite de los detalles
+C 0x6E24 Y ahora los dos del profesor
+C 0x6E29 Un cambio menos: 0x10 abajo cada vez
+C 0x65E7 A entra y sale sin tocar: es la unica manera de que 0x6293 conserve el tile que leyo
+C 0x6607 Cuatro giros del tiron y luego alternados con E: cada rra suelta un bit por el carry y el rr e siguiente se lo mete a E por arriba
+C 0x661D Carry: L esta por encima de H y no hace falta ni mirar B
+C 0x662D Cada tile por separado, con su direccion: nadie aprovecha que van seguidos en la VRAM
+C 0x663F Una fila entera del mismo byte de una tacada
+C 0x666C Los tiles 0x40-0x5F son las cifras y las letras que se usan en el panel
+C 0x668F El puntero de la fase, dos bytes
+C 0x6699 El tile base se aparca en D' mientras se calcula el color
+C 0x66A0 Base mas 0, 1, 2 o 3: la misma barra en cuatro colores
+C 0x66A2 El tile se guarda en cada vuelta porque RELLENA_VRAM se come A
+C 0x66BB HL se devuelve como vino: el que llama sigue con su lista
+C 0x690D El tile que toca de la lista
+C 0x6934 El puntero a la lista de la fase, que va delante de las plataformas
+C 0x6982 La Y de la plataforma abajo, la que se pregunta arriba: la resta de 0x661A las compara
+C 0x69C3 La Y y la X del mono; los tres cangrejos se comparan siempre contra ellas
+C 0x69F9 El tipo de actor esta en el nibble bajo de +0x5B
+C 0x6A36 El tile en el que caen esos pixels
+C 0x6A62 Las coordenadas se vuelven a pedir en cada vuelta porque BC se gasta comparando
+C 0x6A83 El numero de fruta esta en B', que el bucle no pisa
+C 0x6A86 Por dos: cada fruta tiene estado y contador
+C 0x6AAF Al juego alterno para tocar la cuenta y volver
+C 0x6AC8 La Y de la tarjeta que anda por el suelo
+C 0x6B15 Un solo tile: la flor es un adorno de 1 x 1
+C 0x6C4D El carry limpio antes del sbc
+C 0x6C5B La fila de en medio, once tiles
+C 0x6C60 Y la de abajo, doce
+C 0x6C71 La esquina se guarda para poder bajar una fila justo al acabar
+C 0x6C9D BC = cuantos bytes van sin comprimir
+C 0x6CB1 Los cuatro tiles de la flecha
+C 0x6D0D 0x40 bytes: solo los patrones 0x70 y 0x74 (el 500 y el 100), que son los dos que pisaron los globos
+C 0x6D43 0x17 con el ldir: 24 bytes, seis sprites
+C 0x6D50 0x10: los cuatro atributos de golpe
+C 0x6DD2 Y el segundo globo, cuatro bytes mas alla
+C 0x6DE1 El bit 7 al carry sin gastar otro registro
+C 0x6E16 C se monta aparte: el patron del cuerpo en A y el de los detalles en C
+C 0x65EC El calculo se hace en HL, el unico par que sabe doblarse solo
+C 0x6624 La lista se lee con HL y el tile viene en C
+C 0x6642 HL_MAS_A solo sabe sumar a HL: la direccion de la VRAM cambia de sitio y vuelve
+C 0x6654 El final de la lista se mira en la Y de cada tramo
+C 0x6692 El puntero leido pasa a HL, que es con lo que se recorre la lista
+C 0x66B1 El ancho nunca llega a 256: B a cero
+C 0x6949 Tres bytes por plataforma: Y, X y ancho
+C 0x6992 Los mismos tres bytes, aqui contados con DE
+C 0x69CF IX arranca en el primer cangrejo, que el mono no choca consigo mismo
+C 0x69E1 Se vuelve al juego bueno antes de salir
+C 0x6A5E El numero de fruta se aparca en B' y BC queda libre para las coordenadas
+C 0x6A69 El centro se pasa a BC para no perderlo entre las dos comparaciones
+C 0x6A6D El atributo del sprite: la Y y detras la X
+C 0x6A97 Carry: le ha tocado una, y en D va cual
+C 0x6AB2 Las ocho y se acabo
+C 0x6ACC Y ahora las X
+C 0x6AF3 No esta a su altura: la X ni se mira
+C 0x6C68 El tile 0, que es negro
+C 0x6C7D Treinta y dos bytes: la misma columna una fila mas abajo
+C 0x6C89 La marca se consume y HL queda en el dato
+C 0x6CD5 A cero hay que pedirle prestado al minuto
+C 0x6D30 Cada rra saca el bit siguiente: los tres pasos se miran en cadena
+C 0x6D46 0xE1 en la Y esconde el sprite, y el ldir reparte ese byte por los 24
+C 0x6D94 Se toca la X, no la Y: el grupo entra de lado
+C 0x6DC7 Y el segundo globo, el de debajo
+C 0x6E0C El nibble bajo no pinta nada en esta cuenta
+C 0x6E23 Y el patron de los detalles, en el sprite de al lado

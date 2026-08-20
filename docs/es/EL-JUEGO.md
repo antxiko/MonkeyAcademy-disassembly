@@ -76,8 +76,8 @@ caen al primer suelo.
   y si no se deja caer hasta ella.
 
 Cuántos de ellos juegan lo dice la fase (0x4850: fase/8 + 2 actores, el mono
-incluido, tope 4): **uno solo hasta la fase 7**, dos en la 8 y la 9, los tres
-desde la 10. El bucle de 0x4860 llama a `ACTOR_PASO` con el número de actor
+incluido, tope 4): **uno solo hasta la fase 7**, dos de la 8 a la 15 y los tres
+desde la 16 (E051 va en binario, no en BCD: el escalon esta en 16, no en 10). El bucle de 0x4860 llama a `ACTOR_PASO` con el número de actor
 en B, del último al primero; y uno de cada cuatro fotogramas (0xE272) solo se
 mueve el mono. Medido en una partida: en las fases 1 y 2 el mono dio 1003
 pasos en 1003 fotogramas, el primer cangrejo 752, los otros dos ninguno. Y

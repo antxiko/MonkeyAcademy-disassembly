@@ -642,7 +642,7 @@ ESTADO_11_READY:		; Primero suben los globos (0x713D); despues el recuadro READY
 	or a			;43f7
 	call GLOBOS_SUBEN		;43f8
 	ret nc			;43fb
-	ld de,01b80h		;43fc   ; Los cuatro sprites de 0x597F vuelven a 0x1B80 (los globos ya no hacen falta)
+	ld de,01b80h		;43fc   ; Solo 0x40 bytes: los patrones 0x70 y 0x74 (el 500 y el 100) vuelven a 0x1B80, que son los dos que pisaron los globos; el platano y las uvas siguen intactos
 	ld hl,0597fh		;43ff
 	ld bc,00040h		;4402
 	di			;4405
@@ -1250,7 +1250,7 @@ SPRITES_DE_JUEGO:		; Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de 
 	ld a,0a8h		;4809   ; El mono, en el suelo (Y = 0xA8)
 	ld (0e0b0h),a		;480b
 	ld (0e0b4h),a		;480e
-	ld a,(0e051h)		;4811   ; Fase 18 en adelante (BCD): el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
+	ld a,(0e051h)		;4811   ; Fase 24 en adelante -0x18 leido en BINARIO, que es como va E051-: el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
 	cp 018h		;4814
 	ret c			;4816
 	ld a,038h		;4817
@@ -1296,7 +1296,7 @@ MONO_COLISION:		; La colision con los cangrejos y, si no, el paso de los actores
 MONO_ACTORES:		; Cuantos actores se mueven este fotograma (E272 cuenta los fotogramas)
 	ld hl,0e272h		;484c
 	inc (hl)			;484f
-	ld a,(0e051h)		;4850   ; CUANTOS actores juegan: A = fase(BCD)/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos); el bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
+	ld a,(0e051h)		;4850   ; CUANTOS actores juegan: A = fase/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos). Y la fase va en BINARIO, asi que los escalones estan en 8 y en 16, no en 8 y en 10: un cangrejo hasta la fase 7, dos de la 8 a la 15 y tres desde la 16. El bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
 	rra			;4853
 	rra			;4854
 	rra			;4855
@@ -1610,13 +1610,13 @@ PINTA_PUNTOS_DE:		; Los puntos del jugador del bit 7 de A: 1P en la fila 9, 2P e
 PINTA_3_BYTES_BCD:		; Seis cifras (HL apunta al byte alto)
 	ld b,003h		;4a1f
 	jp PINTA_BYTES_BCD		;4a21
-PINTA_FASE:		; E051 (BCD, y si llega a 100 vuelve a 0) en la fila 20, columna 26
+PINTA_FASE:		; E051 -que va en BINARIO- pasada a decimal restando diez en bucle, en la fila 20 columna 26; si llega a 100 vuelve a 0
 	ld de,03a9ah		;4a24
 	ld hl,0e051h		;4a27
 	sub a			;4a2a
 	ex af,af'			;4a2b
 	ld a,(hl)			;4a2c
-	cp 064h		;4a2d   ; Fase 100 (0x64 en binario, aunque E051 es BCD): vuelta a 0
+	cp 064h		;4a2d   ; Fase 100 y vuelta a 0. El 0x64 es binario porque E051 lo es, y lo prueba lo de aqui abajo: pasarla a decimal restando diez en bucle solo tiene sentido con un numero binario
 	jr c,FASE_DECENAS		;4a2f
 	sub a			;4a31
 	ld (hl),a			;4a32
@@ -3117,7 +3117,7 @@ ACTOR_SALTO_TABLA:		; El desplazamiento del paso (+0x5A/2) de 0x6423; el 23 ater
 	jr nz,ACTOR_SALTO_Y		;628c
 	call HAY_TARJETA_ENCIMA		;628e   ; Carry: no hay tarjeta encima
 	jr c,ACTOR_SALTO_Y		;6291
-	call TILE_A_PIXELS		;6293   ; D = fila x 8 (menos 7 filas), E = columna x 8; con la segunda mitad del canto, 8 pixels menos
+	call TILE_A_PIXELS		;6293   ; De vuelta a pixels: D = fila x 8, E = columna x 8; y si el tile leido era la segunda mitad del canto, 8 pixels menos
 	dec a			;6296
 	jr z,BUSCA_TARJETA_ENTRA		;6297
 	ld a,e			;6299
@@ -3228,7 +3228,7 @@ ACTOR_HUECO_MIRA_ARRIBA:		; Con la X mas o menos 6
 	ld a,(ix+001h)		;635e
 	add a,c			;6361
 	ld c,a			;6362
-	call HAY_PLATAFORMA_ARRIBA		;6363   ; Carry: la hay, y se sube (0x63D9); si no, se planta
+	call HAY_PLATAFORMA_ARRIBA		;6363   ; Carry: NO hay plataforma delante, el hueco sigue libre y se sube (0x63D9); si la hay, 0x6312 corta la subida y le hace bajar
 	jp c,ACTOR_HUECO_SUELO		;6366
 	jr ACTOR_HUECO_PARA		;6369
 ACTOR_HUECO_CAE:		; Cae recto (4 pixels, alineado) moviendose un pixel al lado
@@ -3516,7 +3516,7 @@ CANGREJO_MUERE:		; Estado 9: cuando acaba +0x5D, esconde el "500" (el sprite de 
 	call CANGREJO_SUELTA_FRUTA		;6581
 	ret			;6584
 CANGREJO_ESPERA:		; +0x5D = cuanto espera escondido: (16 - fase) x 16 + 17 fotogramas hasta la fase 19; desde la 20, uno
-	ld a,(0e051h)		;6585   ; Fases 1-19: (16 - fase) x 16 + 17; desde la 20 (0x20 en BCD), 1
+	ld a,(0e051h)		;6585   ; La espera NO baja seguida con la fase: el `and 070h` de 0x6592 se queda con tres bits, asi que ((8 - fase mod 8) mod 8) x 16 + 17 va de 129 a 17 en ocho fases y vuelve a empezar -129, 113, 97, 81, 65, 49, 33, 17-. Desde la fase 32 (0x20 en BINARIO, que es como va E051) siempre 1
 	cp 020h		;6588
 	jr nc,CANGREJO_ESPERA_1		;658a
 	neg		;658c
@@ -3614,28 +3614,28 @@ DATA_patrones_trepar:
 ; ======================================================================
 
 
-TILE_A_PIXELS:		; D = (fila - 7) x 8, E = columna x 8: de la posicion de un tile a los pixels de la tarjeta que cuelga ahi
-	push af			;65e7
+TILE_A_PIXELS:		; D = fila x 8, E = columna x 8: deshace 0x6605 y devuelve la esquina en pixels del tile cuya direccion de VRAM llega en DE (el `sub 0x38` solo le quita la base 0x3800)
+	push af			;65e7   ; A entra y sale sin tocar: es la unica manera de que 0x6293 conserve el tile que leyo
 	ld a,d			;65e8
-	sub 038h		;65e9
+	sub 038h		;65e9   ; Le quita el 0x3800 de la tabla de nombres: DE queda en fila x 32 + columna
 	ld d,a			;65eb
-	ex de,hl			;65ec
-	add hl,hl			;65ed
+	ex de,hl			;65ec   ; El calculo se hace en HL, el unico par que sabe doblarse solo
+	add hl,hl			;65ed   ; Por ocho: H pasa a ser la fila de tiles (0-23) y L la columna x 8
 	add hl,hl			;65ee
 	add hl,hl			;65ef
-	ld a,h			;65f0
+	ld a,h			;65f0   ; Y la fila tambien por ocho: la esquina de arriba a la izquierda del tile, ya en pixels
 	add a,a			;65f1
 	add a,a			;65f2
 	add a,a			;65f3
 	ld h,a			;65f4
 	ex de,hl			;65f5
-	pop af			;65f6
+	pop af			;65f6   ; A sale intacto a proposito: el unico que llama (0x6293) trae ahi el tile que acaba de leer
 	ret			;65f7
 SIN_LLAMADAS_TILE_EN_PIXELS:		; Pone el tile A en los pixels (D, E). Solo la llama 0x6624, y a esa nadie: un pintador de plataformas que quedo sin usar (0x664F -> 0x6624 -> aqui)
-	push hl			;65f8
+	push hl			;65f8   ; Lo conserva todo porque el bucle de 0x662B lleva la lista en HL
 	push de			;65f9
 	push bc			;65fa
-	call PIXELS_A_VRAM		;65fb
+	call PIXELS_A_VRAM		;65fb   ; El tile A en el tile donde caen los pixels (D, E)
 	call VPOKE		;65fe
 	pop bc			;6601
 	pop de			;6602
@@ -3643,46 +3643,46 @@ SIN_LLAMADAS_TILE_EN_PIXELS:		; Pone el tile A en los pixels (D, E). Solo la lla
 	ret			;6604
 PIXELS_A_VRAM:		; DE = 0x3800 + (D / 8) x 32 + E / 8: la direccion en la tabla de nombres del tile que cae en los pixels (D, E)
 	push af			;6605
-	ld a,d			;6606
-	rra			;6607
+	ld a,d			;6606   ; La fila en pixels; sus tres bits de abajo acabaran en la columna
+	rra			;6607   ; Cuatro giros del tiron y luego alternados con E: cada rra suelta un bit por el carry y el rr e siguiente se lo mete a E por arriba
 	rra			;6608
 	rra			;6609
 	rra			;660a
-	rr e		;660b
+	rr e		;660b   ; Los giros van entrelazados: D y E se corren tres bits juntos y E queda valiendo (fila de tiles & 7) x 32 + columna de tiles, que es el desplazamiento dentro de la pagina
 	rra			;660d
 	rr e		;660e
 	rra			;6610
 	rr e		;6611
-	and 003h		;6613
-	add a,038h		;6615
+	and 003h		;6613   ; De la fila solo quedan los bits 6-7: cada ocho filas de tiles son otros 256 bytes
+	add a,038h		;6615   ; La tabla de nombres empieza en 0x3800
 	ld d,a			;6617
-	pop af			;6618
+	pop af			;6618   ; A sale intacto: 0x65F8 trae ahi el tile que va a escribir
 	ret			;6619
-DENTRO_DE:		; Carry si |H - L| >= B: H y L son dos coordenadas y B la distancia; NC si estan a menos de B
+DENTRO_DE:		; NC si L cae en el tramo [H - B, H], carry si no. No es una distancia a los dos lados: el tramo empieza en H, y por eso quien llama suma a H media anchura del sprite para centrarlo. H - L == B todavia vale
 	push bc			;661a
-	ld a,h			;661b
+	ld a,h			;661b   ; H - L; si L pasa de H ya sale por fuera y ni se mira B
 	sub l			;661c
-	jr c,DENTRO_DE_FIN		;661d
+	jr c,DENTRO_DE_FIN		;661d   ; Carry: L esta por encima de H y no hace falta ni mirar B
 	ld c,a			;661f
-	ld a,b			;6620
+	ld a,b			;6620   ; B menos esa diferencia: el tramo bueno es [H - B, H], no B pixels a cada lado. Por eso quien llama suma a H media anchura del sprite: asi el tramo queda centrado
 	sub c			;6621
 DENTRO_DE_FIN:		; Fuera
 	pop bc			;6622
 	ret			;6623
 SIN_LLAMADAS_TRAMO:		; B tiles seguidos de C desde (D, E), 8 pixels a la derecha cada uno
-	push de			;6624
+	push de			;6624   ; La lista se lee con HL y el tile viene en C
 	push bc			;6625
-	ld d,(hl)			;6626
+	ld d,(hl)			;6626   ; De la lista: la Y, la X y cuantos tiles
 	inc hl			;6627
 	ld e,(hl)			;6628
 	inc hl			;6629
 	ld b,(hl)			;662a
 SIN_LLAMADAS_TRAMO_BUCLE:		; Un tile
 	ld a,c			;662b
-	di			;662c
-	call SIN_LLAMADAS_TILE_EN_PIXELS		;662d
+	di			;662c   ; El VDP se toca con la interrupcion cerrada
+	call SIN_LLAMADAS_TILE_EN_PIXELS		;662d   ; Cada tile por separado, con su direccion: nadie aprovecha que van seguidos en la VRAM
 	ei			;6630
-	ld a,008h		;6631
+	ld a,008h		;6631   ; Ocho pixels a la derecha: el tile de al lado
 	add a,e			;6633
 	ld e,a			;6634
 	djnz SIN_LLAMADAS_TRAMO_BUCLE		;6635
@@ -3691,98 +3691,98 @@ SIN_LLAMADAS_TRAMO_BUCLE:		; Un tile
 	ret			;6639
 RELLENA_RECTANGULO:		; L filas de C tiles del byte A desde la VRAM DE (una fila cada 32)
 	push bc			;663a
-	ld b,000h		;663b
+	ld b,000h		;663b   ; El ancho viene en H: BC = los bytes de una fila
 	ld c,h			;663d
 RELLENA_RECTANGULO_FILA:		; Una fila
-	ld h,a			;663e
-	call RELLENA_VRAM		;663f
-	ex de,hl			;6642
-	ld a,020h		;6643
+	ld h,a			;663e   ; El byte que se repite se aparca en H mientras RELLENA_VRAM gasta A
+	call RELLENA_VRAM		;663f   ; Una fila entera del mismo byte de una tacada
+	ex de,hl			;6642   ; HL_MAS_A solo sabe sumar a HL: la direccion de la VRAM cambia de sitio y vuelve
+	ld a,020h		;6643   ; Treinta y dos bytes mas: la fila de abajo
 	call HL_MAS_A		;6645
 	ex de,hl			;6648
-	dec l			;6649
+	dec l			;6649   ; Una fila menos, y el byte vuelve de H
 	ld a,h			;664a
 	jr nz,RELLENA_RECTANGULO_FILA		;664b
 	pop bc			;664d
 	ret			;664e
 SIN_LLAMADAS_LISTA_DE_TRAMOS:		; Recorre una lista de (Y, X, ancho) hasta 0xFF pintando el tile C. Nadie la llama: 0x6685 hace lo mismo con las plataformas de la fase
-	ld c,(hl)			;664f
+	ld c,(hl)			;664f   ; El primer byte de la lista es el tile con que se pinta
 SIN_LLAMADAS_LISTA_BUCLE:		; Un tramo
 	inc hl			;6650
 	ld a,(hl)			;6651
-	cp 0ffh		;6652
-	ret z			;6654
+	cp 0ffh		;6652   ; 0xFF: se acabo la lista
+	ret z			;6654   ; El final de la lista se mira en la Y de cada tramo
 	call SIN_LLAMADAS_TRAMO		;6655
 	jr SIN_LLAMADAS_LISTA_BUCLE		;6658
 COLORES_DEL_PANEL:		; R7 = 1, la fuente blanca sobre azul, y los colores de los tiles 0x40-0x5F: amarillo sobre azul en el segundo tercio (0x0A00), rojo sobre azul en el primero (0x0200) y cyan sobre azul en el tercero (0x1200): TIME, HI y STAGE de distinto color
-	ld a,001h		;665a
+	ld a,001h		;665a   ; El borde y el fondo negros (registro 7 = 1)
 	call VDP_R7		;665c
-	ld a,0f4h		;665f
+	ld a,0f4h		;665f   ; Las cifras y las letras, blanco sobre azul oscuro
 	call COLOR_FUENTE		;6661
-	ld de,00a00h		;6664
-	ld bc,00100h		;6667
-	ld a,0a4h		;666a
-	call RELLENA_VRAM		;666c
-	ld de,00200h		;666f
+	ld de,00a00h		;6664   ; 0x0A00 cae en el segundo tercio de la tabla de colores (filas 8-15)
+	ld bc,00100h		;6667   ; 0x100 bytes son los 32 tiles del 0x40 al 0x5F de ese tercio
+	ld a,0a4h		;666a   ; Amarillo sobre azul: el rotulo TIME
+	call RELLENA_VRAM		;666c   ; Los tiles 0x40-0x5F son las cifras y las letras que se usan en el panel
+	ld de,00200h		;666f   ; El mismo tramo de tiles en el primer tercio (filas 0-7)
 	ld bc,00100h		;6672
-	ld a,094h		;6675
+	ld a,094h		;6675   ; Rojo claro sobre azul: el HI
 	call RELLENA_VRAM		;6677
-	ld de,01200h		;667a
+	ld de,01200h		;667a   ; Y en el tercero (filas 16-23)
 	ld bc,00100h		;667d
-	ld a,074h		;6680
+	ld a,074h		;6680   ; Cyan sobre azul: el STAGE. Un mismo tile sale de tres colores segun por que tercio de la pantalla se pinte
 	jp RELLENA_VRAM		;6682
 PINTA_PLATAFORMAS:		; Las plataformas de la fase (0x66F5 -> lista de Y, X, ancho hasta 0xFF) con el tile base mas (fase / 2) & 3: cuatro colores
-	ld a,(0e051h)		;6685
-	dec a			;6688
+	ld a,(0e051h)		;6685   ; La fase en curso
+	dec a			;6688   ; (Fase - 1) & 7: las ocho listas se reparten y vuelven a empezar cada ocho fases
 	and 007h		;6689
-	add a,a			;668b
+	add a,a			;668b   ; Por dos, que la tabla son punteros
 	ld de,066f5h		;668c
-	call DE_MAS_A		;668f
-	ex de,hl			;6692
-	ld e,(hl)			;6693
+	call DE_MAS_A		;668f   ; El puntero de la fase, dos bytes
+	ex de,hl			;6692   ; El puntero leido pasa a HL, que es con lo que se recorre la lista
+	ld e,(hl)			;6693   ; HL = la lista de plataformas de esa fase
 	inc hl			;6694
 	ld d,(hl)			;6695
 	ex de,hl			;6696
-	ld a,(hl)			;6697
-	exx			;6698
-	ld d,a			;6699
-	ld a,(0e051h)		;669a
+	ld a,(hl)			;6697   ; Su primer byte es el tile base, siempre el 5
+	exx			;6698   ; El tile se guarda en el juego alterno mientras HL recorre la lista
+	ld d,a			;6699   ; El tile base se aparca en D' mientras se calcula el color
+	ld a,(0e051h)		;669a   ; La fase otra vez: fase / 2 & 3 elige entre los tiles 5 a 8, que son la misma barra de cuatro colores
 	rra			;669d
 	and 003h		;669e
-	add a,d			;66a0
+	add a,d			;66a0   ; Base mas 0, 1, 2 o 3: la misma barra en cuatro colores
 	exx			;66a1
 PINTA_PLATAFORMA:		; Una: la posicion a VRAM (0x6605) y C tiles
-	push af			;66a2
-	inc hl			;66a3
+	push af			;66a2   ; El tile se guarda en cada vuelta porque RELLENA_VRAM se come A
+	inc hl			;66a3   ; De la lista: la Y, la X y el ancho de la plataforma siguiente
 	ld a,(hl)			;66a4
-	cp 0ffh		;66a5
+	cp 0ffh		;66a5   ; 0xFF: no quedan mas
 	jr z,PINTA_PLATAFORMAS_FIN		;66a7
 	ld d,(hl)			;66a9
 	inc hl			;66aa
 	ld e,(hl)			;66ab
-	call PIXELS_A_VRAM		;66ac
+	call PIXELS_A_VRAM		;66ac   ; La esquina, de pixels a direccion de la tabla de nombres
 	inc hl			;66af
-	ld c,(hl)			;66b0
-	ld b,000h		;66b1
+	ld c,(hl)			;66b0   ; El ancho en tiles
+	ld b,000h		;66b1   ; El ancho nunca llega a 256: B a cero
 	pop af			;66b3
-	call RELLENA_VRAM		;66b4
+	call RELLENA_VRAM		;66b4   ; Una plataforma es una sola fila del mismo tile repetido
 	jr PINTA_PLATAFORMA		;66b7
 PINTA_PLATAFORMAS_FIN:		; Fuera
 	pop af			;66b9
 	ret			;66ba
 PINTA_RECUADRO:		; Cinco bytes en HL: ancho, alto, tile, y la VRAM en dos bytes (el alto delante); y a 0x663A
-	push hl			;66bb
-	ld d,(hl)			;66bc
+	push hl			;66bb   ; HL se devuelve como vino: el que llama sigue con su lista
+	ld d,(hl)			;66bc   ; El ancho y el alto en tiles
 	inc hl			;66bd
 	ld e,(hl)			;66be
 	inc hl			;66bf
-	ld a,(hl)			;66c0
+	ld a,(hl)			;66c0   ; El tile con que se rellena
 	inc hl			;66c1
 	push de			;66c2
-	ld d,(hl)			;66c3
+	ld d,(hl)			;66c3   ; Y la esquina en la VRAM, con el byte alto delante
 	inc hl			;66c4
 	ld e,(hl)			;66c5
-	pop hl			;66c6
+	pop hl			;66c6   ; HL vuelve a ser el ancho y el alto, que es como los quiere 0x663A
 	call RELLENA_RECTANGULO		;66c7
 	pop hl			;66ca
 	ret			;66cb
@@ -3938,23 +3938,23 @@ DATA_frutas_por_fase:
 
 
 PINTA_BLOQUE:		; B filas x C columnas de tiles desde HL en los pixels (D, E)
-	push bc			;6906
-	push de			;6907
+	push bc			;6906   ; Cada vuelta guarda las filas que faltan y el ancho, que el bucle de dentro se come
+	push de			;6907   ; Y la esquina de esta fila, para volver a ella al bajar
 PINTA_BLOQUE_TILE:		; Un tile
 	push bc			;6908
 	push de			;6909
-	call PIXELS_A_VRAM		;690a
-	ld a,(hl)			;690d
+	call PIXELS_A_VRAM		;690a   ; Tile a tile, cada uno con su direccion: un bloque puede cruzar de pagina de la tabla de nombres
+	ld a,(hl)			;690d   ; El tile que toca de la lista
 	call VPOKE		;690e
 	pop de			;6911
 	pop bc			;6912
-	ld a,e			;6913
+	ld a,e			;6913   ; Ocho pixels a la derecha
 	add a,008h		;6914
 	ld e,a			;6916
 	inc hl			;6917
 	dec c			;6918
 	jr nz,PINTA_BLOQUE_TILE		;6919
-	pop de			;691b
+	pop de			;691b   ; La esquina de la fila otra vez, y ocho pixels mas abajo
 	ld a,d			;691c
 	add a,008h		;691d
 	ld d,a			;691f
@@ -3964,53 +3964,53 @@ PINTA_BLOQUE_TILE:		; Un tile
 HAY_SUELO:		; NC si en la fase hay una plataforma justo debajo de (B, C): a Y + 0x10 y con X entre su principio y su fin (0x661A con el ancho x 8 + 4)
 	push de			;6924
 	push bc			;6925
-	ld a,(0e051h)		;6926
+	ld a,(0e051h)		;6926   ; La lista de plataformas de la fase, la misma de 0x6685
 	dec a			;6929
 	and 007h		;692a
 	add a,a			;692c
 	ld de,066f5h		;692d
 	call DE_MAS_A		;6930
 	ex de,hl			;6933
-	ld e,(hl)			;6934
+	ld e,(hl)			;6934   ; El puntero a la lista de la fase, que va delante de las plataformas
 	inc hl			;6935
 	ld d,(hl)			;6936
 	ex de,hl			;6937
-	inc hl			;6938
-	ld a,b			;6939
+	inc hl			;6938   ; El tile base no pinta nada aqui
+	ld a,b			;6939   ; Se busca una plataforma dieciseis pixels por debajo: la altura justa a la que se pisa
 	add a,010h		;693a
 	ld b,a			;693c
 HAY_SUELO_BUSCA:		; Recorre las plataformas de la fase
-	ld a,(hl)			;693d
-	cp 0ffh		;693e
+	ld a,(hl)			;693d   ; La Y de la plataforma
+	cp 0ffh		;693e   ; 0xFF: se acabo la lista y no hay suelo
 	jr z,HAY_SUELO_NO		;6940
-	and 0f8h		;6942
+	and 0f8h		;6942   ; Solo cuenta la fila de tiles, no el pixel; y tiene que ser exactamente esa
 	cp b			;6944
 	jr z,HAY_SUELO_X		;6945
-	inc hl			;6947
+	inc hl			;6947   ; No es: sus tres bytes de largo a la siguiente
 	inc hl			;6948
 HAY_SUELO_SIGUIENTE:		; La plataforma siguiente
-	inc hl			;6949
+	inc hl			;6949   ; Tres bytes por plataforma: Y, X y ancho
 	jr HAY_SUELO_BUSCA		;694a
 HAY_SUELO_X:		; Misma fila: la X del actor mas 10 contra el tramo
-	ld a,c			;694c
+	ld a,c			;694c   ; Se mira la X del actor mas diez, no la esquina de su sprite
 	add a,00ah		;694d
 	ld d,a			;694f
 	inc hl			;6950
 	ld e,(hl)			;6951
 	inc hl			;6952
-	ld a,(hl)			;6953
+	ld a,(hl)			;6953   ; El ancho en tiles
 	add a,a			;6954
 	add a,a			;6955
 	add a,a			;6956
-	add a,004h		;6957
+	add a,004h		;6957   ; Por ocho y cuatro mas: el tramo bueno llega hasta el final de la barra y un poco despues
 	push bc			;6959
 	ld b,a			;695a
 	ex de,hl			;695b
-	call DENTRO_DE		;695c
+	call DENTRO_DE		;695c   ; Carry: ese punto no cae encima de la barra
 	ex de,hl			;695f
 	pop bc			;6960
 	jr c,HAY_SUELO_SIGUIENTE		;6961
-	or a			;6963
+	or a			;6963   ; Sin carry: hay suelo debajo
 	pop bc			;6964
 	pop de			;6965
 	ret			;6966
@@ -4019,9 +4019,9 @@ HAY_SUELO_NO:		; Carry: no hay
 	pop bc			;6968
 	pop de			;6969
 	ret			;696a
-HAY_PLATAFORMA_ARRIBA:		; Carry si hay una plataforma a menos de 0x11 pixels por encima de (B, C) que cubra la X (mas 11): para saber si se puede subir por ahi
+HAY_PLATAFORMA_ARRIBA:		; Carry si NO hay ninguna plataforma a la altura de (B, C) (tramo de 0x11 pixels) que cubra la X (mas 11); NC si la hay. El que trepa pregunta con B = su Y menos 0x18: con carry el hueco esta libre y sigue subiendo
 	push bc			;696b
-	ld a,(0e051h)		;696c
+	ld a,(0e051h)		;696c   ; La misma lista que 0x6685 y 0x6924, pero recorrida con DE
 	dec a			;696f
 	and 007h		;6970
 	add a,a			;6972
@@ -4030,47 +4030,47 @@ HAY_PLATAFORMA_ARRIBA:		; Carry si hay una plataforma a menos de 0x11 pixels por
 	ld e,(hl)			;6979
 	inc hl			;697a
 	ld d,(hl)			;697b
-	inc de			;697c
+	inc de			;697c   ; Saltandose el tile base
 HAY_PLATAFORMA_ARRIBA_BUSCA:		; Una plataforma
-	ld a,(de)			;697d
+	ld a,(de)			;697d   ; La Y de la plataforma
 	cp 0ffh		;697e
 	jr z,HAY_PLATAFORMA_ARRIBA_NO		;6980
-	ld l,a			;6982
-	ld a,b			;6983
+	ld l,a			;6982   ; La Y de la plataforma abajo, la que se pregunta arriba: la resta de 0x661A las compara
+	ld a,b			;6983   ; La Y que se pregunta, mas quince
 	add a,00fh		;6984
 	ld h,a			;6986
 	push bc			;6987
-	ld b,011h		;6988
+	ld b,011h		;6988   ; Con 0x11 de tramo: vale desde dos pixels por encima hasta quince por debajo
 	call DENTRO_DE		;698a
 	pop bc			;698d
-	jr nc,HAY_PLATAFORMA_ARRIBA_X		;698e
+	jr nc,HAY_PLATAFORMA_ARRIBA_X		;698e   ; Esta a esa altura: falta ver si tapa la X
 	inc de			;6990
 	inc de			;6991
 HAY_PLATAFORMA_ARRIBA_SIGUIENTE:		; La siguiente
-	inc de			;6992
+	inc de			;6992   ; Los mismos tres bytes, aqui contados con DE
 	jr HAY_PLATAFORMA_ARRIBA_BUSCA		;6993
 HAY_PLATAFORMA_ARRIBA_X:		; Misma altura: la X
 	inc de			;6995
-	ld a,(de)			;6996
+	ld a,(de)			;6996   ; La X de la plataforma
 	ld l,a			;6997
-	ld a,c			;6998
+	ld a,c			;6998   ; Y la del actor mas once, casi el centro del sprite
 	add a,00bh		;6999
 	ld h,a			;699b
 	push bc			;699c
 	inc de			;699d
-	ld a,(de)			;699e
+	ld a,(de)			;699e   ; El ancho en tiles
 	add a,a			;699f
 	add a,a			;69a0
 	add a,a			;69a1
-	add a,006h		;69a2
+	add a,006h		;69a2   ; Por ocho y seis mas de holgura
 	ld b,a			;69a4
 	call DENTRO_DE		;69a5
 	pop bc			;69a8
-	jr c,HAY_PLATAFORMA_ARRIBA_SIGUIENTE		;69a9
-	pop bc			;69ab
+	jr c,HAY_PLATAFORMA_ARRIBA_SIGUIENTE		;69a9   ; No la tapa: a la plataforma siguiente
+	pop bc			;69ab   ; Sin carry: hay plataforma delante y por ahi no se sube (0x6363 deja de trepar)
 	ret			;69ac
 HAY_PLATAFORMA_ARRIBA_NO:		; Carry: no hay
-	scf			;69ad
+	scf			;69ad   ; Carry: no hay ninguna, el hueco esta libre
 	pop bc			;69ae
 	ret			;69af
 
@@ -4084,57 +4084,57 @@ HAY_PLATAFORMA_ARRIBA_NO:		; Carry: no hay
 ; ----------------------------------------------------------------------
 COLISION_CANGREJOS:		; Carry si ningun cangrejo toca al mono
 	push bc			;69b0
-	ld a,(0e10ch)		;69b1
+	ld a,(0e10ch)		;69b1   ; Atontado (estado 10): ya le han dado, no se vuelve a mirar
 	cp 00ah		;69b4
 	jr z,COLISION_NO		;69b6
-	ld a,(0e108h)		;69b8
+	ld a,(0e108h)		;69b8   ; 0x33: la respuesta entregada, el mono ya no juega
 	cp 033h		;69bb
 	jr z,COLISION_NO		;69bd
-	ld ix,0e0b0h		;69bf
-	ld d,(ix+000h)		;69c3
+	ld ix,0e0b0h		;69bf   ; El sprite del mono: la Y en D y la X en E
+	ld d,(ix+000h)		;69c3   ; La Y y la X del mono; los tres cangrejos se comparan siempre contra ellas
 	ld e,(ix+001h)		;69c6
-	exx			;69c9
-	ld b,003h		;69ca
-	ld de,00008h		;69cc
-	add ix,de		;69cf
+	exx			;69c9   ; El mono se queda en el juego alterno mientras B cuenta los cangrejos
+	ld b,003h		;69ca   ; Los tres cangrejos
+	ld de,00008h		;69cc   ; Ocho bytes por actor: el primero es E0B8
+	add ix,de		;69cf   ; IX arranca en el primer cangrejo, que el mono no choca consigo mismo
 COLISION_SIGUIENTE:		; Los tres, ocho bytes cada uno
 	exx			;69d1
-	ld a,(ix+05ch)		;69d2
+	ld a,(ix+05ch)		;69d2   ; Estado 0 escondido y 9 muriendose: esos dos no tocan
 	or a			;69d5
 	jr z,COLISION_OTRO		;69d6
 	cp 009h		;69d8
 	jr nz,COLISION_MIRA		;69da
 COLISION_OTRO:		; El cangrejo siguiente
-	exx			;69dc
+	exx			;69dc   ; Al cangrejo siguiente
 	add ix,de		;69dd
 	djnz COLISION_SIGUIENTE		;69df
-	exx			;69e1
+	exx			;69e1   ; Se vuelve al juego bueno antes de salir
 COLISION_NO:		; Carry: ninguno
-	scf			;69e2
+	scf			;69e2   ; Carry: ninguno le ha tocado
 	pop bc			;69e3
 	ret			;69e4
 COLISION_MIRA:		; X a menos de 16 y Y a menos de (0x6A0F[tipo] + 16)
-	ld a,e			;69e5
+	ld a,e			;69e5   ; La X del mono mas ocho, el centro de su sprite
 	add a,008h		;69e6
 	ld h,a			;69e8
-	ld l,(ix+001h)		;69e9
+	ld l,(ix+001h)		;69e9   ; Contra la X del cangrejo, con 0x10 de tramo: se tocan si no se pasan de ocho pixels
 	ld b,010h		;69ec
 	call DENTRO_DE		;69ee
 	jr c,COLISION_OTRO		;69f1
-	ld hl,06a0fh		;69f3
+	ld hl,06a0fh		;69f3   ; La holgura vertical, una por tipo de actor (la tabla de 0x6A0F, ocho para todos)
 	ld a,(ix+05bh)		;69f6
-	and 00fh		;69f9
+	and 00fh		;69f9   ; El tipo de actor esta en el nibble bajo de +0x5B
 	call HL_MAS_A		;69fb
 	ld a,(hl)			;69fe
-	add a,010h		;69ff
+	add a,010h		;69ff   ; El tramo de la Y son esos ocho mas dieciseis
 	ld b,a			;6a01
-	ld a,d			;6a02
+	ld a,d			;6a02   ; Pero el centro se pone en la Y del mono mas ocho, no mas doce: el tramo sale corrido y el cangrejo toca desde dieciseis pixels por encima hasta solo ocho por debajo
 	add a,(hl)			;6a03
 	ld h,a			;6a04
 	ld l,(ix+000h)		;6a05
 	call DENTRO_DE		;6a08
 	jr c,COLISION_OTRO		;6a0b
-	pop bc			;6a0d
+	pop bc			;6a0d   ; Sin carry: le ha tocado
 	ret			;6a0e
 
 ; ----------------------------------------------------------------------
@@ -4151,124 +4151,124 @@ DATA_holgura_por_tipo:
 
 HAY_TARJETA_ENCIMA:		; Carry si NO hay tarjeta: el mono (tipo 0), sin tarjeta suelta (E0F8 = 0xE1), mira el tile a (Y + 7, X + 8): 1 o 2 son las dos mitades del canto (0x5082) de una tarjeta metida
 	push bc			;6a1f
-	ld a,(0e0f8h)		;6a20
+	ld a,(0e0f8h)		;6a20   ; La tarjeta suelta (sprite 18) tiene que estar escondida (Y = 0xE1): si ya hay una cayendo no se coge otra
 	cp 0e1h		;6a23
 	jr nz,HAY_TARJETA_ENCIMA_NO		;6a25
-	ld a,(ix+05bh)		;6a27
+	ld a,(ix+05bh)		;6a27   ; Y solo el mono (tipo 0) las coge
 	and 00fh		;6a2a
 	jr nz,HAY_TARJETA_ENCIMA_NO		;6a2c
-	ld a,b			;6a2e
+	ld a,b			;6a2e   ; Siete pixels por debajo de su Y y ocho a la derecha: ahi asoma el canto de la tarjeta metida
 	add a,007h		;6a2f
 	ld d,a			;6a31
 	ld a,c			;6a32
 	add a,008h		;6a33
 	ld e,a			;6a35
-	call PIXELS_A_VRAM		;6a36
-	call VPEEK		;6a39
-	cp 001h		;6a3c
+	call PIXELS_A_VRAM		;6a36   ; El tile en el que caen esos pixels
+	call VPEEK		;6a39   ; El tile que hay pintado en ese sitio
+	cp 001h		;6a3c   ; 1 y 2 son las dos mitades del canto (0x5082): hay tarjeta
 	pop bc			;6a3e
 	ret z			;6a3f
 	cp 002h		;6a40
 	ret z			;6a42
-	scf			;6a43
+	scf			;6a43   ; Cualquier otro tile: no hay
 	ret			;6a44
 HAY_TARJETA_ENCIMA_NO:		; Carry: no
 	pop bc			;6a45
 	scf			;6a46
 	ret			;6a47
 ACTOR_BC:		; B = Y, C = X del actor
-	ld b,(ix+000h)		;6a48
+	ld b,(ix+000h)		;6a48   ; La Y y la X del sprite del actor, que es lo que miran todas las colisiones
 	ld c,(ix+001h)		;6a4b
 	ret			;6a4e
 ACTOR_TOCA_FRUTA:		; Si el mono ya entrego la respuesta no mira; con +0x5E = 2 (lleva la tarjeta) tampoco; si no, 0x6A5B
-	ld a,(0e108h)		;6a4f
+	ld a,(0e108h)		;6a4f   ; 0x33: el mono ya entrego la respuesta y no coge nada
 	cp 033h		;6a52
 	ret z			;6a54
 TOCA_FRUTA_SIN_TARJETA:		; Con la tarjeta (2) no
-	ld a,(ix+05eh)		;6a55
+	ld a,(ix+05eh)		;6a55   ; Con la tarjeta en alto (+0x5E = 2) tampoco
 	cp 002h		;6a58
 	ret z			;6a5a
 TOCA_ALGUNA_FRUTA:		; Recorre los 8 sprites de fruta (E0D8): carry y D = indice, E = 1 (quieta) o 0 (en el aire) si alguna esta a menos de 0x16 pixels en las dos coordenadas y no esta gastada (bit 7); a un cangrejo no le da la que tiro el (bit 6)
 	push bc			;6a5b
-	ld b,000h		;6a5c
-	exx			;6a5e
-	ld de,0e0d8h		;6a5f
+	ld b,000h		;6a5c   ; B va contando la fruta, de la 0 a la 7
+	exx			;6a5e   ; El numero de fruta se aparca en B' y BC queda libre para las coordenadas
+	ld de,0e0d8h		;6a5f   ; Los sprites de las ocho frutas
 TOCA_FRUTA_BUCLE:		; Una fruta
-	call ACTOR_BC		;6a62
-	ld hl,00b0bh		;6a65
+	call ACTOR_BC		;6a62   ; Las coordenadas se vuelven a pedir en cada vuelta porque BC se gasta comparando
+	ld hl,00b0bh		;6a65   ; La esquina del actor mas once en las dos coordenadas: su centro, para que el tramo de 0x16 quede simetrico
 	add hl,bc			;6a68
-	ld b,h			;6a69
+	ld b,h			;6a69   ; El centro se pasa a BC para no perderlo entre las dos comparaciones
 	ld c,l			;6a6a
-	ld a,(de)			;6a6b
+	ld a,(de)			;6a6b   ; La Y de la fruta
 	ld l,a			;6a6c
-	inc de			;6a6d
+	inc de			;6a6d   ; El atributo del sprite: la Y y detras la X
 	ld h,b			;6a6e
-	ld b,016h		;6a6f
+	ld b,016h		;6a6f   ; 0x16 de tramo alrededor del centro: se tocan si no se alejan mas de once pixels
 	call DENTRO_DE		;6a71
 	jr c,TOCA_SIGUIENTE_FRUTA		;6a74
-	ld a,(de)			;6a76
+	ld a,(de)			;6a76   ; Y lo mismo con la X
 	ld l,a			;6a77
 	ld h,c			;6a78
 	ld b,016h		;6a79
 	call DENTRO_DE		;6a7b
 	jr c,TOCA_SIGUIENTE_FRUTA		;6a7e
-	ld hl,0e260h		;6a80
-	exx			;6a83
+	ld hl,0e260h		;6a80   ; Su estado en E260, dos bytes por fruta
+	exx			;6a83   ; El numero de fruta esta en B', que el bucle no pisa
 	ld a,b			;6a84
 	exx			;6a85
-	add a,a			;6a86
+	add a,a			;6a86   ; Por dos: cada fruta tiene estado y contador
 	call HL_MAS_A		;6a87
 	ld a,(hl)			;6a8a
-	bit 7,a		;6a8b
+	bit 7,a		;6a8b   ; Bit 7: gastada, ya no esta
 	jr nz,TOCA_SIGUIENTE_FRUTA		;6a8d
-	and 003h		;6a8f
+	and 003h		;6a8f   ; Sin los bits 0-1 esta colgada quieta: se devuelve E = 1
 	jr nz,TOCA_FRUTA_EN_EL_AIRE		;6a91
 	exx			;6a93
 	ld d,b			;6a94
 	ld e,001h		;6a95
-	scf			;6a97
+	scf			;6a97   ; Carry: le ha tocado una, y en D va cual
 	pop bc			;6a98
 	ret			;6a99
 TOCA_FRUTA_EN_EL_AIRE:		; En el aire: al cangrejo no le da la que tiro el (bit 6)
-	ld a,(ix+05bh)		;6a9a
+	ld a,(ix+05bh)		;6a9a   ; En el aire; el mono (tipo 0) coge cualquiera
 	and 00fh		;6a9d
 	jr z,TOCA_FRUTA_EN_EL_AIRE_SI		;6a9f
-	bit 6,(hl)		;6aa1
+	bit 6,(hl)		;6aa1   ; Un cangrejo no se come la que ha tirado el (bit 6), pero si la que tiro otro
 	jr nz,TOCA_SIGUIENTE_FRUTA		;6aa3
 TOCA_FRUTA_EN_EL_AIRE_SI:		; D = indice, E = 0
-	exx			;6aa5
+	exx			;6aa5   ; En el aire: E = 0
 	ld d,b			;6aa6
 	ld e,000h		;6aa7
 	scf			;6aa9
 	pop bc			;6aaa
 	ret			;6aab
 TOCA_SIGUIENTE_FRUTA:		; La siguiente de las ocho
-	inc de			;6aac
+	inc de			;6aac   ; Cuatro bytes: el sprite de la fruta siguiente
 	inc de			;6aad
 	inc de			;6aae
-	exx			;6aaf
+	exx			;6aaf   ; Al juego alterno para tocar la cuenta y volver
 	inc b			;6ab0
 	ld a,b			;6ab1
-	cp 008h		;6ab2
+	cp 008h		;6ab2   ; Las ocho y se acabo
 	exx			;6ab4
 	jr nz,TOCA_FRUTA_BUCLE		;6ab5
-	or a			;6ab7
+	or a			;6ab7   ; Las ocho miradas y ninguna: sin carry
 	exx			;6ab8
 	pop bc			;6ab9
 	ret			;6aba
 TOCA_LA_TARJETA_CAIDA:		; NC si el mono, sin cargar (E10E = 0), esta a la altura exacta de la tarjeta caida (E0F8) y a menos de 16 pixels en X
-	ld a,(0e10eh)		;6abb
+	ld a,(0e10eh)		;6abb   ; E10E es el juego de sprites del mono; con 0 va de vacio
 	or a			;6abe
 	jr nz,TOCA_TARJETA_NO		;6abf
-	ld hl,0e0b0h		;6ac1
+	ld hl,0e0b0h		;6ac1   ; El mono y la tarjeta suelta (sprite 18)
 	ld de,0e0f8h		;6ac4
-	ld b,(hl)			;6ac7
-	ld a,(de)			;6ac8
+	ld b,(hl)			;6ac7   ; Las dos Y tienen que ser identicas: la tarjeta se recoge de pasada, andando a su misma altura
+	ld a,(de)			;6ac8   ; La Y de la tarjeta que anda por el suelo
 	cp b			;6ac9
 	jr nz,TOCA_TARJETA_NO		;6aca
-	inc hl			;6acc
+	inc hl			;6acc   ; Y ahora las X
 	inc de			;6acd
-	ld a,008h		;6ace
+	ld a,008h		;6ace   ; La X del mono mas ocho para centrar el tramo de dieciseis
 	add a,(hl)			;6ad0
 	ld h,a			;6ad1
 	ld a,(de)			;6ad2
@@ -4279,12 +4279,12 @@ TOCA_TARJETA_NO:		; Carry: no
 	scf			;6ad9
 	ret			;6ada
 TOCA_AL_PROFESOR:		; NC si el mono con la tarjeta (E10E = 2) esta a menos de 0x20 pixels del profesor (E0D0) en Y y en X + 12
-	ld a,(0e10eh)		;6adb
+	ld a,(0e10eh)		;6adb   ; E10E = 2: solo se le entrega llevando la tarjeta de la respuesta en alto
 	cp 002h		;6ade
 	jr nz,TOCA_PROFESOR_NO		;6ae0
-	ld hl,0e0b0h		;6ae2
+	ld hl,0e0b0h		;6ae2   ; El mono y el profesor (sprite 8)
 	ld de,0e0d0h		;6ae5
-	ld a,(hl)			;6ae8
+	ld a,(hl)			;6ae8   ; Las Y sin centrar: el mono vale desde la altura del profesor hasta 0x20 pixels por debajo, nunca por encima
 	push hl			;6ae9
 	ld h,a			;6aea
 	ld a,(de)			;6aeb
@@ -4292,10 +4292,10 @@ TOCA_AL_PROFESOR:		; NC si el mono con la tarjeta (E10E = 2) esta a menos de 0x2
 	ld b,020h		;6aed
 	call DENTRO_DE		;6aef
 	pop hl			;6af2
-	ret c			;6af3
+	ret c			;6af3   ; No esta a su altura: la X ni se mira
 	inc hl			;6af4
 	inc de			;6af5
-	ld a,00ch		;6af6
+	ld a,00ch		;6af6   ; Y las X con el mono corrido doce pixels: de doce a su izquierda a veinte a su derecha
 	add a,(hl)			;6af8
 	ld h,a			;6af9
 	ld a,(de)			;6afa
@@ -4306,18 +4306,18 @@ TOCA_PROFESOR_NO:		; Carry: no
 	scf			;6b01
 	ret			;6b02
 PINTA_FLORES:		; Las tres flores (tile 0x15) de la fase, una por tabla (0x6B42, 0x6B52, 0x6B62), con la VRAM escrita con el byte alto delante
-	ld a,(0e051h)		;6b03
+	ld a,(0e051h)		;6b03   ; La fase, otra vez por (fase - 1) & 7 y por dos porque la tabla son direcciones
 	dec a			;6b06
 	and 007h		;6b07
 	add a,a			;6b09
 	ld hl,06b42h		;6b0a
 	call HL_MAS_A		;6b0d
-	ld d,(hl)			;6b10
+	ld d,(hl)			;6b10   ; La VRAM de la flor viene con el byte alto delante
 	inc hl			;6b11
 	ld e,(hl)			;6b12
-	ld a,015h		;6b13
-	call VPOKE		;6b15
-	ld a,(0e051h)		;6b18
+	ld a,015h		;6b13   ; 0x15 es el tile de la flor
+	call VPOKE		;6b15   ; Un solo tile: la flor es un adorno de 1 x 1
+	ld a,(0e051h)		;6b18   ; La segunda flor, con la misma cuenta y otra tabla
 	dec a			;6b1b
 	and 007h		;6b1c
 	add a,a			;6b1e
@@ -4328,7 +4328,7 @@ PINTA_FLORES:		; Las tres flores (tile 0x15) de la fase, una por tabla (0x6B42, 
 	ld e,(hl)			;6b27
 	ld a,015h		;6b28
 	call VPOKE		;6b2a
-	ld a,(0e051h)		;6b2d
+	ld a,(0e051h)		;6b2d   ; Y la tercera: el mismo codigo copiado tres veces, sin bucle
 	dec a			;6b30
 	and 007h		;6b31
 	add a,a			;6b33
@@ -4443,83 +4443,83 @@ DATA_rotulo_video_cartridge:
 
 
 SUBE_LOGO_KONAMI:		; Una fila mas arriba: pinta las tres filas del KONAMI (3, 11 y 12 tiles desde 0x16) desde la columna 10 y borra la de debajo; E00A cuenta las que faltan
-	ld hl,(0e00eh)		;6c42
-	ld de,00020h		;6c45
+	ld hl,(0e00eh)		;6c42   ; Lo que lleva subido el logotipo, contado en bytes de VRAM
+	ld de,00020h		;6c45   ; Treinta y dos mas: una fila de tiles por paso
 	add hl,de			;6c48
 	ld (0e00eh),hl		;6c49
 	ex de,hl			;6c4c
-	or a			;6c4d
+	or a			;6c4d   ; El carry limpio antes del sbc
 	ld hl,03aaah		;6c4e   ; La fila de arriba: 0x3AAA (fila 21, columna 10) menos lo que ha subido
 	sbc hl,de		;6c51
 	ex de,hl			;6c53
-	ld a,016h		;6c54
-	ld b,003h		;6c56
+	ld a,016h		;6c54   ; Los tiles del logotipo van seguidos desde el 0x16, y A no se reinicia entre las tres filas: son los 26 tiles del 0x16 al 0x2F
+	ld b,003h		;6c56   ; Tres tiles la fila de arriba, once la de en medio y doce la de abajo
 	call PINTA_TILES_SEGUIDOS		;6c58
-	ld b,00bh		;6c5b
+	ld b,00bh		;6c5b   ; La fila de en medio, once tiles
 	call PINTA_TILES_SEGUIDOS		;6c5d
-	ld b,00ch		;6c60
+	ld b,00ch		;6c60   ; Y la de abajo, doce
 	call PINTA_TILES_SEGUIDOS		;6c62
-	ld bc,0000ch		;6c65
-	xor a			;6c68
+	ld bc,0000ch		;6c65   ; Y doce tiles a cero justo debajo: borra la fila que el logotipo acaba de dejar
+	xor a			;6c68   ; El tile 0, que es negro
 	call RELLENA_VRAM		;6c69
-	ld hl,0e00ah		;6c6c
+	ld hl,0e00ah		;6c6c   ; Un paso menos de los 17 que puso 0x426C; a cero, 0x429E sigue
 	dec (hl)			;6c6f
 	ret			;6c70
 PINTA_TILES_SEGUIDOS:		; B tiles consecutivos desde A en la VRAM DE y baja una fila
-	push de			;6c71
+	push de			;6c71   ; La esquina se guarda para poder bajar una fila justo al acabar
 PINTA_TILES_SEGUIDOS_BUCLE:		; Uno
-	call VPOKE		;6c72
+	call VPOKE		;6c72   ; Un tile
 	inc de			;6c75
-	inc a			;6c76
+	inc a			;6c76   ; El siguiente: van seguidos en la tabla de patrones
 	djnz PINTA_TILES_SEGUIDOS_BUCLE		;6c77
 	pop de			;6c79
-	ld hl,00020h		;6c7a
-	add hl,de			;6c7d
+	ld hl,00020h		;6c7a   ; Vuelta a la esquina y treinta y dos bytes: la fila de abajo
+	add hl,de			;6c7d   ; Treinta y dos bytes: la misma columna una fila mas abajo
 	ex de,hl			;6c7e
 	ret			;6c7f
 SIN_LLAMADAS_RLE_CON_DIRECCION:		; Entrada a RLE_A_VRAM que lee la direccion de la VRAM delante de los datos, como en otros cartuchos de Konami; aqui nadie la usa
-	ld e,(hl)			;6c80
+	ld e,(hl)			;6c80   ; Aqui la direccion de la VRAM viene delante de los datos
 	inc hl			;6c81
 	ld d,(hl)			;6c82
 	inc hl			;6c83
 RLE_A_VRAM:		; Descomprime HL en la VRAM DE: 0 fin; n<0x80 repite n veces el byte siguiente; n>=0x80 copia n&0x7F bytes tal cual
-	di			;6c84
+	di			;6c84   ; La direccion se manda una vez y a partir de ahi se escribe seguido al puerto
 	call VDP_DIRECCION		;6c85
 RLE_SIGUIENTE:		; El bucle
-	ld a,(hl)			;6c88
-	inc hl			;6c89
-	or a			;6c8a
+	ld a,(hl)			;6c88   ; La marca
+	inc hl			;6c89   ; La marca se consume y HL queda en el dato
+	or a			;6c8a   ; 0: se acabo
 	ret z			;6c8b
-	bit 7,a		;6c8c
+	bit 7,a		;6c8c   ; Bit 7: lo que viene detras va tal cual
 	jr nz,RLE_TAL_CUAL		;6c8e
-	ld b,a			;6c90
+	ld b,a			;6c90   ; Si no, cuantas veces se repite el byte de detras
 	ld a,(hl)			;6c91
 	inc hl			;6c92
 RLE_REPITE:		; B veces el mismo byte
-	out (098h),a		;6c93
+	out (098h),a		;6c93   ; Sin preguntarle al VDP: los dos nop son la espera entre escritura y escritura
 	nop			;6c95
 	nop			;6c96
 	djnz RLE_REPITE		;6c97
 	jr RLE_SIGUIENTE		;6c99
 RLE_TAL_CUAL:		; A&0x7F bytes seguidos
-	res 7,a		;6c9b
-	ld c,a			;6c9d
+	res 7,a		;6c9b   ; Fuera el bit 7: los que quedan
+	ld c,a			;6c9d   ; BC = cuantos bytes van sin comprimir
 	ld b,000h		;6c9e
-	call COPIA_A_VRAM_YA		;6ca0
-	add hl,bc			;6ca3
+	call COPIA_A_VRAM_YA		;6ca0   ; El VDP ya apunta donde toca
+	add hl,bc			;6ca3   ; Y HL se salta los que se han copiado
 	jr RLE_SIGUIENTE		;6ca4
 FLECHA_ROJA:		; Mientras el mono lleva la tarjeta (bit 1 de E270): cada 8 fotogramas la flecha de 2x2 (0x6CC2) o nada en la fila 6, columna 23
-	ld a,(0e270h)		;6ca6
+	ld a,(0e270h)		;6ca6   ; Bit 1 de E270: el mono lleva la tarjeta de la respuesta
 	bit 1,a		;6ca9
 	ret z			;6cab
-	ld a,(0e003h)		;6cac
+	ld a,(0e003h)		;6cac   ; Bit 3 del contador de fotogramas: la flecha se enciende y se apaga cada ocho
 	and 008h		;6caf
-	ld hl,06cc2h		;6cb1
+	ld hl,06cc2h		;6cb1   ; Los cuatro tiles de la flecha
 	jr nz,FLECHA_ROJA_PINTA		;6cb4
-	ld hl,078dbh		;6cb6
+	ld hl,078dbh		;6cb6   ; Apagada: los cuatro tiles a cero de 0x78DB
 FLECHA_ROJA_PINTA:		; El bloque de 2x2 en la fila 6, columna 23
-	ld bc,00202h		;6cb9
-	ld de,030b8h		;6cbc
+	ld bc,00202h		;6cb9   ; Un bloque de dos por dos
+	ld de,030b8h		;6cbc   ; Pixels (0x30, 0xB8): fila 6, columna 23, arriba a la derecha de la zona de juego
 	jp PINTA_BLOQUE		;6cbf
 
 ; ----------------------------------------------------------------------
@@ -4535,102 +4535,102 @@ DATA_flecha_roja:
 
 
 RELOJ:		; Cada 64 fotogramas un segundo menos (BCD, los minutos en E056), y se pinta
-	ld hl,0e056h		;6cc6
+	ld hl,0e056h		;6cc6   ; Los minutos en E056 y los segundos justo debajo, en E055
 	ld c,(hl)			;6cc9
 	dec hl			;6cca
 	ld a,(hl)			;6ccb
-	or c			;6ccc
+	or c			;6ccc   ; A 00:00 no queda nada que descontar
 	ret z			;6ccd
-	ld a,(0e003h)		;6cce
+	ld a,(0e003h)		;6cce   ; Un segundo del reloj cada 64 fotogramas: en una maquina PAL (50 fotogramas por segundo) eso son 1,28 segundos de verdad
 	and 03fh		;6cd1
 	ret nz			;6cd3
 RELOJ_RESTA:		; Un segundo menos: de 00 pasa a 59 y un minuto menos
-	ld a,(hl)			;6cd4
-	and a			;6cd5
-	jr nz,RELOJ_RESTA_DAA		;6cd6
+	ld a,(hl)			;6cd4   ; Los segundos, en BCD
+	and a			;6cd5   ; A cero hay que pedirle prestado al minuto
+	jr nz,RELOJ_RESTA_DAA		;6cd6   ; De 00 se pasa por 0x60 para que el daa lo deje en 59, y un minuto menos
 	ld a,060h		;6cd8
 	dec c			;6cda
 RELOJ_RESTA_DAA:		; Un segundo menos en BCD
 	dec a			;6cdb
-	daa			;6cdc
+	daa			;6cdc   ; El daa es lo que hace la resta decimal
 	ld (hl),a			;6cdd
 	inc hl			;6cde
-	ld (hl),c			;6cdf
+	ld (hl),c			;6cdf   ; Los minutos, se hayan tocado o no
 PINTA_RELOJ:		; Minutos y segundos en la fila 3, columna 26 (con los dos puntos en medio)
-	ld b,001h		;6ce0
-	ld de,0387ah		;6ce2
+	ld b,001h		;6ce0   ; HL viene apuntando a E056: 0x4A4F pinta los minutos y luego baja a los segundos
+	ld de,0387ah		;6ce2   ; 0x387A: fila 3, columna 26
 	call PINTA_BYTES_BCD		;6ce5
 	ld b,001h		;6ce8
-	inc de			;6cea
+	inc de			;6cea   ; Un tile de por medio: los dos puntos ya estan pintados de 0x66CC y no se repintan
 	call PINTA_BYTES_BCD		;6ceb
 	ret			;6cee
 RELOJ_MINIMO:		; Si queda menos de 0:30, se pone en 0:30
-	ld hl,0e056h		;6cef
+	ld hl,0e056h		;6cef   ; Con algun minuto entero no hay nada que hacer
 	xor a			;6cf2
 	cp (hl)			;6cf3
 	ret nz			;6cf4
 	dec hl			;6cf5
-	ld a,030h		;6cf6
+	ld a,030h		;6cf6   ; Menos de 0:30 se sube a 0:30: el tiempo se conserva de una vida a la siguiente, pero nunca se vuelve con menos de medio minuto
 	cp (hl)			;6cf8
 	ret c			;6cf9
 	ld (hl),a			;6cfa
 	ret			;6cfb
 RESPUESTA_REVELADA:		; Se acabo la ecuacion sin acertar: fallos a cero, se pierde la vida (E00C), ecuacion nueva (E053), los sprites del 500 vuelven, sonido 2 y al estado 19 con 0x80 fotogramas
 	xor a			;6cfc
-	ld (0e057h),a		;6cfd
-	inc a			;6d00
+	ld (0e057h),a		;6cfd   ; Los fallos a cero: la ecuacion se acaba aqui, acertada o no
+	inc a			;6d00   ; E00C = 1 se pierde la vida, y E053 = 1 pide ecuacion nueva
 	ld (0e00ch),a		;6d01
 	ld (0e053h),a		;6d04
-	ld hl,0597fh		;6d07
+	ld hl,0597fh		;6d07   ; Los sprites de 0x597F (el 500, el 100, el platano y las uvas) vuelven a 0x1B80, que los globos habian pisado
 	ld de,01b80h		;6d0a
-	ld bc,00040h		;6d0d
+	ld bc,00040h		;6d0d   ; 0x40 bytes: solo los patrones 0x70 y 0x74 (el 500 y el 100), que son los dos que pisaron los globos
 	di			;6d10
 	call COPIA_A_VRAM		;6d11
 	ei			;6d14
-	ld a,002h		;6d15
+	ld a,002h		;6d15   ; Sonido 2
 	call SONIDO		;6d17
-	ld a,012h		;6d1a
+	ld a,012h		;6d1a   ; El 0x12 mas el inc de 0x4661: estado 19
 	ld (0e000h),a		;6d1c
-	ld a,080h		;6d1f
+	ld a,080h		;6d1f   ; 0x80 fotogramas parado antes de seguir
 	ld (0e004h),a		;6d21
 	jp SIGUIENTE_ESTADO		;6d24
 PROFESOR_PASO:		; Segun E276: bit 0 monta el globo con la respuesta, bit 1 lo lleva bajo el ?, bit 2 lo sube y escribe la cifra
-	ld a,(0e276h)		;6d27
+	ld a,(0e276h)		;6d27   ; E276: las banderas del profesor que baja con la respuesta
 	and a			;6d2a
 	ret z			;6d2b
-	pop hl			;6d2c
-	rra			;6d2d
+	pop hl			;6d2c   ; Se come la direccion de vuelta: con algo de esto en marcha, quien llamo no sigue
+	rra			;6d2d   ; Bit 0: montar el globo
 	jr c,GLOBO_MONTA		;6d2e
-	rra			;6d30
-	jr c,$+85		;6d31
-	rra			;6d33
+	rra			;6d30   ; Cada rra saca el bit siguiente: los tres pasos se miran en cadena
+	jr c,$+85		;6d31   ; Bit 1: el globo anda hasta el ?
+	rra			;6d33   ; Bit 2: sube y escribe la cifra
 	jp c,GLOBO_SUBE		;6d34
 	ret			;6d37
 GLOBO_MONTA:		; Con el canal C callado: esconde a los cangrejos, pone en E0B8 los cuatro sprites de 0x6D76 (un mono agarrado a un globo, fuera por la izquierda), carga los globos en 0x1B80, E108 = 0x88 y sonido 0x97
-	ld a,(0e026h)		;6d38
+	ld a,(0e026h)		;6d38   ; E026 es el volumen del canal C: se espera a que se calle para no pisar el sonido anterior
 	or a			;6d3b
 	ret nz			;6d3c
-	ld hl,0e0b8h		;6d3d
+	ld hl,0e0b8h		;6d3d   ; Los seis sprites de los tres cangrejos (E0B8-E0CF) fuera de la pantalla con Y = 0xE1, que es donde se van a montar los del globo
 	ld de,0e0b9h		;6d40
-	ld bc,00017h		;6d43
-	ld (hl),0e1h		;6d46
+	ld bc,00017h		;6d43   ; 0x17 con el ldir: 24 bytes, seis sprites
+	ld (hl),0e1h		;6d46   ; 0xE1 en la Y esconde el sprite, y el ldir reparte ese byte por los 24
 	ldir		;6d48
-	ld hl,06d76h		;6d4a
+	ld hl,06d76h		;6d4a   ; Los cuatro atributos de 0x6D76 encima: el mono y su globo, en X = 0xFD, que al ir sumando de uno en uno da la vuelta y entra por la izquierda
 	ld de,0e0b8h		;6d4d
-	ld bc,00010h		;6d50
+	ld bc,00010h		;6d50   ; 0x10: los cuatro atributos de golpe
 	ldir		;6d53
-	ld hl,05e3fh		;6d55
+	ld hl,05e3fh		;6d55   ; Los dos patrones del globo (0x5E3F) a 0x1B80
 	ld de,01b80h		;6d58
 	ld bc,00040h		;6d5b
 	di			;6d5e
 	call COPIA_A_VRAM		;6d5f
 	ei			;6d62
-	ld a,(0e276h)		;6d63
+	ld a,(0e276h)		;6d63   ; Fuera el bit 0, dentro el 1: a andar
 	xor 003h		;6d66
 	ld (0e276h),a		;6d68
-	ld a,088h		;6d6b
+	ld a,088h		;6d6b   ; E108 = 0x88: el mono del jugador se queda quieto mientras dura la escena
 	ld (0e108h),a		;6d6d
-	ld a,097h		;6d70
+	ld a,097h		;6d70   ; Sonido 0x97
 	call SONIDO		;6d72
 	ret			;6d75
 
@@ -4652,103 +4652,103 @@ DATA_sprites_del_globo:
 
 
 GLOBO_ANDA:		; Los cuatro sprites avanzan un pixel por fotograma hasta la columna del ? (E271 - 13), animando el mono con las fases de 0x65CB; al llegar, bit 2
-	ld a,(0e271h)		;6d86
+	ld a,(0e271h)		;6d86   ; E271 es la columna donde se pinto el ?; trece pixels antes (0xF3 = -13) es donde para
 	add a,0f3h		;6d89
-	ld hl,0e0b9h		;6d8b
-	cp (hl)			;6d8e
+	ld hl,0e0b9h		;6d8b   ; La X del primero de los cuatro sprites
+	cp (hl)			;6d8e   ; Ya esta: no anda mas
 	ld a,(hl)			;6d8f
 	jr z,GLOBO_YA_ESTA		;6d90
-	ld b,004h		;6d92
+	ld b,004h		;6d92   ; Los cuatro, un pixel a la derecha cada uno
 GLOBO_ANDA_PIXEL:		; Un pixel a la derecha los cuatro sprites
-	inc (hl)			;6d94
-	inc hl			;6d95
+	inc (hl)			;6d94   ; Se toca la X, no la Y: el grupo entra de lado
+	inc hl			;6d95   ; Cuatro bytes de un atributo al siguiente
 	inc hl			;6d96
 	inc hl			;6d97
 	inc hl			;6d98
 	djnz GLOBO_ANDA_PIXEL		;6d99
-	ld a,(0e003h)		;6d9b
+	ld a,(0e003h)		;6d9b   ; Bits 3-4 del contador de fotogramas: la fase de la animacion cambia cada ocho
 	and 018h		;6d9e
-	ld hl,065cbh		;6da0
-	srl a		;6da3
+	ld hl,065cbh		;6da0   ; Las mismas cuatro fases del cangrejo (0x65CB): este mono agarrado al globo anda con ellas
+	srl a		;6da3   ; Los bits 3-4 bajados a 0-1: 0, 2, 4 o 6, la pareja de patrones
 	srl a		;6da5
 	call HL_MAS_A		;6da7
 	ld a,(hl)			;6daa
-	ld de,0e0bah		;6dab
+	ld de,0e0bah		;6dab   ; El patron del cuerpo
 	ld (de),a			;6dae
 	inc hl			;6daf
 	ld a,(hl)			;6db0
-	ld de,0e0beh		;6db1
+	ld de,0e0beh		;6db1   ; Y el de los ojos, en el sprite de al lado
 	ld (de),a			;6db4
 	ret			;6db5
 GLOBO_YA_ESTA:		; E276: fuera el bit 1, dentro el 2: a subir
-	ld a,(0e276h)		;6db6
+	ld a,(0e276h)		;6db6   ; Fuera el bit 1 y dentro el 2: ya esta bajo el ?, ahora a subir
 	xor 006h		;6db9
 	ld (0e276h),a		;6dbb
 	ret			;6dbe
 GLOBO_SUBE:		; El globo (sprites 4 y 5) sube un pixel por fotograma hasta arriba; entonces se esconde, se escribe la cifra escondida (E1CD) sobre el ? con los bloques de 0x7207, sonido 2 y 0x6CFC
-	ld hl,0e0c0h		;6dbf
+	ld hl,0e0c0h		;6dbf   ; La Y del primero de los dos sprites del globo
 	xor a			;6dc2
-	cp (hl)			;6dc3
+	cp (hl)			;6dc3   ; A cero se acabo la subida
 	jr z,GLOBO_ARRIBA		;6dc4
-	dec (hl)			;6dc6
-	ld hl,0e0c4h		;6dc7
+	dec (hl)			;6dc6   ; Un pixel por fotograma, los dos
+	ld hl,0e0c4h		;6dc7   ; Y el segundo globo, el de debajo
 	dec (hl)			;6dca
 	ret			;6dcb
 GLOBO_ARRIBA:		; Se esconde y se escribe la cifra
-	ld (hl),0e1h		;6dcc
+	ld (hl),0e1h		;6dcc   ; Los dos globos fuera de la pantalla
 	inc hl			;6dce
 	inc hl			;6dcf
 	inc hl			;6dd0
 	inc hl			;6dd1
-	ld (hl),0e1h		;6dd2
-	ld d,a			;6dd4
-	ld a,(0e271h)		;6dd5
+	ld (hl),0e1h		;6dd2   ; Y el segundo globo, cuatro bytes mas alla
+	ld d,a			;6dd4   ; D sigue valiendo 0 de la comparacion: la fila 0, arriba del todo
+	ld a,(0e271h)		;6dd5   ; Y la columna donde estaba el ?
 	add a,0f3h		;6dd8
 	ld e,a			;6dda
-	ld a,(0e002h)		;6ddb
+	ld a,(0e002h)		;6ddb   ; Bit 7 de E002: cada jugador guarda su cifra escondida, E1CD o E1CE
 	ld hl,0e1cdh		;6dde
-	rla			;6de1
+	rla			;6de1   ; El bit 7 al carry sin gastar otro registro
 	jr nc,GLOBO_ESCRIBE		;6de2
 	inc hl			;6de4
 GLOBO_ESCRIBE:		; El bloque de 2x2 de la cifra escondida
-	ld a,(hl)			;6de5
+	ld a,(hl)			;6de5   ; La cifra que estaba detras del ?
 	ld hl,07207h		;6de6
-	add a,a			;6de9
+	add a,a			;6de9   ; Por cuatro: cada simbolo son cuatro tiles en 0x7207
 	add a,a			;6dea
 	call HL_MAS_A		;6deb
-	ld bc,00202h		;6dee
+	ld bc,00202h		;6dee   ; El bloque de 2 x 2, encima del ?
 	call PINTA_BLOQUE		;6df1
-	ld a,002h		;6df4
+	ld a,002h		;6df4   ; Sonido 2
 	call SONIDO		;6df6
-	jp RESPUESTA_REVELADA		;6df9
+	jp RESPUESTA_REVELADA		;6df9   ; Y de ahi al final de la ecuacion, el mismo que cuando se acaba el tiempo: la respuesta se ve, pero se pierde la vida
 FASE_RESUELTA_BAILE:		; Con el bit 3 de E276: cada 16 fotogramas alterna los colores del mono y del profesor (los del bit 4) hasta que el nibble alto llega a 0x10; entonces la ecuacion cuenta (0x6E32)
 	ld a,(0e276h)		;6dfc
-	bit 3,a		;6dff
+	bit 3,a		;6dff   ; Bit 3 de E276: la respuesta llego arriba y los dos monos estan de fiesta
 	ret z			;6e01
-	pop de			;6e02
-	ld a,(0e003h)		;6e03
+	pop de			;6e02   ; Otro que se come la vuelta
+	ld a,(0e003h)		;6e03   ; Un cambio cada 16 fotogramas
 	and 00fh		;6e06
 	ret nz			;6e08
-	ld a,(0e276h)		;6e09
-	and 0f0h		;6e0c
-	cp 010h		;6e0e
+	ld a,(0e276h)		;6e09   ; El nibble alto de E276 cuenta los cambios que faltan
+	and 0f0h		;6e0c   ; El nibble bajo no pinta nada en esta cuenta
+	cp 010h		;6e0e   ; A 0x10 se acabo el baile
 	jr z,ECUACION_RESUELTA		;6e10
-	and 010h		;6e12   ; Bit 4 a 1: patrones 0x08 y color 0x0C; a 0: 0x00 y 0x04
-	srl a		;6e14
-	ld c,a			;6e16
-	set 2,c		;6e17
-	ld b,002h		;6e19
-	ld hl,0e0b2h		;6e1b
+	and 010h		;6e12   ; Bit 4 a 1: patrones 0x08 (cuerpo) y 0x0C (detalles); a 0: 0x00 y 0x04. Son las dos caras de 0x5E7F, y los dos bytes que se tocan son patrones, no colores
+	srl a		;6e14   ; El bit 4 bajado al 3
+	ld c,a			;6e16   ; C se monta aparte: el patron del cuerpo en A y el de los detalles en C
+	set 2,c		;6e17   ; Y el bit 2 puesto siempre
+	ld b,002h		;6e19   ; Dos veces: el mono y el profesor
+	ld hl,0e0b2h		;6e1b   ; El patron del cuerpo del mono
 BAILE_COLORES:		; Patron y color a los dos
 	ld (hl),a			;6e1e
-	inc hl			;6e1f
+	inc hl			;6e1f   ; Cuatro bytes: el sprite de los detalles
 	inc hl			;6e20
 	inc hl			;6e21
 	inc hl			;6e22
-	ld (hl),c			;6e23
-	ld hl,0e0d2h		;6e24
+	ld (hl),c			;6e23   ; Y el patron de los detalles, en el sprite de al lado
+	ld hl,0e0d2h		;6e24   ; Y ahora los dos del profesor
 	djnz BAILE_COLORES		;6e27
-	ld a,(0e276h)		;6e29
+	ld a,(0e276h)		;6e29   ; Un cambio menos: 0x10 abajo cada vez
 	sub 010h		;6e2c
 	ld (0e276h),a		;6e2e
 	ret			;6e31

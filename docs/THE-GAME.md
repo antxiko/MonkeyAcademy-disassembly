@@ -74,8 +74,9 @@ frames while the tile is not empty) and drop to the first floor.
   (Y = 0x38) and otherwise lets itself fall to it.
 
 How many of them are in play depends on the stage (0x4850: stage/8 + 2
-actors, monkey included, capped at 4): **just one up to stage 7**, two in
-stages 8 and 9, all three from stage 10. The loop at 0x4860 calls
+actors, monkey included, capped at 4): **just one up to stage 7**, two from
+stage 8 to 15 and all three from stage 16 (E051 is binary, not BCD, so the
+step is at 16, not at 10). The loop at 0x4860 calls
 `ACTOR_PASO` with the actor number in B, last to first; and one frame in four
 (0xE272) only the monkey moves. Measured in a real game: in stages 1 and 2 the
 monkey took 1003 steps in 1003 frames, the first crab 752, the other two
