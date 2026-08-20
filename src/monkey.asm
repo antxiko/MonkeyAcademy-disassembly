@@ -50,7 +50,7 @@ DATA_cinco_stubs_sin_usar:
 ; ######################################################################
 ; ----------------------------------------------------------------------
 INTERRUPCION:		; Guarda todo, reconoce la interrupcion del VDP, sonido y sprites; y si no hay otro paso a medias, un paso del juego
-	push af			;4038
+	push af			;4038   ; Todos los registros, los alternativos y IX: la interrupcion cae en cualquier sitio
 	push bc			;4039
 	push de			;403a
 	push hl			;403b
@@ -59,21 +59,21 @@ INTERRUPCION:		; Guarda todo, reconoce la interrupcion del VDP, sonido y sprites
 	push bc			;403f
 	push de			;4040
 	push hl			;4041
-	di			;4042
+	di			;4042   ; Con el VDP no se puede estar a medias
 	in a,(099h)		;4043   ; Leer el estado del VDP baja la interrupcion
-	call SUENA		;4045
-	call VUELCA_SPRITES		;4048
+	call SUENA		;4045   ; El sonido va SIEMPRE, incluso si el paso anterior no acabo
+	call VUELCA_SPRITES		;4048   ; Y los sprites tambien: la pantalla nunca se queda quieta
 	ld hl,0e005h		;404b   ; E005 distinto de 0: el paso anterior no ha acabado; solo sonido y sprites
 	ld a,(hl)			;404e
 	or a			;404f
 	jr nz,INTERRUPCION_SALE		;4050
-	ld (hl),0ffh		;4052
-	ei			;4054
+	ld (hl),0ffh		;4052   ; Candado echado: si el paso tarda mas de un fotograma, el siguiente sale por la puerta corta
+	ei			;4054   ; Desde aqui ya puede entrar otra interrupcion
 	ld a,(0e000h)		;4055   ; Los mandos solo se leen en la demo y en la partida (estados 7 en adelante)
 	cp 007h		;4058
 	call nc,LEE_MANDOS		;405a
-	call PASO_DEL_JUEGO		;405d
-	di			;4060
+	call PASO_DEL_JUEGO		;405d   ; El paso del juego, un estado por fotograma
+	di			;4060   ; Al recoger los registros, sin interrupciones
 	pop hl			;4061
 	pop de			;4062
 	pop bc			;4063
@@ -82,7 +82,7 @@ INTERRUPCION:		; Guarda todo, reconoce la interrupcion del VDP, sonido y sprites
 	pop hl			;4067
 	pop de			;4068
 	pop bc			;4069
-	xor a			;406a
+	xor a			;406a   ; Candado suelto: el paso ha terminado
 	ld (0e005h),a		;406b
 	pop af			;406e
 	ei			;406f
@@ -91,7 +91,7 @@ SIN_LLAMADAS_4072:		; `push iy / ret`: tres bytes a los que no llega nadie
 	push iy		;4072
 	ret			;4074
 INTERRUPCION_SALE:		; Salida corta cuando el paso anterior sigue a medias: recupera los registros y vuelve
-	pop hl			;4075
+	pop hl			;4075   ; Salida corta: solo se han hecho el sonido y los sprites
 	pop de			;4076
 	pop bc			;4077
 	exx			;4078
@@ -105,9 +105,9 @@ INTERRUPCION_SALE:		; Salida corta cuando el paso anterior sigue a medias: recup
 VPOKE:		; Escribe A en la VRAM DE (bit 6 de D para escribir; se deja como estaba)
 	di			;4082
 	push af			;4083
-	set 6,d		;4084
+	set 6,d		;4084   ; Bit 6 de la direccion: es para escribir
 	call VDP_DIRECCION		;4086
-	res 6,d		;4089
+	res 6,d		;4089   ; Y se quita, para que el llamante vea DE como lo dejo
 	pop af			;408b
 	out (098h),a		;408c
 	ei			;408e
@@ -116,7 +116,7 @@ RET_:		; Un `ret` suelto: 0x4090 lo llama para dejar respirar al VDP entre la di
 VPEEK:		; Lee en A el byte de la VRAM DE
 	di			;4090
 	call VDP_DIRECCION		;4091
-	call RET_		;4094
+	call RET_		;4094   ; El call a un ret suelto: los ciclos que el VDP necesita entre la direccion y el dato
 	in a,(098h)		;4097
 	ei			;4099
 	ret			;409a
@@ -378,19 +378,19 @@ BORRA_PANTALLA:		; Tabla de nombres entera (0x3800, 768 bytes) a cero
 ; ----------------------------------------------------------------------
 PASO_DEL_JUEGO:		; E003++, el 1UP a partir del estado 11, las teclas 1-5 salvo en el 18, y el estado por la tabla
 	ld hl,0e003h		;4209
-	inc (hl)			;420c
+	inc (hl)			;420c   ; Un fotograma mas
 	ld a,(0e000h)		;420d   ; En el estado 18 (opcion recien elegida) no se leen las teclas
-	cp 012h		;4210
+	cp 012h		;4210   ; En el estado 18 (opcion recien elegida) las teclas no se miran
 	jr z,PASO_TECLAS		;4212
-	cp 00bh		;4214
+	cp 00bh		;4214   ; Del estado 11 en adelante ya hay partida: el 1UP parpadea
 	push af			;4216
 	call nc,PARPADEA_1UP		;4217
 	pop af			;421a
 PASO_TECLAS:		; A partir del estado 1, las teclas 1-5
-	cp 001h		;421b
+	cp 001h		;421b   ; Del 1 en adelante, las teclas 1-5
 	call nc,TECLAS_1_A_5		;421d
 	ld a,(0e000h)		;4220
-	call DESPACHA		;4223
+	call DESPACHA		;4223   ; El estado manda, por la tabla que va justo detras
 
 ; ----------------------------------------------------------------------
 ; DATOS tabla_de_estados: Los 20 estados del juego (indice E000), destino del
@@ -4792,7 +4792,7 @@ ECUACION_RESUELTA:		; En la partida (bit 6 de E002): banderas a cero, ecuacion n
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 SUMA_A_MAS_B:		; E142 = A + B (BCD); E143 = 0 mas el acarreo
-	push hl			;6e6e
+	push hl			;6e6e   ; E143 = 0 y E142 = A: el acumulador arranca en A
 	ld hl,0e143h		;6e6f
 	ld (hl),000h		;6e72
 	dec hl			;6e74
@@ -4802,7 +4802,7 @@ SUMA_B:		; E142/E143 += B
 	push hl			;6e78
 	ld hl,0e142h		;6e79
 SUMA_B_BUCLE:		; La suma con DAA y el signo si se desborda
-	ld a,(hl)			;6e7c
+	ld a,(hl)			;6e7c   ; Suma de dos cifras BCD y el acarreo a las centenas
 	add a,b			;6e7d
 	daa			;6e7e
 	ld (hl),a			;6e7f
@@ -4811,7 +4811,7 @@ SUMA_B_BUCLE:		; La suma con DAA y el signo si se desborda
 	adc a,000h		;6e82
 	daa			;6e84
 	ld (hl),a			;6e85
-	ld a,(0e152h)		;6e86
+	ld a,(0e152h)		;6e86   ; Si se sale de las centenas, el bit 0 de E152 CAMBIA (no se pone): es el signo
 	jr nc,SUMA_B_FIN		;6e89
 	xor 001h		;6e8b
 	ld (0e152h),a		;6e8d
@@ -4819,7 +4819,7 @@ SUMA_B_FIN:		; Fuera
 	pop hl			;6e90
 	ret			;6e91
 RESTA_A_MENOS_B:		; E142 = A - B (BCD); si presta, el signo (bit 0 de E152)
-	push hl			;6e92
+	push hl			;6e92   ; Igual que la suma, pero restando
 	ld hl,0e143h		;6e93
 	ld (hl),000h		;6e96
 	dec hl			;6e98
@@ -4829,7 +4829,7 @@ RESTA_B:		; E142/E143 -= B
 	push hl			;6e9c
 	ld hl,0e142h		;6e9d
 RESTA_B_BUCLE:		; La resta con DAA y el signo si presta
-	ld a,(hl)			;6ea0
+	ld a,(hl)			;6ea0   ; Resta BCD; si presta, otra vez el signo
 	sub b			;6ea1
 	daa			;6ea2
 	ld (hl),a			;6ea3
@@ -4846,7 +4846,7 @@ RESTA_B_FIN:		; Fuera
 	pop hl			;6eb4
 	ret			;6eb5
 MULTIPLICA_A_POR_B:		; E142 = A x B (BCD): A sumado B - 1 veces
-	push hl			;6eb6
+	push hl			;6eb6   ; Multiplicar es sumar: E142 = A y luego A sumado B - 1 veces
 	push de			;6eb7
 	ld hl,0e143h		;6eb8
 	ld (hl),000h		;6ebb
@@ -4858,14 +4858,14 @@ MULTIPLICA_POR_B:		; E142/E143 x B, sumandose a si mismo B - 1 veces
 	push de			;6ec2
 	ld hl,0e142h		;6ec3
 MULTIPLICA_ENTRA:		; B = 1: nada que sumar
-	ld a,001h		;6ec6
+	ld a,001h		;6ec6   ; B = 1: el resultado ya es A, no hay nada que sumar
 	cp b			;6ec8
 	jr z,MULTIPLICA_FIN		;6ec9
-	ld a,(hl)			;6ecb
+	ld a,(hl)			;6ecb   ; C = el sumando fijo (lo que valia E142)
 	ld c,a			;6ecc
 	dec b			;6ecd
 MULTIPLICA_BUCLE:		; Una suma mas
-	ld a,(hl)			;6ece
+	ld a,(hl)			;6ece   ; Una suma BCD de 16 bits mas
 	add a,c			;6ecf
 	daa			;6ed0
 	ld (hl),a			;6ed1
@@ -4881,13 +4881,13 @@ MULTIPLICA_FIN:		; Fuera
 	pop hl			;6edc
 	ret			;6edd
 DIVISION:		; Para el signo de dividir: D y E al azar (1-9), se escribe D x E, el signo, D, y el resultado es E: siempre exacta
-	call AZAR		;6ede
+	call AZAR		;6ede   ; Dividir se genera al reves: primero el cociente
 	ld a,(0e140h)		;6ee1
-	and 00fh		;6ee4
+	and 00fh		;6ee4   ; Nibble bajo del azar, entre 1 y 9 (el 0 se repite)
 	jr z,DIVISION		;6ee6
 	ld d,a			;6ee8
 DIVISION_E:		; E al azar (1-9)
-	call AZAR		;6ee9
+	call AZAR		;6ee9   ; Y el otro nibble para el segundo, tambien 1-9
 	ld a,(0e141h)		;6eec
 	and 00fh		;6eef
 	jr z,DIVISION_E		;6ef1
@@ -4945,42 +4945,42 @@ AZAR:		; Semilla de 16 bits en E140/E141: se mezcla, se suma el registro R, se l
 	pop hl			;6f43
 	ret			;6f44
 OPERANDO:		; Un numero al azar de dos cifras BCD (E140) con las unidades entre 2 y 9, escrito en la ecuacion; B se lo queda
-	call AZAR		;6f45
+	call AZAR		;6f45   ; Dos cifras BCD tal cual salen del azar
 	ld a,(0e140h)		;6f48
 	ld b,a			;6f4b
-	and 00fh		;6f4c
+	and 00fh		;6f4c   ; Unidades por debajo de 2: no vale, otra vez (nada de x0, x1 ni divisiones feas)
 	cp 002h		;6f4e
 	ld a,b			;6f50
 	jr c,OPERANDO		;6f51
 ESCRIBE_NUMERO:		; Escribe A (BCD, dos cifras) detras de HL: las decenas si no son cero y las unidades; E058 cuenta los simbolos
-	ld b,a			;6f53
+	ld b,a			;6f53   ; A = 0: no se escribe nada
 	and a			;6f54
 	ret z			;6f55
-	and 00fh		;6f56
+	and 00fh		;6f56   ; C = las unidades
 	ld c,a			;6f58
 	ld a,b			;6f59
-	srl a		;6f5a
+	srl a		;6f5a   ; Las decenas al nibble bajo
 	srl a		;6f5c
 	srl a		;6f5e
 	srl a		;6f60
-	inc hl			;6f62
+	inc hl			;6f62   ; Las decenas van al hueco siguiente y cuentan como simbolo
 	ld (hl),a			;6f63
 	call UN_SIMBOLO_MAS		;6f64
-	and a			;6f67
+	and a			;6f67   ; Decenas = 0: las unidades PISAN ese mismo hueco, y solo cuenta un simbolo
 	jr z,ESCRIBE_UNIDADES		;6f68
-	inc hl			;6f6a
+	inc hl			;6f6a   ; Con decenas, las unidades van al hueco de al lado y cuentan otro
 	call UN_SIMBOLO_MAS		;6f6b
 ESCRIBE_UNIDADES:		; Las unidades
 	ld (hl),c			;6f6e
 	ret			;6f6f
 LEE_GUION:		; A = el simbolo del guion (E150) sin avanzar
-	push hl			;6f70
+	push hl			;6f70   ; Mira el simbolo del guion sin gastarlo
 	ld hl,(0e150h)		;6f71
 	ld a,(hl)			;6f74
 	pop hl			;6f75
 	ret			;6f76
 ESCRIBE_DEL_GUION:		; Copia el simbolo del guion detras de HL y avanza
-	push hl			;6f77
+	push hl			;6f77   ; Lo copia y avanza el guion; sigue por UN_SIMBOLO_MAS
 	ld hl,(0e150h)		;6f78
 	ld a,(hl)			;6f7b
 	inc hl			;6f7c
@@ -4989,13 +4989,13 @@ ESCRIBE_DEL_GUION:		; Copia el simbolo del guion detras de HL y avanza
 	inc hl			;6f81
 	ld (hl),a			;6f82
 UN_SIMBOLO_MAS:		; E058++
-	push hl			;6f83
+	push hl			;6f83   ; E058: cuantos simbolos lleva la ecuacion (y cuantos globos habra)
 	ld hl,0e058h		;6f84
 	inc (hl)			;6f87
 	pop hl			;6f88
 	ret			;6f89
 OPERANDO_1_CIFRA:		; Un numero al azar de una cifra (1-9), escrito
-	call AZAR		;6f8a
+	call AZAR		;6f8a   ; Igual pero de una sola cifra (1-9)
 	ld a,(0e140h)		;6f8d
 	and 00fh		;6f90
 	jr z,OPERANDO_1_CIFRA		;6f92
@@ -5018,16 +5018,16 @@ OPERANDO_1_CIFRA:		; Un numero al azar de una cifra (1-9), escrito
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 GENERA_ECUACION:		; Trece huecos, el guion del nivel del jugador y los operandos al azar; el resultado en E142/E143 y en la ecuacion
-	ld hl,0e144h		;6f96
+	ld hl,0e144h		;6f96   ; Los trece huecos E144-E150 a 0x13 (vacio)
 	ld (hl),013h		;6f99
 	ld de,0e145h		;6f9b
 	ld bc,0000ch		;6f9e
 	ldir		;6fa1
 	xor a			;6fa3
-	ld (0e152h),a		;6fa4
+	ld (0e152h),a		;6fa4   ; E152 = 0: el resultado empieza en positivo
 	call NIVEL_DEL_JUGADOR		;6fa7   ; El nivel del jugador (E153/E154) elige la entrada de 0x7117
 	ld a,(hl)			;6faa
-	ld hl,07117h		;6fab
+	ld hl,07117h		;6fab   ; Cuatro bytes por nivel en 0x7117: puntero al guion y puntero a sus desplazamientos
 	add a,a			;6fae
 	add a,a			;6faf
 	call HL_MAS_A		;6fb0
@@ -5044,51 +5044,51 @@ GENERA_ECUACION:		; Trece huecos, el guion del nivel del jugador y los operandos
 	and 007h		;6fbf
 	xor a			;6fc1
 	call HL_MAS_A		;6fc2
-	ld a,(hl)			;6fc5
+	ld a,(hl)			;6fc5   ; El desplazamiento (siempre el primero, siempre 0)
 	ex de,hl			;6fc6
 	call HL_MAS_A		;6fc7
-	ld (0e150h),hl		;6fca
+	ld (0e150h),hl		;6fca   ; El guion elegido a E150
 	call NIVEL_DEL_JUGADOR		;6fcd
 	ld a,(hl)			;6fd0
 	cp 004h		;6fd1   ; El nivel 5 va aparte
 	jr z,ECUACION_NIVEL_5		;6fd3
 	xor a			;6fd5
-	ld (0e058h),a		;6fd6
+	ld (0e058h),a		;6fd6   ; Ni un simbolo aun
 	ld hl,00000h		;6fd9
-	ld (0e142h),hl		;6fdc
+	ld (0e142h),hl		;6fdc   ; Y el resultado a cero
 	ld hl,0e143h		;6fdf   ; HL = E143: los simbolos se escriben desde E144
 	call LEE_GUION		;6fe2
 	cp 00fh		;6fe5   ; 0x0F no aparece en ningun guion: este salto a la tabla no se da nunca
 	jp z,07117h		;6fe7
 	cp 00dh		;6fea   ; El signo de dividir se genera al reves: del resultado a los operandos
 	jp z,DIVISION		;6fec
-	call OPERANDO		;6fef
-	ld e,b			;6ff2
-	call ESCRIBE_DEL_GUION		;6ff3
+	call OPERANDO		;6fef   ; Primer operando, dos cifras; B se lo queda
+	ld e,b			;6ff2   ; E = el primero, para operar despues
+	call ESCRIBE_DEL_GUION		;6ff3   ; El signo del guion; A se queda con el
 	push af			;6ff6
 	push de			;6ff7
-	call OPERANDO		;6ff8
+	call OPERANDO		;6ff8   ; Segundo operando
 	pop de			;6ffb
 	pop af			;6ffc
 	cp 00ch		;6ffd   ; Multiplicar: el segundo operando de una cifra
 	jr z,MULTIPLICA		;6fff
 	cp 00bh		;7001   ; Restar
-	ld a,e			;7003
+	ld a,e			;7003   ; A = el primer operando otra vez
 	jr z,ECUACION_RESTA		;7004
-	call SUMA_A_MAS_B		;7006
+	call SUMA_A_MAS_B		;7006   ; Suma: primero + segundo
 	jr ECUACION_SEGUNDO_SIGNO		;7009
 ECUACION_RESTA:		; A - B
 	call RESTA_A_MENOS_B		;700b
 ECUACION_SEGUNDO_SIGNO:		; Tras el segundo operando: si viene el =, al resultado; si otro signo (mas o menos), un tercer operando
-	call ESCRIBE_DEL_GUION		;700e
-	cp 00eh		;7011
+	call ESCRIBE_DEL_GUION		;700e   ; El simbolo que sigue al segundo operando
+	cp 00eh		;7011   ; Es el =: se acabaron los operandos
 	jp z,ECUACION_SIGNO		;7013
 	push af			;7016
-	call OPERANDO		;7017
+	call OPERANDO		;7017   ; No era el =: hay un tercero
 	pop af			;701a
 	cp 00bh		;701b
 	jr z,ECUACION_RESTA_C		;701d
-	call SUMA_B		;701f
+	call SUMA_B		;701f   ; Se suma o se resta al acumulado
 	jr ECUACION_TERCERO_FIN		;7022
 ECUACION_RESTA_C:		; Menos el tercero
 	call RESTA_B		;7024
@@ -5096,49 +5096,49 @@ ECUACION_TERCERO_FIN:		; El = y al signo
 	call ESCRIBE_DEL_GUION		;7027
 	jp ECUACION_SIGNO		;702a
 MULTIPLICA:		; El segundo operando pierde las decenas (se queda con las unidades, un simbolo menos) y A x b
-	ld a,b			;702d
+	ld a,b			;702d   ; Multiplicar: si el segundo tiene decenas, se tiran
 	and 0f0h		;702e
 	jr z,MULTIPLICA_B		;7030
 	push hl			;7032
-	ld hl,0e058h		;7033
+	ld hl,0e058h		;7033   ; Un simbolo menos: donde iban dos cifras solo va una
 	dec (hl)			;7036
 	pop hl			;7037
-	ld a,(hl)			;7038
+	ld a,(hl)			;7038   ; Las unidades se corren al hueco de las decenas
 	dec hl			;7039
 	ld (hl),a			;703a
 MULTIPLICA_B:		; E142 = A x (b & 0x0F)
 	ld a,b			;703b
 	and 00fh		;703c
 	ld b,a			;703e
-	ld a,e			;703f
+	ld a,e			;703f   ; A = el primer operando
 	call MULTIPLICA_A_POR_B		;7040
 	jr ECUACION_SEGUNDO_SIGNO		;7043
 ECUACION_NIVEL_5:		; a x ( b + c ) = R con las tres cifras al azar (1-9); si b + c da 0 se repite; el resultado a x (b + c) en E142/E143
 	xor a			;7045
-	ld (0e058h),a		;7046
+	ld (0e058h),a		;7046   ; Nivel 5: se monta a mano, a x ( b + c ) = R
 	ld hl,00000h		;7049
 	ld (0e142h),hl		;704c
 	ld hl,0e143h		;704f
-	call OPERANDO_1_CIFRA		;7052
+	call OPERANDO_1_CIFRA		;7052   ; La a, de una cifra
 	ld b,002h		;7055
 NIVEL_5_GUION:		; Dos simbolos del guion
 	call ESCRIBE_DEL_GUION		;7057   ; Los dos simbolos del guion: x y (
 	djnz NIVEL_5_GUION		;705a
-	call OPERANDO_1_CIFRA		;705c
-	ld d,b			;705f
+	call OPERANDO_1_CIFRA		;705c   ; La b
+	ld d,b			;705f   ; D = b, que hace falta al operar
 	call ESCRIBE_DEL_GUION		;7060
 	push af			;7063
-	call OPERANDO_1_CIFRA		;7064
+	call OPERANDO_1_CIFRA		;7064   ; La c
 	pop af			;7067
 	cp 00ah		;7068   ; El tercer simbolo: + (o -, con signo)
 	ld a,d			;706a
 	jr z,NIVEL_5_SUMA		;706b
-	call RESTA_A_MENOS_B		;706d
+	call RESTA_A_MENOS_B		;706d   ; b - c; si sale negativo se le da la vuelta al valor absoluto
 	ld a,(0e152h)		;7070
 	bit 0,a		;7073
 	jr z,NIVEL_5_MIRA_CERO		;7075
 	push hl			;7077
-	ld hl,(0e142h)		;7078
+	ld hl,(0e142h)		;7078   ; 0 - E142 en BCD: el complemento a diez
 	xor a			;707b
 	sub l			;707c
 	daa			;707d
@@ -5151,19 +5151,19 @@ NIVEL_5_GUION:		; Dos simbolos del guion
 	pop hl			;7087
 	jr NIVEL_5_MIRA_CERO		;7088
 NIVEL_5_SUMA:		; b + c
-	call SUMA_A_MAS_B		;708a
+	call SUMA_A_MAS_B		;708a   ; b + c
 NIVEL_5_MIRA_CERO:		; Cero: otra
 	ld a,(0e142h)		;708d   ; Suma cero: otra ecuacion
 	or a			;7090
 	jp z,GENERA_ECUACION		;7091
 	ld a,(0e144h)		;7094   ; Y por a (E144)
 	ld b,a			;7097
-	call MULTIPLICA_POR_B		;7098
+	call MULTIPLICA_POR_B		;7098   ; Y todo por la a, que sigue en E144
 	ld b,002h		;709b   ; ) y =
 NIVEL_5_CIERRA:		; ) y =
-	call ESCRIBE_DEL_GUION		;709d
+	call ESCRIBE_DEL_GUION		;709d   ; Los dos ultimos simbolos del guion
 	djnz NIVEL_5_CIERRA		;70a0
-	ld a,(0e152h)		;70a2
+	ld a,(0e152h)		;70a2   ; Con signo negativo, un menos delante del resultado
 	bit 0,a		;70a5
 	jr z,ECUACION_RESULTADO		;70a7
 	inc hl			;70a9
@@ -5172,13 +5172,13 @@ NIVEL_5_CIERRA:		; ) y =
 	jr ECUACION_RESULTADO		;70af
 ECUACION_SIGNO:		; Con el bit 0 de E152 (negativo): un menos delante del resultado y E142/E143 = 0 - E142/E143
 	ld a,(0e152h)		;70b1
-	bit 0,a		;70b4
+	bit 0,a		;70b4   ; Bit 0 de E152: el resultado salio negativo
 	jr z,ECUACION_RESULTADO		;70b6
 	inc hl			;70b8
-	ld (hl),00bh		;70b9
+	ld (hl),00bh		;70b9   ; El simbolo 0x0B es el menos
 	call UN_SIMBOLO_MAS		;70bb
 	push hl			;70be
-	ld hl,(0e142h)		;70bf
+	ld hl,(0e142h)		;70bf   ; 0 - E142/E143 en BCD: el valor absoluto
 	xor a			;70c2
 	sub l			;70c3
 	daa			;70c4
@@ -5190,19 +5190,19 @@ ECUACION_SIGNO:		; Con el bit 0 de E152 (negativo): un menos delante del resulta
 	ld (0e142h),hl		;70cb
 	pop hl			;70ce
 ECUACION_RESULTADO:		; Las centenas (si hay), y las dos cifras (o una, o el 0)
-	ld a,(0e143h)		;70cf
+	ld a,(0e143h)		;70cf   ; Las centenas primero (ESCRIBE_NUMERO no escribe nada si son 0)
 	call ESCRIBE_NUMERO		;70d2
-	ld a,b			;70d5
+	ld a,b			;70d5   ; B trae si se escribio algo: con centenas hacen falta las tres cifras
 	and a			;70d6
 	jr nz,RESULTADO_3_CIFRAS		;70d7
-	ld a,(0e142h)		;70d9
+	ld a,(0e142h)		;70d9   ; Sin centenas y sin decenas ni unidades: el resultado es 0
 	and a			;70dc
 	jr nz,RESULTADO_2_CIFRAS		;70dd
 	inc hl			;70df
 	ld (hl),000h		;70e0
 	jp UN_SIMBOLO_MAS		;70e2
 RESULTADO_3_CIFRAS:		; Con centenas: decenas y unidades siempre
-	ld a,(0e142h)		;70e5
+	ld a,(0e142h)		;70e5   ; Con centenas: decenas y unidades van siempre, aunque sean cero
 	ld b,a			;70e8
 	srl a		;70e9
 	srl a		;70eb
@@ -5214,12 +5214,12 @@ RESULTADO_3_CIFRAS:		; Con centenas: decenas y unidades siempre
 	and 00fh		;70f4
 	inc hl			;70f6
 	ld (hl),a			;70f7
-	ld hl,0e058h		;70f8
+	ld hl,0e058h		;70f8   ; Dos simbolos mas
 	inc (hl)			;70fb
 	inc (hl)			;70fc
 	ret			;70fd
 RESULTADO_2_CIFRAS:		; Sin centenas: las decenas si no son cero, y las unidades
-	ld b,a			;70fe
+	ld b,a			;70fe   ; Sin centenas: las decenas solo si no son cero
 	srl a		;70ff
 	srl a		;7101
 	srl a		;7103
@@ -5274,26 +5274,26 @@ DATA_guiones_de_ecuacion:
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 GLOBOS_SUBEN:		; Un pixel arriba cada globo en marcha; al llegar a 0x10 su simbolo se pinta; suelta el siguiente al azar; carry cuando estan todos
-	ld b,000h		;713d
+	ld b,000h		;713d   ; B recorre los globos desde el 0
 GLOBO_SIGUIENTE:		; Recorre E24C hasta 0xFF
 	ld hl,0e24ch		;713f
 	ld a,b			;7142
-	call HL_MAS_A		;7143
+	call HL_MAS_A		;7143   ; E24C + B: el estado de ese globo
 	ld a,0ffh		;7146
-	cp (hl)			;7148
+	cp (hl)			;7148   ; 0xFF: se acabo la lista
 	jr z,GLOBOS_SUELTA_OTRO		;7149
 	ld a,001h		;714b   ; Estado 1: sube (los dos sprites)
 	cp (hl)			;714d
 	jr nz,GLOBO_OTRO		;714e
-	ld hl,0e0b8h		;7150
+	ld hl,0e0b8h		;7150   ; E0B8 + 8B: los DOS sprites de ese globo
 	ld a,b			;7153
 	add a,a			;7154
 	add a,a			;7155
 	add a,a			;7156
 	call HL_MAS_A		;7157
-	dec (hl)			;715a
+	dec (hl)			;715a   ; Un pixel arriba el de arriba
 	ld a,004h		;715b
-	call HL_MAS_A		;715d
+	call HL_MAS_A		;715d   ; Y cuatro bytes mas alla, el de abajo
 	dec (hl)			;7160
 	ld a,010h		;7161   ; A Y = 0x10 ha llegado
 	cp (hl)			;7163
@@ -5306,26 +5306,26 @@ GLOBOS_SUELTA_OTRO:		; Si faltan por soltar (E24B < E058) y el ultimo suelto ya 
 	ld a,(0e058h)		;716d
 	cp (hl)			;7170
 	jr z,GLOBOS_TODOS		;7171
-	ld a,(0e258h)		;7173   ; E258: el ultimo que se solto; hasta que no lleva 8 pixels no sale otro
-	ld hl,0e0b8h		;7176
+	ld a,(0e258h)		;7173   ; E258: el PRIMER globo que se solto (0x731C es el unico sitio que lo escribe); hasta que su Y no es multiplo de 8 no sale otro
+	ld hl,0e0b8h		;7176   ; E0B8 + 8 x ese globo: su Y
 	add a,a			;7179
 	add a,a			;717a
 	add a,a			;717b
 	call HL_MAS_A		;717c
 	ld a,(hl)			;717f
-	and 007h		;7180
+	and 007h		;7180   ; Su Y multiplo de 8: hasta entonces no sale otro
 	ret nz			;7182
 GLOBO_AL_AZAR:		; Un indice al azar menor que E058, y desde ahi el primer globo en espera (dando la vuelta)
 	call AZAR		;7183
 	ld a,(0e140h)		;7186
-	and 00fh		;7189
+	and 00fh		;7189   ; Un indice al azar, y tiene que caer dentro de los que hay
 	ld hl,0e058h		;718b
 	cp (hl)			;718e
 	jr nc,GLOBO_AL_AZAR		;718f
-	ld hl,0e24ch		;7191
+	ld hl,0e24ch		;7191   ; Desde ahi se busca hueco
 	call HL_MAS_A		;7194
 GLOBO_BUSCA_LIBRE:		; El primer estado 0 desde HL, con vuelta al principio en el 0xFF
-	ld a,0ffh		;7197
+	ld a,0ffh		;7197   ; Al llegar al 0xFF se vuelve al principio de la lista
 	cp (hl)			;7199
 	jr nz,GLOBO_BUSCA_LIBRE_MIRA		;719a
 	ld hl,0e24ch		;719c
@@ -5336,66 +5336,66 @@ GLOBO_BUSCA_LIBRE_MIRA:		; Estado 0?
 	inc hl			;71a3
 	jr GLOBO_BUSCA_LIBRE		;71a4
 GLOBO_SUELTA:		; Estado 1 y uno mas soltado
-	ld (hl),001h		;71a6
+	ld (hl),001h		;71a6   ; Estado 1: este empieza a subir
 	ld hl,0e24bh		;71a8
-	inc (hl)			;71ab
-	and a			;71ac
+	inc (hl)			;71ab   ; Uno mas soltado
+	and a			;71ac   ; NC: aun quedan globos por llegar
 	ret			;71ad
 GLOBOS_TODOS:		; Todos soltados: carry si todos han llegado (2), NC si queda alguno subiendo
 	ld hl,0e24ch		;71ae
 GLOBOS_TODOS_MIRA:		; Recorre hasta 0xFF: todos en 2?
 	ld a,0ffh		;71b1
 	cp (hl)			;71b3
-	scf			;71b4
+	scf			;71b4   ; Se acabo la lista sin encontrar ninguno que no fuera 2: carry, todos arriba
 	jr z,GLOBOS_TODOS_FIN		;71b5
 	ld a,002h		;71b7
-	cp (hl)			;71b9
+	cp (hl)			;71b9   ; Estado 2 (ya llego): sigue mirando
 	inc hl			;71ba
 	jr z,GLOBOS_TODOS_MIRA		;71bb
-	and a			;71bd
+	and a			;71bd   ; Alguno no ha llegado: NC
 GLOBOS_TODOS_FIN:		; Fuera
 	ret			;71be
 GLOBO_LLEGA:		; Esconde los dos sprites, pinta el simbolo (de la ecuacion del jugador, E1B5 o E1C1) en 2x2 donde estaba el globo, apunta la columna del ? (E271) y sonido 2
 	push bc			;71bf
 	push bc			;71c0
 	ld (hl),0e1h		;71c1   ; Los dos sprites del globo a Y = 0xE1; DE = donde estaba el de arriba
-	dec hl			;71c3
+	dec hl			;71c3   ; Tres bytes atras: la X del sprite de arriba
 	dec hl			;71c4
 	dec hl			;71c5
 	ld e,(hl)			;71c6
-	dec hl			;71c7
+	dec hl			;71c7   ; Y uno mas: su Y, que aqui vale 0 (el de abajo estaba en 0x10)
 	ld d,(hl)			;71c8
 	ld (hl),0e1h		;71c9
-	ld a,(0e002h)		;71cb
+	ld a,(0e002h)		;71cb   ; Bit 7 de E002 al carry: de quien es la ecuacion
 	rl a		;71ce
 	ld hl,0e1b5h		;71d0
 	jr nc,GLOBO_LLEGA_SIMBOLO		;71d3
 	ld hl,0e1c1h		;71d5
 GLOBO_LLEGA_SIMBOLO:		; El simbolo B de la ecuacion del jugador
-	ld a,b			;71d8
+	ld a,b			;71d8   ; El simbolo numero B
 	call HL_MAS_A		;71d9
 	ld a,(hl)			;71dc
 	push af			;71dd
 	cp 012h		;71de   ; El simbolo 0x12 es el ?: su X mas 13 queda en E271 para el profesor
 	jr nz,GLOBO_LLEGA_PINTA		;71e0
-	ld a,e			;71e2
+	ld a,e			;71e2   ; La X del globo mas 13: donde el profesor tiene que escribir
 	add a,00dh		;71e3
 	ld (0e271h),a		;71e5
 GLOBO_LLEGA_PINTA:		; El bloque de 2x2 y estado 2
 	pop af			;71e8
-	ld hl,07207h		;71e9
+	ld hl,07207h		;71e9   ; Cuatro tiles por simbolo en 0x7207
 	add a,a			;71ec
 	add a,a			;71ed
 	call HL_MAS_A		;71ee
-	ld bc,00202h		;71f1
+	ld bc,00202h		;71f1   ; 2x2 tiles en la fila de arriba, donde estaba el globo
 	call PINTA_BLOQUE		;71f4
 	ld hl,0e24ch		;71f7
 	pop bc			;71fa
 	ld a,b			;71fb
 	call HL_MAS_A		;71fc
-	ld (hl),002h		;71ff
+	ld (hl),002h		;71ff   ; Estado 2: llegado
 	pop bc			;7201
-	ld a,002h		;7202
+	ld a,002h		;7202   ; Sonido 2 en cada globo que llega
 	jp SONIDO		;7204
 
 ; ----------------------------------------------------------------------
@@ -5431,20 +5431,20 @@ DATA_tiles_de_los_simbolos:
 
 ELIGE_INCOGNITA:		; Tapa una cifra de la ecuacion con el ? y guarda la cifra en E1CD (1P) o E1CE (2P): la posicion es (primera cifra - azar 0..15), asi que nunca va mas alla de lo que VALE la primera cifra (medido en 400 ecuaciones: 0 excepciones; con un 1 delante el ? cae siempre en el primer operando, y solo 1 de cada 6 veces cae en el resultado)
 	ld hl,0e144h		;7253
-	call AZAR		;7256
+	call AZAR		;7256   ; Un azar de 0 a 15
 	ld a,(0e140h)		;7259
 	and 00fh		;725c
 	ld b,a			;725e
 	ld a,(hl)			;725f   ; La posicion sale de restar el azar a la PRIMERA cifra de la ecuacion (su valor, no su sitio); negativa, se repite
 	sub b			;7260
 	jr c,ELIGE_INCOGNITA		;7261
-	call HL_MAS_A		;7263
+	call HL_MAS_A		;7263   ; E144 + esa posicion
 	ld a,(hl)			;7266   ; Tiene que caer en una cifra (0-9), no en un signo
 	cp 00ah		;7267
 	jr nc,ELIGE_INCOGNITA		;7269
-	ld (hl),012h		;726b
+	ld (hl),012h		;726b   ; El 0x12 es el ?, que tapa la cifra
 	ld hl,0e002h		;726d
-	bit 7,(hl)		;7270
+	bit 7,(hl)		;7270   ; Bit 7 de E002: la cifra escondida va a E1CD (1P) o E1CE (2P)
 	ld hl,0e1cdh		;7272
 	jr z,ELIGE_INCOGNITA_GUARDA		;7275
 	inc hl			;7277
@@ -5453,42 +5453,42 @@ ELIGE_INCOGNITA_GUARDA:		; La cifra al jugador
 	ret			;7279
 ECUACION_AL_JUGADOR:		; Copia los E058 simbolos de E144 a la ecuacion del jugador (E1B5 o E1C1) y apaga E053
 	ld a,(0e002h)		;727a
-	rl a		;727d
+	rl a		;727d   ; Bit 7 de E002 al carry: la ecuacion del 1P o la del 2P
 	ld de,0e1b5h		;727f
 	jr nc,ECUACION_AL_JUGADOR_COPIA		;7282
 	ld de,0e1c1h		;7284
 ECUACION_AL_JUGADOR_COPIA:		; Los E058 simbolos
 	ld hl,0e144h		;7287
-	ld a,(0e058h)		;728a
+	ld a,(0e058h)		;728a   ; Tantos bytes como simbolos tenga
 	ld b,000h		;728d
 	ld c,a			;728f
 	ldir		;7290
 	xor a			;7292
-	ld (0e053h),a		;7293
+	ld (0e053h),a		;7293   ; E053 = 0: ya no hace falta ecuacion nueva
 	ret			;7296
 MONTA_GLOBOS:		; Sprites a 0xE1; para cada simbolo dos sprites de globo (0x70 y 0x74, uno bajo otro, Y = 0xC8/0xD8, fuera por abajo) en la X de 0x7325 y un color al azar de 0x732E; los globos de 0x5E3F a 0x1B80; estados a 0 y 0xFF, y suelta el primero al azar
-	ld hl,0e0b0h		;7297
+	ld hl,0e0b0h		;7297   ; Los 24 sprites (96 bytes) a Y = 0xE1: fuera de la pantalla
 	ld de,0e0b1h		;729a
 	ld (hl),0e1h		;729d
 	ld bc,0005fh		;729f
 	ldir		;72a2
 	ld hl,0e24bh		;72a4
-	ld (hl),001h		;72a7
+	ld (hl),001h		;72a7   ; E24B = 1: el primero se suelta aqui mismo
 	ld a,(0e058h)		;72a9
 	ld b,a			;72ac
 	sub 005h		;72ad   ; 0x7325 + (simbolos - 5): la X del primer globo segun cuantos son, para centrarlos
 	ld hl,07325h		;72af
 	call HL_MAS_A		;72b2
-	ld a,(hl)			;72b5
+	ld a,(hl)			;72b5   ; La X de partida
 	ld hl,0e0b8h		;72b6
 MONTA_GLOBO:		; Un simbolo: dos sprites y 16 pixels a la derecha
 	push bc			;72b9
-	ld b,002h		;72ba
-	ld c,070h		;72bc
+	ld b,002h		;72ba   ; Dos sprites por simbolo
+	ld c,070h		;72bc   ; 0x70: el patron del globo (bit 2 distingue mitad de arriba y de abajo)
 	call AZAR		;72be
 	push af			;72c1
 	push hl			;72c2
-	ld a,(0e140h)		;72c3
+	ld a,(0e140h)		;72c3   ; Un color al azar de los 16 de 0x732E
 	and 00fh		;72c6
 	ld hl,0732eh		;72c8
 	call HL_MAS_A		;72cb
@@ -5511,23 +5511,23 @@ MONTA_GLOBO_SPRITE:		; Uno de los dos
 	inc hl			;72e1
 	ld (hl),d			;72e2
 	inc hl			;72e3
-	set 2,c		;72e4
+	set 2,c		;72e4   ; El segundo sprite: patron 0x74, la mitad de abajo
 	djnz MONTA_GLOBO_SPRITE		;72e6
-	add a,010h		;72e8
+	add a,010h		;72e8   ; 16 pixels a la derecha para el simbolo siguiente
 	pop bc			;72ea
 	djnz MONTA_GLOBO		;72eb
-	ld de,01b80h		;72ed
+	ld de,01b80h		;72ed   ; Los patrones de los globos (0x5E3F) a los sprites 28 y 29
 	ld bc,00040h		;72f0
 	ld hl,05e3fh		;72f3
 	call COPIA_A_VRAM		;72f6
 	ld a,(0e058h)		;72f9
 	ld c,a			;72fc
 	ld b,000h		;72fd
-	ld hl,0e24ch		;72ff
+	ld hl,0e24ch		;72ff   ; Todos los estados a 0 (esperando)
 	ld de,0e24dh		;7302
 	ld (hl),000h		;7305
 	ldir		;7307
-	ld (hl),0ffh		;7309
+	ld (hl),0ffh		;7309   ; Y el 0xFF de fin detras del ultimo
 GLOBO_PRIMERO:		; Un indice al azar menor que E058 arranca (estado 1) y se apunta en E258
 	call AZAR		;730b
 	ld a,(0e140h)		;730e
@@ -5536,7 +5536,7 @@ GLOBO_PRIMERO:		; Un indice al azar menor que E058 arranca (estado 1) y se apunt
 	cp (hl)			;7316
 	jr nc,GLOBO_PRIMERO		;7317
 	ld hl,0e24ch		;7319
-	ld (0e258h),a		;731c
+	ld (0e258h),a		;731c   ; E258 se escribe SOLO aqui: el primero que se suelta, y nunca se vuelve a tocar
 	call HL_MAS_A		;731f
 	ld (hl),001h		;7322
 	ret			;7324
@@ -5574,7 +5574,7 @@ DATA_colores_de_globos:
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 FRUTAS_PASO:		; Un paso de cada una de las ocho
-	ld b,000h		;733e
+	ld b,000h		;733e   ; Las ocho frutas, de la 0 a la 7
 FRUTAS_BUCLE:		; Una fruta
 	push bc			;7340
 	call FRUTA_PASO		;7341
@@ -5585,15 +5585,15 @@ FRUTAS_BUCLE:		; Una fruta
 	jr nz,FRUTAS_BUCLE		;7349
 	ret			;734b
 FRUTA_PASO:		; La fruta B: E25C su sprite, E25E su estado; y segun el bit que tenga
-	ld a,b			;734c
+	ld a,b			;734c   ; B x 2 (el par de E260) guardado, y x 4 (el sprite)
 	sla a		;734d
 	push af			;734f
 	sla a		;7350
-	ld hl,0e0d8h		;7352
+	ld hl,0e0d8h		;7352   ; E0D8 + 4B: el sprite 10 + B, la fruta B
 	call HL_MAS_A		;7355
 	ld (0e25ch),hl		;7358
 	pop af			;735b
-	ld hl,0e260h		;735c
+	ld hl,0e260h		;735c   ; E260 + 2B: su estado y su contador
 	call HL_MAS_A		;735f
 	ld (0e25eh),hl		;7362
 	ld a,(hl)			;7365   ; Bit 0: cae; bit 1: vuela; bit 2: la lleva alguien
@@ -5601,57 +5601,57 @@ FRUTA_PASO:		; La fruta B: E25C su sprite, E25E su estado; y segun el bit que te
 	jr c,FRUTA_CAE		;7368
 	rr a		;736a
 	jr c,FRUTA_VUELA		;736c
-	rr a		;736e
+	rr a		;736e   ; Sin ninguno de los tres bits no hay nada que hacer
 	ret nc			;7370
 	ld hl,0e0b0h		;7371   ; Bit 3: la lleva el mono (E0B0); si no, el cangrejo de E0C8 (el tipo 3, el unico que salta)
 	rr a		;7374
 	jr c,FRUTA_EN_LA_CABEZA		;7376
 	ld hl,0e0c8h		;7378
 FRUTA_EN_LA_CABEZA:		; 16 pixels por encima de quien la lleva
-	ld a,(hl)			;737b
+	ld a,(hl)			;737b   ; 16 pixels por encima de la Y de quien la lleva
 	sub 010h		;737c
 	inc hl			;737e
-	ld b,(hl)			;737f
+	ld b,(hl)			;737f   ; Y su misma X
 	ld hl,(0e25ch)		;7380
 	ld (hl),a			;7383
 	inc hl			;7384
 	ld (hl),b			;7385
 	ret			;7386
 FRUTA_CAE:		; Sonido 6; con suelo debajo (0x6924) se para (estado 0) o desaparece si venia volando (bit 1); si no, dos pixels mas abajo
-	ld a,006h		;7387
+	ld a,006h		;7387   ; Sonido 6 en cada fotograma de caida
 	call SONIDO		;7389
 	ld hl,(0e25ch)		;738c
-	ld b,(hl)			;738f
+	ld b,(hl)			;738f   ; B = Y, C = X de la fruta
 	inc hl			;7390
 	ld c,(hl)			;7391
-	call HAY_SUELO		;7392
+	call HAY_SUELO		;7392   ; Carry: no hay plataforma debajo, sigue cayendo
 	jr c,FRUTA_CAE_2		;7395
 	ld hl,(0e25eh)		;7397
-	bit 1,(hl)		;739a
+	bit 1,(hl)		;739a   ; Con suelo: estado a 0 y contador a 1; el bit 1 dice si venia volando
 	ld (hl),000h		;739c
 	inc hl			;739e
 	ld (hl),001h		;739f
 	ret z			;73a1
-	ld hl,(0e25ch)		;73a2
+	ld hl,(0e25ch)		;73a2   ; Venia volando: se la ha comido el suelo, sprite fuera (Y = 0xE1)
 	ld (hl),0e1h		;73a5
 	ret			;73a7
 FRUTA_CAE_2:		; Dos pixels
 	ld hl,(0e25ch)		;73a8
-	inc (hl)			;73ab
+	inc (hl)			;73ab   ; Dos pixels por fotograma
 	inc (hl)			;73ac
 	ret			;73ad
 FRUTA_VUELA:		; Sonido 8; fuera de la pantalla (X < 8 o >= 0xC0) desaparece; en el nibble alto del contador 8 mira si hay suelo (rebota o sigue); y el paso de la parabola
-	ld a,008h		;73ae
+	ld a,008h		;73ae   ; Sonido 8 mientras vuela
 	call SONIDO		;73b0
 	ld hl,(0e25ch)		;73b3
-	inc hl			;73b6
+	inc hl			;73b6   ; La X del sprite
 	ld a,(hl)			;73b7
-	cp 0c0h		;73b8
+	cp 0c0h		;73b8   ; De 0xC0 en adelante se ha salido por la derecha
 	jr nc,FRUTA_VUELA_FUERA		;73ba
-	cp 008h		;73bc
+	cp 008h		;73bc   ; Y por debajo de 8, por la izquierda
 	jr nc,FRUTA_VUELA_SUELO		;73be
 FRUTA_VUELA_FUERA:		; Fuera de la pantalla: desaparece
-	dec hl			;73c0
+	dec hl			;73c0   ; Sprite fuera y la fruta de vuelta al estado 0 con el contador a 1
 	ld (hl),0e1h		;73c1
 	ld hl,(0e25eh)		;73c3
 	ld (hl),000h		;73c6
@@ -5660,64 +5660,64 @@ FRUTA_VUELA_FUERA:		; Fuera de la pantalla: desaparece
 	ret			;73cb
 FRUTA_VUELA_SUELO:		; En el octavo paso: hay suelo?
 	ld hl,(0e25eh)		;73cc
-	inc hl			;73cf
+	inc hl			;73cf   ; El contador; su nibble alto es el paso del vuelo
 	ld a,(hl)			;73d0
 	and 0f0h		;73d1
 	cp 080h		;73d3   ; En el octavo paso del vuelo, si hay suelo cambia de parabola (bit 0 del contador); si no, se le quita el bit 0
 	jr nz,FRUTA_VUELA_PASO		;73d5
-	ld a,(hl)			;73d7
+	ld a,(hl)			;73d7   ; El paso vuelve a 0 y se conserva el nibble bajo (la parabola)
 	and 00fh		;73d8
 	ld (hl),a			;73da
 	ld hl,(0e25ch)		;73db
-	ld b,(hl)			;73de
+	ld b,(hl)			;73de   ; B = Y, C = X
 	inc hl			;73df
 	ld c,(hl)			;73e0
-	call HAY_SUELO		;73e1
-	jr nc,FRUTA_VUELA_SIN_SUELO		;73e4
-	ld hl,(0e25eh)		;73e6
+	call HAY_SUELO		;73e1   ; NC: hay plataforma debajo
+	jr nc,FRUTA_VUELA_REBOTA		;73e4
+	ld hl,(0e25eh)		;73e6   ; Sin suelo debajo: el bit 0 del estado cambia y la fruta se pone a caer
 	ld a,(hl)			;73e9
 	xor 001h		;73ea
 	ld (hl),a			;73ec
 	ret			;73ed
-FRUTA_VUELA_SIN_SUELO:		; Sin suelo: la parabola baja
+FRUTA_VUELA_REBOTA:		; CON suelo debajo (HAY_SUELO devuelve NC): bit 0 del contador a 0, o sea la parabola de 0x7451, que empieza subiendo
 	ld hl,(0e25eh)		;73ee
 	inc hl			;73f1
-	res 0,(hl)		;73f2
-FRUTA_VUELA_PASO:		; Parabola 0x742F (bit 0 del contador) o 0x7451, la segunda mitad si va hacia la izquierda (bit 5): (dY, dX) del paso (nibble alto del contador) y un paso mas
+	res 0,(hl)		;73f2   ; Con suelo debajo: bit 0 del contador a 0, o sea la parabola de 0x7451, que empieza subiendo
+FRUTA_VUELA_PASO:		; Parabola 0x742F (bit 0 del contador a 1) o 0x7451 (a 0); con el bit 5 del estado, 17 bytes mas alla, que es la misma tanda de dY con el dX cambiado de signo: (dY, dX) del paso (nibble alto del contador) y un paso mas
 	ld de,(0e25eh)		;73f4
 	inc de			;73f8
-	ld a,(de)			;73f9
+	ld a,(de)			;73f9   ; Bit 0 del contador: 1 la parabola recta de 0x742F, 0 la que sube (0x7451)
 	ld hl,0742fh		;73fa
 	and 001h		;73fd
 	jr nz,FRUTA_VUELA_SENTIDO		;73ff
 	ld hl,07451h		;7401
-FRUTA_VUELA_SENTIDO:		; Hacia la izquierda: la segunda mitad de la tabla
+FRUTA_VUELA_SENTIDO:		; Bit 5 del estado (la tiraron hacia la derecha): 17 bytes mas alla, donde el dX es +4 o +2 en vez de -4 o -2
 	dec de			;7404
-	ld a,(de)			;7405
+	ld a,(de)			;7405   ; Bit 5 del estado: hacia donde la tiraron
 	bit 5,a		;7406
 	jr z,FRUTA_VUELA_MUEVE		;7408
-	ld a,011h		;740a
+	ld a,011h		;740a   ; Diecisiete bytes mas alla empieza la misma tanda con el dX del otro signo
 	call HL_MAS_A		;740c
 FRUTA_VUELA_MUEVE:		; (dY, dX) del paso
 	inc de			;740f
-	ld a,(de)			;7410
+	ld a,(de)			;7410   ; Nibble alto del contador x 2: el paso dentro de la parabola
 	and 0f0h		;7411
 	srl a		;7413
 	srl a		;7415
 	srl a		;7417
 	call HL_MAS_A		;7419
-	ld b,(hl)			;741c
+	ld b,(hl)			;741c   ; B = dY, C = dX
 	inc hl			;741d
 	ld c,(hl)			;741e
 	ld hl,(0e25ch)		;741f
-	ld a,(hl)			;7422
+	ld a,(hl)			;7422   ; Y del sprite + dY
 	add a,b			;7423
 	ld (hl),a			;7424
 	inc hl			;7425
-	ld a,(hl)			;7426
+	ld a,(hl)			;7426   ; X del sprite + dX
 	add a,c			;7427
 	ld (hl),a			;7428
-	ld a,010h		;7429
+	ld a,010h		;7429   ; Y un paso mas en el nibble alto del contador
 	ex de,hl			;742b
 	add a,(hl)			;742c
 	ld (hl),a			;742d
@@ -5786,61 +5786,61 @@ DATA_parabola_alta:
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 PROFESOR:		; Un paso del profesor segun E270
-	ld a,(0e270h)		;7473
+	ld a,(0e270h)		;7473   ; E0D0: el sprite 8, el profesor de arriba
 	ld hl,0e0d0h		;7476
-	bit 2,a		;7479
+	bit 2,a		;7479   ; Bit 2 de E270: la tarjeta ha llegado arriba, va a por ella
 	jr nz,PROFESOR_LLEVA		;747b
-	inc hl			;747d
-	bit 1,a		;747e
+	inc hl			;747d   ; HL = E0D1, su X
+	bit 1,a		;747e   ; Bit 1: el mono lleva la tarjeta; el profesor le espera
 	jr nz,PROFESOR_ESPERA		;7480
 	ld a,(0e003h)		;7482   ; Cada dos fotogramas un pixel
 	and 001h		;7485
 	ret nz			;7487
 	ld a,0b8h		;7488   ; En 0xB8 o 0xE8 da la vuelta (bit 6 de E270)
 	cp (hl)			;748a
-	jr z,PROFESOR_DA_VUELTA		;748b
+	jr z,PROFESOR_DA_VUELTA		;748b   ; En cualquiera de las dos X da media vuelta
 	ld a,0e8h		;748d
 	cp (hl)			;748f
 	jr nz,PROFESOR_ANDA		;7490
 PROFESOR_DA_VUELTA:		; Cambia el bit 6
 	ld a,(0e270h)		;7492
-	xor 040h		;7495
+	xor 040h		;7495   ; El bit 6 de E270 es el sentido de su paseo
 	ld (0e270h),a		;7497
 PROFESOR_ANDA:		; Un pixel y los patrones segun el sentido
 	ld a,(0e270h)		;749a   ; Hacia la izquierda: X - 1 y los patrones de 0x758D; hacia la derecha: X + 1 y los de 0x7585
-	rla			;749d
+	rla			;749d   ; Dos rla: el bit 6 al carry
 	rla			;749e
 	ld a,(hl)			;749f
-	dec a			;74a0
+	dec a			;74a0   ; Un pixel a la izquierda...
 	ld de,0758dh		;74a1
 	jr nc,PROFESOR_X		;74a4
-	inc a			;74a6
+	inc a			;74a6   ; ...o dos mas, que dejan un pixel a la derecha
 	inc a			;74a7
 	ld de,07585h		;74a8
 PROFESOR_X:		; La X a los dos sprites y la animacion (0x7565)
-	ld (hl),a			;74ab
+	ld (hl),a			;74ab   ; La X a sus dos sprites, el 8 y el 9
 	ld (0e0d5h),a		;74ac
 	ex de,hl			;74af
-	ld a,040h		;74b0
+	ld a,040h		;74b0   ; E004 = 0x40: la espera que se contara cuando llegue al ?
 	ld (0e004h),a		;74b2
 	jp PROFESOR_ANIMACION		;74b5
 PROFESOR_ESPERA:		; Con la tarjeta en marcha: vuelve a 0xB8 y se queda con la cara grande (0xF0/0xF4)
 	ld de,0e0d5h		;74b8
-	ld a,0b8h		;74bb
+	ld a,0b8h		;74bb   ; Ya esta en su sitio
 	cp (hl)			;74bd
 	jr z,PROFESOR_CARA_GRANDE		;74be
-	dec (hl)			;74c0
+	dec (hl)			;74c0   ; Si no, un pixel a la izquierda cada fotograma
 	ex de,hl			;74c1
 	dec (hl)			;74c2
 	ld hl,0758dh		;74c3
 	jp PROFESOR_ANIMACION		;74c6
 PROFESOR_CARA_GRANDE:		; Los patrones 0xF0 y 0xF4 (la cara de 0x5ABF)
-	dec hl			;74c9
+	dec hl			;74c9   ; dec hl e inc hl seguidos no hacen nada: HL acaba en E0D2
 	inc hl			;74ca
 	inc hl			;74cb
-	ld (hl),0f0h		;74cc
+	ld (hl),0f0h		;74cc   ; El patron 0xF0 al sprite 8...
 	ex de,hl			;74ce
-	inc hl			;74cf
+	inc hl			;74cf   ; ...y el 0xF4 al 9: la cara grande de dos sprites
 	ld (hl),0f4h		;74d0
 	dec hl			;74d2
 	dec hl			;74d3
@@ -5848,77 +5848,77 @@ PROFESOR_CARA_GRANDE:		; Los patrones 0xF0 y 0xF4 (la cara de 0x5ABF)
 PROFESOR_LLEVA:		; Con la tarjeta entregada: anda hasta la columna del ? (E271) y espera E004; entonces escribe la cifra escondida en el ? (0x7207), sonido 0x0D, bit 5, y esconde la tarjeta
 	ld a,(0e270h)		;74d5
 	inc hl			;74d8
-	bit 5,a		;74d9
+	bit 5,a		;74d9   ; Bit 5: ya ha escrito la respuesta, solo le queda irse
 	jr nz,PROFESOR_VUELVE		;74db
-	ld a,(0e271h)		;74dd
+	ld a,(0e271h)		;74dd   ; La columna del ? contra su X
 	cp (hl)			;74e0
-	jr nz,PROFESOR_VUELVE		;74e1
-	add a,0f3h		;74e3
+	jr nz,PROFESOR_VUELVE		;74e1   ; Aun no ha llegado: sigue andando
+	add a,0f3h		;74e3   ; E271 - 13 vuelve a la X donde se pinto el ?; E = esa X
 	ld e,a			;74e5
 	dec hl			;74e6
-	ld d,(hl)			;74e7
+	ld d,(hl)			;74e7   ; D = su Y
 	ld hl,0e004h		;74e8
-	dec (hl)			;74eb
+	dec (hl)			;74eb   ; Los 0x40 fotogramas de espera, uno por fotograma
 	xor a			;74ec
 	cp (hl)			;74ed
-	pop hl			;74ee
+	pop hl			;74ee   ; El pop se come la direccion de vuelta: mientras el profesor va y espera, el RESTO del paso del juego (tarjetas, frutas, mono y cangrejos) no llega a correr
 	ret nz			;74ef
 	ld a,(0e002h)		;74f0   ; La cifra escondida del jugador (E1CD/E1CE) en bloque de 2x2 sobre el ?
-	ld hl,0e1cdh		;74f3
+	ld hl,0e1cdh		;74f3   ; E1CD (1P) o E1CE (2P)
 	rla			;74f6
 	jr nc,PROFESOR_ESCRIBE		;74f7
 	inc hl			;74f9
 PROFESOR_ESCRIBE:		; La cifra escondida en el ?
 	ld a,(hl)			;74fa
-	ld hl,07207h		;74fb
+	ld hl,07207h		;74fb   ; Los cuatro tiles de esa cifra
 	add a,a			;74fe
 	add a,a			;74ff
 	call HL_MAS_A		;7500
-	ld bc,00202h		;7503
+	ld bc,00202h		;7503   ; 2x2 encima del ?
 	call PINTA_BLOQUE		;7506
-	ld a,00dh		;7509
+	ld a,00dh		;7509   ; Sonido 0x0D al escribirla
 	call SONIDO		;750b
 	ld a,(0e270h)		;750e
-	set 5,a		;7511
+	set 5,a		;7511   ; Bit 5: ya esta escrita
 	ld (0e270h),a		;7513
-	ld a,0e1h		;7516
+	ld a,0e1h		;7516   ; Y la tarjeta de la respuesta fuera de la pantalla
 	ld hl,0e0f8h		;7518
 	ld (hl),a			;751b
 	inc hl			;751c
 	ld (hl),a			;751d
 	ret			;751e
-PROFESOR_VUELVE:		; Vuelve hacia la derecha; en 0xB8 carga las caras de 0x5E7F en 0x1800, pone a los dos con ella (0x08/0x0C) y arranca el baile (E276 = 0x88)
-	dec (hl)			;751f
+PROFESOR_VUELVE:		; Un pixel a la IZQUIERDA por fotograma (dec de la X), y otro pop que se come la vuelta; en 0xB8 carga las caras de 0x5E7F en 0x1800, pone a los dos con ella (0x08/0x0C) y arranca el baile (E276 = 0x88)
+	dec (hl)			;751f   ; Un pixel a la izquierda, los dos sprites
 	ld hl,0e0d5h		;7520
 	dec (hl)			;7523
 	ld a,0b8h		;7524
-	cp (hl)			;7526
-	pop de			;7527
+	cp (hl)			;7526   ; Al llegar a X = 0xB8 se acaba el viaje
+	pop de			;7527   ; Otro pop que se come la vuelta: andando tampoco corre el resto del paso
 	ld hl,0758dh		;7528
 	jr nz,PROFESOR_ANIMACION		;752b
-	ld a,088h		;752d
+	ld a,088h		;752d   ; E276 = 0x88: empieza el baile
 	ld (0e276h),a		;752f
-	ld hl,05e7fh		;7532
+	ld hl,05e7fh		;7532   ; Las caras de 0x5E7F a los sprites 0 y 3 de la VRAM
 	ld de,01800h		;7535
 	ld bc,00080h		;7538
 	di			;753b
 	call COPIA_A_VRAM		;753c
 	ei			;753f
-	ld hl,0e0b2h		;7540
+	ld hl,0e0b2h		;7540   ; El mono con la cara (patrones 0x08 y 0x0C)
 	ld (hl),008h		;7543
 	inc hl			;7545
 	inc hl			;7546
 	inc hl			;7547
 	inc hl			;7548
 	ld (hl),00ch		;7549
-	ld hl,0e0d2h		;754b
+	ld hl,0e0d2h		;754b   ; Y el profesor tambien
 	ld (hl),008h		;754e
 	inc hl			;7550
 	inc hl			;7551
 	inc hl			;7552
 	inc hl			;7553
 	ld (hl),00ch		;7554
-	ld a,088h		;7556
+	ld a,088h		;7556   ; E276 = 0x88 otra vez, ya estaba puesto en 0x752D
 	ld (0e276h),a		;7558
 	ret			;755b
 SIN_LLAMADAS_755C:		; `dec (hl) / ld hl,0E0D4h / dec (hl) / pop hl / ld hl,758Dh`: nueve bytes a los que no salta nadie y que caen en PROFESOR_ANIMACION; parecen un resto de la vuelta del profesor (0x751F hace lo mismo)
@@ -5928,19 +5928,19 @@ SIN_LLAMADAS_755C:		; `dec (hl) / ld hl,0E0D4h / dec (hl) / pop hl / ld hl,758Dh
 	pop hl			;7561
 	ld hl,0758dh		;7562
 PROFESOR_ANIMACION:		; Los dos patrones de la fase (fotograma / 4 & 3) de la tabla HL; con la tarjeta entregada, la tarjeta (E0F9) va con el
-	ld a,(0e003h)		;7565
+	ld a,(0e003h)		;7565   ; Fotograma / 4 y & 3: cuatro fases de animacion
 	and 00ch		;7568
 	srl a		;756a
 	call HL_MAS_A		;756c
 	ld a,(hl)			;756f
-	ld (0e0d2h),a		;7570
+	ld (0e0d2h),a		;7570   ; Los dos patrones, al sprite 8 y al 9
 	inc hl			;7573
 	ld a,(hl)			;7574
 	ld (0e0d6h),a		;7575
 	ld a,(0e270h)		;7578
-	bit 2,a		;757b
+	bit 2,a		;757b   ; Bit 2 de E270: lleva la tarjeta
 	ret z			;757d
-	ld a,(0e0d1h)		;757e
+	ld a,(0e0d1h)		;757e   ; Y entonces la tarjeta va pegada a su X
 	ld (0e0f9h),a		;7581
 	ret			;7584
 
@@ -5971,15 +5971,15 @@ DATA_patrones_profesor_izquierda:
 
 
 PINTA_LEVEL_SELECT:		; "PLAYER n" en la fila 2, "LEVEL SELECT" en la 6 y las cinco lineas "LEVEL n --- n-key" en las filas 9, 11, 13, 15 y 17
-	ld hl,075b7h		;7595
+	ld hl,075b7h		;7595   ; "PLAYER" en la fila 2
 	call PINTA_LISTA_TILES		;7598
-	ld a,(0e002h)		;759b
+	ld a,(0e002h)		;759b   ; Bit 7 de E002 al bit 0
 	rlc a		;759e
 	and 001h		;75a0
-	add a,031h		;75a2
-	ld de,03853h		;75a4
+	add a,031h		;75a2   ; 0x31 es el tile del "1": 1 o 2 segun el jugador
+	ld de,03853h		;75a4   ; Fila 2, columna 19 de la tabla de nombres
 	call VPOKE		;75a7
-	ld hl,075c0h		;75aa
+	ld hl,075c0h		;75aa   ; "LEVEL SELECT" y las cinco lineas de nivel, seis listas seguidas
 	ld b,006h		;75ad
 LEVEL_SELECT_LINEAS:		; Las seis listas
 	push bc			;75af
@@ -6018,34 +6018,34 @@ DATA_lineas_de_nivel:
 
 
 LEVEL_SELECT_TECLA:		; Mantiene la musica del menu; descuenta la espera (E23F, 0x0F00 fotogramas); con la tecla 1-5 recien pulsada, el nivel (0x765F) al jugador; carry si ya esta decidido
-	ld a,(0e024h)		;762f
+	ld a,(0e024h)		;762f   ; E024: el canal 2 del sonido; si se ha callado, se relanza la musica del menu
 	or a			;7632
 	jr nz,LEVEL_SELECT_ESPERA_CUENTA		;7633
 	ld a,091h		;7635
 	call SONIDO		;7637
 LEVEL_SELECT_ESPERA_CUENTA:		; La espera y las teclas
 	ld hl,(0e23fh)		;763a   ; Sin espera: se queda el nivel que hubiera
-	ld a,l			;763d
+	ld a,l			;763d   ; La espera a cero: ya no se puede cambiar de nivel
 	or h			;763e
 	jr z,LEVEL_SELECT_DECIDIDO		;763f
-	dec hl			;7641
+	dec hl			;7641   ; Un fotograma menos de los 0x0F00
 	ld (0e23fh),hl		;7642
 	ld hl,0e23eh		;7645   ; Lo pulsado ahora y no antes
-	ld a,(hl)			;7648
+	ld a,(hl)			;7648   ; A = antes; and ahora, xor ahora: solo lo que se acaba de pulsar
 	dec hl			;7649
 	and (hl)			;764a
 	xor (hl)			;764b
-	cp 011h		;764c
+	cp 011h		;764c   ; La tabla de 0x765F solo tiene 17 entradas
 	ret nc			;764e
 	ld hl,0765fh		;764f
 	call HL_MAS_A		;7652
 	ld a,(hl)			;7655
-	cp 0ffh		;7656
+	cp 0ffh		;7656   ; 0xFF: esa combinacion de teclas no es ningun nivel
 	ret z			;7658
-	call NIVEL_DEL_JUGADOR		;7659
+	call NIVEL_DEL_JUGADOR		;7659   ; El nivel elegido, a E153 (1P) o E154 (2P)
 	ld (hl),a			;765c
 LEVEL_SELECT_DECIDIDO:		; Carry
-	scf			;765d
+	scf			;765d   ; Carry: nivel decidido
 	ret			;765e
 
 ; ----------------------------------------------------------------------
@@ -6061,52 +6061,52 @@ DATA_nivel_por_tecla:
 
 
 LEVEL_LINEA_PARPADEA:		; Cada 4 fotogramas: la linea del nivel elegido se pinta o se borra (0x20 veces); al acabar, al estado 9; con dos jugadores, primero el LEVEL SELECT del 2P
-	ld a,(0e003h)		;7670
+	ld a,(0e003h)		;7670   ; Uno de cada cuatro fotogramas
 	and 003h		;7673
 	ret nz			;7675
 	ld hl,0e1b3h		;7676
-	dec (hl)			;7679
+	dec (hl)			;7679   ; E1B3: 0x20 parpadeos
 	jr z,LEVEL_LINEA_FIN		;767a
-	ld a,(hl)			;767c
+	ld a,(hl)			;767c   ; El bit 0 de la cuenta: un fotograma se pinta y otro se borra
 	and 001h		;767d
 	call NIVEL_DEL_JUGADOR		;767f
 	ld a,(hl)			;7682
-	ld hl,075d0h		;7683
+	ld hl,075d0h		;7683   ; La primera de las cinco lineas de 0x75D0
 	jr z,LEVEL_LINEA_BORRA		;7686
-	call HL_MAS_19A		;7688
+	call HL_MAS_19A		;7688   ; Mas 19 bytes por linea: la del nivel elegido
 	jp PINTA_LISTA_TILES		;768b
 LEVEL_LINEA_BORRA:		; Los 16 tiles de la linea a cero
 	call HL_MAS_19A		;768e
 	xor a			;7691
-	ld bc,00010h		;7692
-	ld e,(hl)			;7695
+	ld bc,00010h		;7692   ; Los 16 tiles de la linea a cero
+	ld e,(hl)			;7695   ; Los dos primeros bytes de la linea son su direccion de VRAM
 	inc hl			;7696
 	ld d,(hl)			;7697
 	jp RELLENA_VRAM		;7698
 LEVEL_LINEA_FIN:		; Al estado 9 (o al 2P)
-	ld a,(0e00dh)		;769b
+	ld a,(0e00dh)		;769b   ; E00D (fase superada): se viene de acabar una fase, no del menu
 	or a			;769e
 	jp nz,LEVEL_AL_ESTADO_9		;769f
 	ld hl,0e002h		;76a2   ; Con dos jugadores y el turno del 1P: cambia al 2P y repite el LEVEL SELECT
-	bit 5,(hl)		;76a5
+	bit 5,(hl)		;76a5   ; Bit 5: hay dos jugadores
 	jp z,SIGUIENTE_ESTADO_50		;76a7
-	bit 7,(hl)		;76aa
+	bit 7,(hl)		;76aa   ; Bit 7: el turno era del 2P, ya han elegido los dos
 	jr nz,LEVEL_YA_LOS_DOS		;76ac
-	set 7,(hl)		;76ae
+	set 7,(hl)		;76ae   ; Le toca al 2P: se cambia de jugador y se repite el LEVEL SELECT
 	ld hl,0e152h		;76b0
 	ld (hl),000h		;76b3
-	ld a,050h		;76b5
+	ld a,050h		;76b5   ; 0x50 fotogramas de espera
 	ld (0e004h),a		;76b7
 	ret			;76ba
 LEVEL_YA_LOS_DOS:		; Vuelve al 1P
-	res 7,(hl)		;76bb
+	res 7,(hl)		;76bb   ; Vuelve a ser el 1P
 LEVEL_AL_ESTADO_9:		; Fase superada y banderas a cero, y al 9
 	xor a			;76bd
-	ld (0e00dh),a		;76be
+	ld (0e00dh),a		;76be   ; Fase superada y las banderas del menu a cero
 	ld (0e152h),a		;76c1
 	jp SIGUIENTE_ESTADO_50		;76c4
 HL_MAS_19A:		; HL += A x 19: la linea A de 0x75D0
-	ld c,a			;76c7
+	ld c,a			;76c7   ; A x 19 = A x 2 + A + A x 16, que es lo que ocupa cada linea
 	sla c		;76c8
 	ld b,c			;76ca
 	add a,b			;76cb
@@ -6118,7 +6118,7 @@ HL_MAS_19A:		; HL += A x 19: la linea A de 0x75D0
 	ret			;76d6
 NIVEL_DEL_JUGADOR:		; HL = E153 (1P) o E154 (2P)
 	push af			;76d7
-	ld a,(0e002h)		;76d8
+	ld a,(0e002h)		;76d8   ; Bit 7 de E002: de quien es el nivel
 	ld hl,0e153h		;76db
 	bit 7,a		;76de
 	jr z,NIVEL_DEL_JUGADOR_FIN		;76e0
@@ -6165,7 +6165,7 @@ DATA_rotulo_level:
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 RESPONDE:		; Con el boton (o el 0x20 de la demo), si no salta ni hay otra abriendose: arranca el parpadeo de la tarjeta cogida
-	ld a,(0e002h)		;7708
+	ld a,(0e002h)		;7708   ; Sin partida en marcha (bit 6 de E002) es la demo, y ahi manda el guion
 	bit 6,a		;770b
 	jr nz,RESPONDE_PARTIDA		;770d
 	ld a,(0e10bh)		;770f   ; La demo: el 0x20 del guion
@@ -6176,152 +6176,152 @@ RESPONDE_PARTIDA:		; En la partida: sin saltar, sin otra tarjeta, y el segundo b
 	ld a,(0e10ch)		;7717   ; Saltando (estado 3) no; ni con otra tarjeta en marcha
 	cp 003h		;771a
 	ret z			;771c
-	ld a,(0e238h)		;771d
+	ld a,(0e238h)		;771d   ; E238 distinto de 0: ya hay una tarjeta parpadeando
 	or a			;7720
 	ret nz			;7721
 	ld hl,0e008h		;7722   ; El segundo boton recien pulsado
 	ld a,(hl)			;7725
 	inc hl			;7726
-	xor (hl)			;7727
+	xor (hl)			;7727   ; (antes XOR ahora) AND ahora: solo el fotograma en que se pulsa
 	and (hl)			;7728
 	bit 5,a		;7729
 	ret z			;772b
 RESPONDE_TARJETA:		; Sin tarjeta cogida (0xFF) nada; sonido 0x0B, su indice a E239, su posicion (Y, X) a E23A/E23B y cinco parpadeos
-	ld hl,0e1afh		;772c
+	ld hl,0e1afh		;772c   ; E1AF: la tarjeta que lleva el mono; 0xFF ninguna, no hay nada que responder
 	ld a,0ffh		;772f
 	cp (hl)			;7731
 	ret z			;7732
-	ld a,00bh		;7733
+	ld a,00bh		;7733   ; Sonido 0x0B: empieza el parpadeo
 	call SONIDO		;7735
-	ld a,(hl)			;7738
+	ld a,(hl)			;7738   ; Su indice a E239, y guardado en la pila para usarlo dos veces
 	ld (0e239h),a		;7739
 	push af			;773c
-	ld a,(0e051h)		;773d
+	ld a,(0e051h)		;773d   ; (Fase - 1) & 7 por dos: la lista de posiciones de la fase en 0x509E
 	dec a			;7740
 	and 007h		;7741
 	add a,a			;7743
 	ld hl,0509eh		;7744
 	call HL_MAS_A		;7747
-	ld e,(hl)			;774a
+	ld e,(hl)			;774a   ; HL = las diez parejas (Y, X) de esta fase
 	inc hl			;774b
 	ld d,(hl)			;774c
 	ex de,hl			;774d
-	pop af			;774e
+	pop af			;774e   ; El indice otra vez, por dos: cada tarjeta ocupa dos bytes
 	add a,a			;774f
 	call HL_MAS_A		;7750
-	ld d,(hl)			;7753
+	ld d,(hl)			;7753   ; D = Y, E = X; ld (E23A),de deja X en E23A y Y en E23B
 	inc hl			;7754
 	ld e,(hl)			;7755
 	ld (0e23ah),de		;7756
-	ld a,005h		;775a
+	ld a,005h		;775a   ; Cinco parpadeos por contar
 	ld (0e238h),a		;775c
 	ret			;775f
 TARJETA_PARPADEA:		; Cada 4 fotogramas: la tarjeta en blanco (0x782C) o con su cifra (0x508A); al acabar, la comparacion
-	ld a,(0e003h)		;7760
+	ld a,(0e003h)		;7760   ; Uno de cada cuatro fotogramas: asi se ve el parpadeo
 	and 003h		;7763
 	ret nz			;7765
-	ld hl,0e238h		;7766
+	ld hl,0e238h		;7766   ; Un parpadeo menos
 	dec (hl)			;7769
 	xor a			;776a
 	cp (hl)			;776b
-	jr z,TARJETA_COMPARA		;776c
-	ld a,(hl)			;776e
+	jr z,TARJETA_COMPARA		;776c   ; A cero: se acabo el parpadeo y toca comparar
+	ld a,(hl)			;776e   ; A = lo que queda; HL ya apunta al bloque en blanco de 0x782C
 	ld hl,0782ch		;776f
-	rra			;7772
+	rra			;7772   ; Bit 0 de la cuenta: par en blanco, impar con la cifra
 	jr nc,TARJETA_PARPADEA_PINTA		;7773
-	ld a,(0e239h)		;7775
+	ld a,(0e239h)		;7775   ; E239 por dos: esa tarjeta en la lista del jugador
 	add a,a			;7778
 	call TARJETAS_DEL_JUGADOR		;7779
 	call HL_MAS_A		;777c
-	inc hl			;777f
+	inc hl			;777f   ; El segundo byte de la pareja es su cifra
 	ld a,(hl)			;7780
 	add a,a			;7781
-	ld hl,0508ah		;7782
+	ld hl,0508ah		;7782   ; Por dos en 0x508A: los tres tiles por dos de esa cifra
 	call HL_MAS_A		;7785
 	ld e,(hl)			;7788
 	inc hl			;7789
 	ld d,(hl)			;778a
 	ex de,hl			;778b
 TARJETA_PARPADEA_PINTA:		; El bloque de 3x2 en la posicion de la tarjeta
-	ld de,(0e23ah)		;778c
-	ld bc,00302h		;7790
+	ld de,(0e23ah)		;778c   ; D = Y, E = X, tal como se guardaron en 0x7756
+	ld bc,00302h		;7790   ; 3 filas x 2 columnas
 	jp PINTA_BLOQUE		;7793
 TARJETA_COMPARA:		; Acierto: sonido 0x95, 500 puntos, bit 4 de E270 y la tarjeta por repintar; fallo: E057++, sonido 0x0E, las caras, y a los tres E276 = 1
-	ld hl,0e1cdh		;7796
-	ld a,(0e002h)		;7799
+	ld hl,0e1cdh		;7796   ; E1CD: la cifra escondida tras el ? del 1P
+	ld a,(0e002h)		;7799   ; Bit 7 de E002: el 2P la tiene en la siguiente, E1CE
 	bit 7,a		;779c
 	jr z,TARJETA_COMPARA_CIFRA		;779e
 	inc hl			;77a0
 TARJETA_COMPARA_CIFRA:		; La cifra de la tarjeta contra la escondida
 	push hl			;77a1
-	ld a,(0e239h)		;77a2
+	ld a,(0e239h)		;77a2   ; El indice de la que estaba parpadeando
 	add a,a			;77a5
 	call TARJETAS_DEL_JUGADOR		;77a6
 	call HL_MAS_A		;77a9
-	ld (0e243h),hl		;77ac
+	ld (0e243h),hl		;77ac   ; Donde vive su estado; E243 no lo lee nadie mas en todo el cartucho
 	inc hl			;77af
-	ld a,(hl)			;77b0
+	ld a,(hl)			;77b0   ; El byte siguiente es la cifra que muestra
 	ld c,a			;77b1
 	pop hl			;77b2
-	cp (hl)			;77b3
+	cp (hl)			;77b3   ; Contra la escondida
 	jr nz,TARJETA_FALLO		;77b4
-	ld a,095h		;77b6
+	ld a,095h		;77b6   ; Acierto: sonido 0x95
 	call SONIDO		;77b8
-	ld de,00500h		;77bb
+	ld de,00500h		;77bb   ; 500 puntos
 	ld c,000h		;77be
 	call SUMA_PUNTOS		;77c0
-	ld hl,0e270h		;77c3
+	ld hl,0e270h		;77c3   ; Bit 4 de E270: la tarjeta buena se cierra y se suelta (0x7899)
 	set 4,(hl)		;77c6
-	ld a,(0e1afh)		;77c8
+	ld a,(0e1afh)		;77c8   ; La que lleva el mono, marcada con el bit 7 para repintarla
 	add a,a			;77cb
 	call TARJETAS_DEL_JUGADOR		;77cc
 	call HL_MAS_A		;77cf
 	set 7,(hl)		;77d2
 	ret			;77d4
 TARJETA_FALLO:		; Un fallo mas
-	ld hl,0e057h		;77d5
+	ld hl,0e057h		;77d5   ; Fallo: uno mas en E057
 	inc (hl)			;77d8
-	ld a,00eh		;77d9
+	ld a,00eh		;77d9   ; Sonido 0x0E
 	call SONIDO		;77db
 	push hl			;77de
-	call PINTA_FALLOS		;77df
+	call PINTA_FALLOS		;77df   ; Repinta las caras del marcador
 	pop hl			;77e2
-	ld a,003h		;77e3
+	ld a,003h		;77e3   ; Al tercer fallo, E276 = 1: entra el profesor con la respuesta
 	cp (hl)			;77e5
 	ret nz			;77e6
 	ld a,001h		;77e7
 	ld (0e276h),a		;77e9
 	ret			;77ec
 TIEMPO_A_PUNTOS:		; Fase acabada: cada 4 fotogramas un segundo menos y 10 puntos mas (sonido 0x0F); a cero, el reloj a 05:00, fase superada (E00D) y al estado 16
-	ld hl,0e004h		;77ed
+	ld hl,0e004h		;77ed   ; Mientras E004 tenga espera pendiente solo se descuenta
 	ld a,(hl)			;77f0
 	or a			;77f1
 	jr z,TIEMPO_A_PUNTOS_PASO		;77f2
 	dec (hl)			;77f4
 	ret			;77f5
 TIEMPO_A_PUNTOS_PASO:		; Cada 4 fotogramas
-	ld a,(0e003h)		;77f6
+	ld a,(0e003h)		;77f6   ; Uno de cada cuatro fotogramas
 	and 003h		;77f9
 	ret nz			;77fb
-	ld hl,(0e055h)		;77fc
+	ld hl,(0e055h)		;77fc   ; Minutos y segundos a la vez: a cero se acabo el descuento
 	ld a,h			;77ff
 	or l			;7800
 	jr z,TIEMPO_AGOTADO		;7801
-	ld hl,0e056h		;7803
+	ld hl,0e056h		;7803   ; C = minutos, HL = los segundos: un segundo menos en BCD
 	ld c,(hl)			;7806
 	dec hl			;7807
 	call RELOJ_RESTA		;7808
-	ld de,00010h		;780b
+	ld de,00010h		;780b   ; 10 puntos por cada segundo que quedaba
 	ld c,000h		;780e
 	call SUMA_PUNTOS		;7810
-	ld a,00fh		;7813
+	ld a,00fh		;7813   ; Y un pitido (0x0F) por segundo
 	jp SONIDO		;7815
 TIEMPO_AGOTADO:		; 05:00, E23C = 0, E00D = 1, estado 16
-	ld hl,00500h		;7818
+	ld hl,00500h		;7818   ; El reloj otra vez a 05:00 para la fase siguiente
 	ld (0e055h),hl		;781b
 	xor a			;781e
-	ld (0e23ch),a		;781f
-	inc a			;7822
+	ld (0e23ch),a		;781f   ; E23C = 0: el descuento ya no esta en marcha
+	inc a			;7822   ; E00D = 1 (fase superada) y estado 16
 	ld (0e00dh),a		;7823
 	ld a,010h		;7826
 	ld (0e000h),a		;7828
@@ -6350,16 +6350,16 @@ DATA_tarjeta_en_blanco_3x2:
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 TARJETA_PASO:		; Un paso de la tarjeta de la respuesta
-	ld a,(0e270h)		;7834
-	rra			;7837
+	ld a,(0e270h)		;7834   ; Las banderas de la tarjeta salen bit a bit con rra
+	rra			;7837   ; Bit 0: subiendo sola
 	jr c,TARJETA_SUBE		;7838
-	rra			;783a
+	rra			;783a   ; Bit 1: montada en la cabeza del mono
 	jr c,TARJETA_EN_CABEZA		;783b
-	rra			;783d
+	rra			;783d   ; El bit 2 (ya ha llegado arriba) se salta sin mirarlo
 	rra			;783e
-	jr c,TARJETA_CAE		;783f
+	jr c,TARJETA_CAE		;783f   ; Bit 3: cayendo
 	rra			;7841
-	jr c,TARJETA_SE_SUELTA		;7842
+	jr c,TARJETA_SE_SUELTA		;7842   ; Bit 4: esperando a cerrarse para soltarse
 	call TOCA_LA_TARJETA_CAIDA		;7844   ; Sin bits: si el mono la toca en el suelo (0x6ABB), la coge: bit 1 y los sprites con la tarjeta (E10E = 2)
 	ret c			;7847
 	ld hl,0e270h		;7848
@@ -6368,64 +6368,64 @@ TARJETA_PASO:		; Un paso de la tarjeta de la respuesta
 	ld (hl),002h		;7850
 	ret			;7852
 TARJETA_SUBE:		; Bit 0: un pixel arriba hasta Y = 0; entonces bit 2, 500 puntos y sonido 0x9B
-	ld hl,0e0f8h		;7853
+	ld hl,0e0f8h		;7853   ; E0F8: la Y del sprite 18, el de la tarjeta de la respuesta
 	xor a			;7856
 	cp (hl)			;7857
 	jr z,TARJETA_SUBE_LLEGA		;7858
-	dec (hl)			;785a
+	dec (hl)			;785a   ; Un pixel arriba
 	ret			;785b
 TARJETA_SUBE_LLEGA:		; Arriba: bit 2, 500 puntos y sonido 0x9B
 	ld hl,0e270h		;785c
-	res 0,(hl)		;785f
+	res 0,(hl)		;785f   ; Deja de subir (bit 0) y queda arriba (bit 2)
 	set 2,(hl)		;7861
-	ld de,00500h		;7863
+	ld de,00500h		;7863   ; 500 puntos por llevarla arriba
 	ld c,000h		;7866
 	call SUMA_PUNTOS		;7868
-	ld a,09bh		;786b
+	ld a,09bh		;786b   ; Sonido 0x9B
 	call SONIDO		;786d
 	ret			;7870
 TARJETA_EN_CABEZA:		; Bit 1: en la posicion del mono
-	ld hl,0e0b0h		;7871
+	ld hl,0e0b0h		;7871   ; E0B0/E0B1: la Y y la X del mono
 	ld b,(hl)			;7874
 	inc hl			;7875
 	ld c,(hl)			;7876
-	ld hl,0e0f8h		;7877
+	ld hl,0e0f8h		;7877   ; La tarjeta se pega a esa misma posicion
 	ld (hl),b			;787a
 	inc hl			;787b
 	ld (hl),c			;787c
 	ret			;787d
 TARJETA_CAE:		; Bit 3: un pixel abajo hasta el suelo (0x6924); entonces bit 3 fuera y el mono sin tarjeta cogida (E1AF = 0xFF)
-	ld hl,0e0f8h		;787e
+	ld hl,0e0f8h		;787e   ; B = Y, C = X de la tarjeta
 	ld b,(hl)			;7881
 	inc hl			;7882
 	ld c,(hl)			;7883
-	call HAY_SUELO		;7884
+	call HAY_SUELO		;7884   ; Carry: aun no hay plataforma debajo
 	jr nc,TARJETA_CAE_SUELO		;7887
-	ld hl,0e0f8h		;7889
+	ld hl,0e0f8h		;7889   ; Un pixel mas abajo
 	inc (hl)			;788c
 	ret			;788d
 TARJETA_CAE_SUELO:		; En el suelo: soltada
-	ld hl,0e270h		;788e
+	ld hl,0e270h		;788e   ; Fuera el bit 3: deja de caer
 	res 3,(hl)		;7891
-	ld a,0ffh		;7893
+	ld a,0ffh		;7893   ; Y el mono se queda sin tarjeta cogida
 	ld (0e1afh),a		;7895
 	ret			;7898
 TARJETA_SE_SUELTA:		; Bit 4: espera a que la tarjeta cogida este cerrada (0x13), repintando; entonces bit 4 -> bit 3, borra la tarjeta de la pantalla y pone el sprite en su sitio
-	ld a,(0e1afh)		;7899
+	ld a,(0e1afh)		;7899   ; El estado de la tarjeta que lleva el mono
 	add a,a			;789c
 	call TARJETAS_DEL_JUGADOR		;789d
 	call HL_MAS_A		;78a0
 	ld a,(hl)			;78a3
-	cp 013h		;78a4
+	cp 013h		;78a4   ; 0x13: metida y cerrada del todo
 	jr z,TARJETA_SE_SUELTA_YA		;78a6
 	pop hl			;78a8
 	jp PINTA_TARJETAS		;78a9
 TARJETA_SE_SUELTA_YA:		; Cerrada: la suelta
-	ld hl,0e270h		;78ac
+	ld hl,0e270h		;78ac   ; XOR 0x18 cambia los bits 3 y 4: deja de esperar y empieza a caer
 	ld a,(hl)			;78af
 	xor 018h		;78b0
 	ld (hl),a			;78b2
-	ld a,(0e1afh)		;78b3
+	ld a,(0e1afh)		;78b3   ; Su hueco en el decorado, de la lista E15A
 	add a,a			;78b6
 	ld hl,0e15ah		;78b7
 	call HL_MAS_A		;78ba
@@ -6433,18 +6433,18 @@ TARJETA_SE_SUELTA_YA:		; Cerrada: la suelta
 	inc hl			;78be
 	ld e,(hl)			;78bf
 	push de			;78c0
-	ld bc,00202h		;78c1
+	ld bc,00202h		;78c1   ; 2x2 tiles a cero (0x78DB): borra la tarjeta del decorado
 	ld hl,078dbh		;78c4
 	call PINTA_BLOQUE		;78c7
 	pop de			;78ca
-	ld hl,0e0f8h		;78cb
+	ld hl,0e0f8h		;78cb   ; Y el sprite arranca justo ahi
 	ld (hl),d			;78ce
 	inc hl			;78cf
 	ld (hl),e			;78d0
-	ld a,0ffh		;78d1
+	ld a,0ffh		;78d1   ; El mono ya no lleva ninguna
 	ld (0e1afh),a		;78d3
 	inc a			;78d6
-	ld (0e238h),a		;78d7
+	ld (0e238h),a		;78d7   ; E238 = 0: no queda ninguna parpadeando
 	ret			;78da
 
 ; ----------------------------------------------------------------------

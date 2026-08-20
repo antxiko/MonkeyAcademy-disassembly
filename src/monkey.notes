@@ -799,7 +799,7 @@ L 0x713F GLOBO_SIGUIENTE   Recorre E24C hasta 0xFF
 C 0x714B Estado 1: sube (los dos sprites)
 C 0x7161 A Y = 0x10 ha llegado
 L 0x716A GLOBOS_SUELTA_OTRO Si faltan por soltar (E24B < E058) y el ultimo suelto ya paso de 8 pixels, suelta uno al azar de los que esperan (0)
-C 0x7173 E258: el ultimo que se solto; hasta que no lleva 8 pixels no sale otro
+C 0x7173 E258: el PRIMER globo que se solto (0x731C es el unico sitio que lo escribe); hasta que su Y no es multiplo de 8 no sale otro
 L 0x7183 GLOBO_AL_AZAR     Un indice al azar menor que E058, y desde ahi el primer globo en espera (dando la vuelta)
 L 0x7197 GLOBO_BUSCA_LIBRE El primer estado 0 desde HL, con vuelta al principio en el 0xFF
 L 0x71A6 GLOBO_SUELTA      Estado 1 y uno mas soltado
@@ -844,7 +844,7 @@ L 0x7387 FRUTA_CAE         Sonido 6; con suelo debajo (0x6924) se para (estado 0
 L 0x73A8 FRUTA_CAE_2       Dos pixels
 L 0x73AE FRUTA_VUELA       Sonido 8; fuera de la pantalla (X < 8 o >= 0xC0) desaparece; en el nibble alto del contador 8 mira si hay suelo (rebota o sigue); y el paso de la parabola
 C 0x73D3 En el octavo paso del vuelo, si hay suelo cambia de parabola (bit 0 del contador); si no, se le quita el bit 0
-L 0x73F4 FRUTA_VUELA_PASO  Parabola 0x742F (bit 0 del contador) o 0x7451, la segunda mitad si va hacia la izquierda (bit 5): (dY, dX) del paso (nibble alto del contador) y un paso mas
+L 0x73F4 FRUTA_VUELA_PASO  Parabola 0x742F (bit 0 del contador a 1) o 0x7451 (a 0); con el bit 5 del estado, 17 bytes mas alla, que es la misma tanda de dY con el dX cambiado de signo: (dY, dX) del paso (nibble alto del contador) y un paso mas
 D 0x742F 0x7451 parabola_baja Dos tandas de ocho pares (dY, dX) y 0xFF: hacia la derecha (0, -4)... no: dX = -4 (0xFC) es hacia la izquierda y +4 hacia la derecha; dY 0 0 1 1 2 3 4 5: la fruta sale recta y cae
 F 0x742F 2
 D 0x7451 0x7473 parabola_alta Las otras dos tandas: dY -5 -2 -1 0 0 1 2 5 con dX -2 (o +2): sube y luego cae
@@ -865,7 +865,7 @@ L 0x74B8 PROFESOR_ESPERA   Con la tarjeta en marcha: vuelve a 0xB8 y se queda co
 L 0x74C9 PROFESOR_CARA_GRANDE Los patrones 0xF0 y 0xF4 (la cara de 0x5ABF)
 L 0x74D5 PROFESOR_LLEVA    Con la tarjeta entregada: anda hasta la columna del ? (E271) y espera E004; entonces escribe la cifra escondida en el ? (0x7207), sonido 0x0D, bit 5, y esconde la tarjeta
 C 0x74F0 La cifra escondida del jugador (E1CD/E1CE) en bloque de 2x2 sobre el ?
-L 0x751F PROFESOR_VUELVE   Vuelve hacia la derecha; en 0xB8 carga las caras de 0x5E7F en 0x1800, pone a los dos con ella (0x08/0x0C) y arranca el baile (E276 = 0x88)
+L 0x751F PROFESOR_VUELVE   Un pixel a la IZQUIERDA por fotograma (dec de la X), y otro pop que se come la vuelta; en 0xB8 carga las caras de 0x5E7F en 0x1800, pone a los dos con ella (0x08/0x0C) y arranca el baile (E276 = 0x88)
 L 0x755C SIN_LLAMADAS_755C `dec (hl) / ld hl,0E0D4h / dec (hl) / pop hl / ld hl,758Dh`: nueve bytes a los que no salta nadie y que caen en PROFESOR_ANIMACION; parecen un resto de la vuelta del profesor (0x751F hace lo mismo)
 L 0x7565 PROFESOR_ANIMACION Los dos patrones de la fase (fotograma / 4 & 3) de la tabla HL; con la tarjeta entregada, la tarjeta (E0F9) va con el
 D 0x7585 0x758D patrones_profesor_derecha Las cuatro fases del profesor hacia la derecha: (18,24) (1C,28) (18,24) (20,2C): el mono andando (los sprites 6-11 de la VRAM, que son el 0-5 de 0x56BF)
@@ -1188,8 +1188,8 @@ L 0x7287 ECUACION_AL_JUGADOR_COPIA Los E058 simbolos
 L 0x7340 FRUTAS_BUCLE      Una fruta
 L 0x73C0 FRUTA_VUELA_FUERA Fuera de la pantalla: desaparece
 L 0x73CC FRUTA_VUELA_SUELO En el octavo paso: hay suelo?
-L 0x73EE FRUTA_VUELA_SIN_SUELO Sin suelo: la parabola baja
-L 0x7404 FRUTA_VUELA_SENTIDO Hacia la izquierda: la segunda mitad de la tabla
+L 0x73EE FRUTA_VUELA_REBOTA CON suelo debajo (HAY_SUELO devuelve NC): bit 0 del contador a 0, o sea la parabola de 0x7451, que empieza subiendo
+L 0x7404 FRUTA_VUELA_SENTIDO Bit 5 del estado (la tiraron hacia la derecha): 17 bytes mas alla, donde el dX es +4 o +2 en vez de -4 o -2
 L 0x740F FRUTA_VUELA_MUEVE (dY, dX) del paso
 L 0x7492 PROFESOR_DA_VUELTA Cambia el bit 6
 L 0x749A PROFESOR_ANDA     Un pixel y los patrones segun el sentido
@@ -1372,3 +1372,312 @@ C 0x4FEC Suma de los dos nibbles del azar en BCD; el nibble bajo, y 9 si sale 0:
 C 0x4FFF Mueve la primera cifra a esa posicion: las de en medio suben una
 C 0x5011 Las diez tarjetas del jugador: estado 0x13 (metida) y su cifra detras
 C 0x502E Bit 7 de E002 al carry: el 2P tiene las suyas 0x2A mas alla (E20E)
+
+# --- segunda pasada de C: la respuesta (0x7708-0x78DB) -----------------------
+C 0x7708 Sin partida en marcha (bit 6 de E002) es la demo, y ahi manda el guion
+C 0x771D E238 distinto de 0: ya hay una tarjeta parpadeando
+C 0x7727 (antes XOR ahora) AND ahora: solo el fotograma en que se pulsa
+C 0x772C E1AF: la tarjeta que lleva el mono; 0xFF ninguna, no hay nada que responder
+C 0x7733 Sonido 0x0B: empieza el parpadeo
+C 0x7738 Su indice a E239, y guardado en la pila para usarlo dos veces
+C 0x773D (Fase - 1) & 7 por dos: la lista de posiciones de la fase en 0x509E
+C 0x774A HL = las diez parejas (Y, X) de esta fase
+C 0x774E El indice otra vez, por dos: cada tarjeta ocupa dos bytes
+C 0x7753 D = Y, E = X; ld (E23A),de deja X en E23A y Y en E23B
+C 0x775A Cinco parpadeos por contar
+C 0x7760 Uno de cada cuatro fotogramas: asi se ve el parpadeo
+C 0x7766 Un parpadeo menos
+C 0x776C A cero: se acabo el parpadeo y toca comparar
+C 0x776E A = lo que queda; HL ya apunta al bloque en blanco de 0x782C
+C 0x7772 Bit 0 de la cuenta: par en blanco, impar con la cifra
+C 0x7775 E239 por dos: esa tarjeta en la lista del jugador
+C 0x777F El segundo byte de la pareja es su cifra
+C 0x7782 Por dos en 0x508A: los tres tiles por dos de esa cifra
+C 0x778C D = Y, E = X, tal como se guardaron en 0x7756
+C 0x7790 3 filas x 2 columnas
+C 0x7796 E1CD: la cifra escondida tras el ? del 1P
+C 0x7799 Bit 7 de E002: el 2P la tiene en la siguiente, E1CE
+C 0x77A2 El indice de la que estaba parpadeando
+C 0x77AC Donde vive su estado; E243 no lo lee nadie mas en todo el cartucho
+C 0x77B0 El byte siguiente es la cifra que muestra
+C 0x77B3 Contra la escondida
+C 0x77B6 Acierto: sonido 0x95
+C 0x77BB 500 puntos
+C 0x77C3 Bit 4 de E270: la tarjeta buena se cierra y se suelta (0x7899)
+C 0x77C8 La que lleva el mono, marcada con el bit 7 para repintarla
+C 0x77D5 Fallo: uno mas en E057
+C 0x77D9 Sonido 0x0E
+C 0x77DF Repinta las caras del marcador
+C 0x77E3 Al tercer fallo, E276 = 1: entra el profesor con la respuesta
+C 0x77ED Mientras E004 tenga espera pendiente solo se descuenta
+C 0x77F6 Uno de cada cuatro fotogramas
+C 0x77FC Minutos y segundos a la vez: a cero se acabo el descuento
+C 0x7803 C = minutos, HL = los segundos: un segundo menos en BCD
+C 0x780B 10 puntos por cada segundo que quedaba
+C 0x7813 Y un pitido (0x0F) por segundo
+C 0x7818 El reloj otra vez a 05:00 para la fase siguiente
+C 0x781F E23C = 0: el descuento ya no esta en marcha
+C 0x7822 E00D = 1 (fase superada) y estado 16
+C 0x7834 Las banderas de la tarjeta salen bit a bit con rra
+C 0x7837 Bit 0: subiendo sola
+C 0x783A Bit 1: montada en la cabeza del mono
+C 0x783D El bit 2 (ya ha llegado arriba) se salta sin mirarlo
+C 0x783F Bit 3: cayendo
+C 0x7842 Bit 4: esperando a cerrarse para soltarse
+C 0x7853 E0F8: la Y del sprite 18, el de la tarjeta de la respuesta
+C 0x785A Un pixel arriba
+C 0x785F Deja de subir (bit 0) y queda arriba (bit 2)
+C 0x7863 500 puntos por llevarla arriba
+C 0x786B Sonido 0x9B
+C 0x7871 E0B0/E0B1: la Y y la X del mono
+C 0x7877 La tarjeta se pega a esa misma posicion
+C 0x787E B = Y, C = X de la tarjeta
+C 0x7884 Carry: aun no hay plataforma debajo
+C 0x7889 Un pixel mas abajo
+C 0x788E Fuera el bit 3: deja de caer
+C 0x7893 Y el mono se queda sin tarjeta cogida
+C 0x7899 El estado de la tarjeta que lleva el mono
+C 0x78A4 0x13: metida y cerrada del todo
+C 0x78AC XOR 0x18 cambia los bits 3 y 4: deja de esperar y empieza a caer
+C 0x78B3 Su hueco en el decorado, de la lista E15A
+C 0x78C1 2x2 tiles a cero (0x78DB): borra la tarjeta del decorado
+C 0x78CB Y el sprite arranca justo ahi
+C 0x78D1 El mono ya no lleva ninguna
+C 0x78D7 E238 = 0: no queda ninguna parpadeando
+
+# --- segunda pasada de C: la ecuacion y los globos (0x6E6E-0x7325) -----------
+C 0x6E6E E143 = 0 y E142 = A: el acumulador arranca en A
+C 0x6E7C Suma de dos cifras BCD y el acarreo a las centenas
+C 0x6E86 Si se sale de las centenas, el bit 0 de E152 CAMBIA (no se pone): es el signo
+C 0x6E92 Igual que la suma, pero restando
+C 0x6EA0 Resta BCD; si presta, otra vez el signo
+C 0x6EB6 Multiplicar es sumar: E142 = A y luego A sumado B - 1 veces
+C 0x6EC6 B = 1: el resultado ya es A, no hay nada que sumar
+C 0x6ECB C = el sumando fijo (lo que valia E142)
+C 0x6ECE Una suma BCD de 16 bits mas
+C 0x6EDE Dividir se genera al reves: primero el cociente
+C 0x6EE4 Nibble bajo del azar, entre 1 y 9 (el 0 se repite)
+C 0x6EE9 Y el otro nibble para el segundo, tambien 1-9
+C 0x6F45 Dos cifras BCD tal cual salen del azar
+C 0x6F4C Unidades por debajo de 2: no vale, otra vez (nada de x0, x1 ni divisiones feas)
+C 0x6F53 A = 0: no se escribe nada
+C 0x6F56 C = las unidades
+C 0x6F5A Las decenas al nibble bajo
+C 0x6F62 Las decenas van al hueco siguiente y cuentan como simbolo
+C 0x6F67 Decenas = 0: las unidades PISAN ese mismo hueco, y solo cuenta un simbolo
+C 0x6F6A Con decenas, las unidades van al hueco de al lado y cuentan otro
+C 0x6F70 Mira el simbolo del guion sin gastarlo
+C 0x6F77 Lo copia y avanza el guion; sigue por UN_SIMBOLO_MAS
+C 0x6F83 E058: cuantos simbolos lleva la ecuacion (y cuantos globos habra)
+C 0x6F8A Igual pero de una sola cifra (1-9)
+C 0x6F96 Los trece huecos E144-E150 a 0x13 (vacio)
+C 0x6FA4 E152 = 0: el resultado empieza en positivo
+C 0x6FAB Cuatro bytes por nivel en 0x7117: puntero al guion y puntero a sus desplazamientos
+C 0x6FC5 El desplazamiento (siempre el primero, siempre 0)
+C 0x6FCA El guion elegido a E150
+C 0x6FD6 Ni un simbolo aun
+C 0x6FDC Y el resultado a cero
+C 0x6FEF Primer operando, dos cifras; B se lo queda
+C 0x6FF2 E = el primero, para operar despues
+C 0x6FF3 El signo del guion; A se queda con el
+C 0x6FF8 Segundo operando
+C 0x7003 A = el primer operando otra vez
+C 0x7006 Suma: primero + segundo
+C 0x700E El simbolo que sigue al segundo operando
+C 0x7011 Es el =: se acabaron los operandos
+C 0x7017 No era el =: hay un tercero
+C 0x701F Se suma o se resta al acumulado
+C 0x702D Multiplicar: si el segundo tiene decenas, se tiran
+C 0x7033 Un simbolo menos: donde iban dos cifras solo va una
+C 0x7038 Las unidades se corren al hueco de las decenas
+C 0x703F A = el primer operando
+C 0x7046 Nivel 5: se monta a mano, a x ( b + c ) = R
+C 0x7052 La a, de una cifra
+C 0x705C La b
+C 0x705F D = b, que hace falta al operar
+C 0x7064 La c
+C 0x706D b - c; si sale negativo se le da la vuelta al valor absoluto
+C 0x7078 0 - E142 en BCD: el complemento a diez
+C 0x708A b + c
+C 0x7098 Y todo por la a, que sigue en E144
+C 0x709D Los dos ultimos simbolos del guion
+C 0x70A2 Con signo negativo, un menos delante del resultado
+C 0x70B4 Bit 0 de E152: el resultado salio negativo
+C 0x70B9 El simbolo 0x0B es el menos
+C 0x70BF 0 - E142/E143 en BCD: el valor absoluto
+C 0x70CF Las centenas primero (ESCRIBE_NUMERO no escribe nada si son 0)
+C 0x70D5 B trae si se escribio algo: con centenas hacen falta las tres cifras
+C 0x70D9 Sin centenas y sin decenas ni unidades: el resultado es 0
+C 0x70E5 Con centenas: decenas y unidades van siempre, aunque sean cero
+C 0x70F8 Dos simbolos mas
+C 0x70FE Sin centenas: las decenas solo si no son cero
+C 0x713D B recorre los globos desde el 0
+C 0x7143 E24C + B: el estado de ese globo
+C 0x7148 0xFF: se acabo la lista
+C 0x7150 E0B8 + 8B: los DOS sprites de ese globo
+C 0x715A Un pixel arriba el de arriba
+C 0x715D Y cuatro bytes mas alla, el de abajo
+C 0x7176 E0B8 + 8 x ese globo: su Y
+C 0x7180 Su Y multiplo de 8: hasta entonces no sale otro
+C 0x7189 Un indice al azar, y tiene que caer dentro de los que hay
+C 0x7191 Desde ahi se busca hueco
+C 0x7197 Al llegar al 0xFF se vuelve al principio de la lista
+C 0x71A6 Estado 1: este empieza a subir
+C 0x71AB Uno mas soltado
+C 0x71AC NC: aun quedan globos por llegar
+C 0x71B4 Se acabo la lista sin encontrar ninguno que no fuera 2: carry, todos arriba
+C 0x71B9 Estado 2 (ya llego): sigue mirando
+C 0x71BD Alguno no ha llegado: NC
+C 0x71C3 Tres bytes atras: la X del sprite de arriba
+C 0x71C7 Y uno mas: su Y, que aqui vale 0 (el de abajo estaba en 0x10)
+C 0x71CB Bit 7 de E002 al carry: de quien es la ecuacion
+C 0x71D8 El simbolo numero B
+C 0x71E2 La X del globo mas 13: donde el profesor tiene que escribir
+C 0x71E9 Cuatro tiles por simbolo en 0x7207
+C 0x71F1 2x2 tiles en la fila de arriba, donde estaba el globo
+C 0x71FF Estado 2: llegado
+C 0x7202 Sonido 2 en cada globo que llega
+C 0x7256 Un azar de 0 a 15
+C 0x7263 E144 + esa posicion
+C 0x726B El 0x12 es el ?, que tapa la cifra
+C 0x7270 Bit 7 de E002: la cifra escondida va a E1CD (1P) o E1CE (2P)
+C 0x727D Bit 7 de E002 al carry: la ecuacion del 1P o la del 2P
+C 0x728A Tantos bytes como simbolos tenga
+C 0x7293 E053 = 0: ya no hace falta ecuacion nueva
+C 0x7297 Los 24 sprites (96 bytes) a Y = 0xE1: fuera de la pantalla
+C 0x72A7 E24B = 1: el primero se suelta aqui mismo
+C 0x72B5 La X de partida
+C 0x72BA Dos sprites por simbolo
+C 0x72BC 0x70: el patron del globo (bit 2 distingue mitad de arriba y de abajo)
+C 0x72C3 Un color al azar de los 16 de 0x732E
+C 0x72E4 El segundo sprite: patron 0x74, la mitad de abajo
+C 0x72E8 16 pixels a la derecha para el simbolo siguiente
+C 0x72ED Los patrones de los globos (0x5E3F) a los sprites 28 y 29
+C 0x72FF Todos los estados a 0 (esperando)
+C 0x7309 Y el 0xFF de fin detras del ultimo
+C 0x731C E258 se escribe SOLO aqui: el primero que se suelta, y nunca se vuelve a tocar
+
+# --- segunda pasada de C: las frutas y el profesor (0x733E-0x7584) -----------
+C 0x733E Las ocho frutas, de la 0 a la 7
+C 0x734C B x 2 (el par de E260) guardado, y x 4 (el sprite)
+C 0x7352 E0D8 + 4B: el sprite 10 + B, la fruta B
+C 0x735C E260 + 2B: su estado y su contador
+C 0x736E Sin ninguno de los tres bits no hay nada que hacer
+C 0x737B 16 pixels por encima de la Y de quien la lleva
+C 0x737F Y su misma X
+C 0x7387 Sonido 6 en cada fotograma de caida
+C 0x738F B = Y, C = X de la fruta
+C 0x7392 Carry: no hay plataforma debajo, sigue cayendo
+C 0x739A Con suelo: estado a 0 y contador a 1; el bit 1 dice si venia volando
+C 0x73A2 Venia volando: se la ha comido el suelo, sprite fuera (Y = 0xE1)
+C 0x73AB Dos pixels por fotograma
+C 0x73AE Sonido 8 mientras vuela
+C 0x73B6 La X del sprite
+C 0x73B8 De 0xC0 en adelante se ha salido por la derecha
+C 0x73BC Y por debajo de 8, por la izquierda
+C 0x73C0 Sprite fuera y la fruta de vuelta al estado 0 con el contador a 1
+C 0x73CF El contador; su nibble alto es el paso del vuelo
+C 0x73D7 El paso vuelve a 0 y se conserva el nibble bajo (la parabola)
+C 0x73DE B = Y, C = X
+C 0x73E1 NC: hay plataforma debajo
+C 0x73E6 Sin suelo debajo: el bit 0 del estado cambia y la fruta se pone a caer
+C 0x73F2 Con suelo debajo: bit 0 del contador a 0, o sea la parabola de 0x7451, que empieza subiendo
+C 0x73F9 Bit 0 del contador: 1 la parabola recta de 0x742F, 0 la que sube (0x7451)
+C 0x7405 Bit 5 del estado: hacia donde la tiraron
+C 0x740A Diecisiete bytes mas alla empieza la misma tanda con el dX del otro signo
+C 0x7410 Nibble alto del contador x 2: el paso dentro de la parabola
+C 0x741C B = dY, C = dX
+C 0x7422 Y del sprite + dY
+C 0x7426 X del sprite + dX
+C 0x7429 Y un paso mas en el nibble alto del contador
+C 0x7473 E0D0: el sprite 8, el profesor de arriba
+C 0x7479 Bit 2 de E270: la tarjeta ha llegado arriba, va a por ella
+C 0x747D HL = E0D1, su X
+C 0x747E Bit 1: el mono lleva la tarjeta; el profesor le espera
+C 0x748B En cualquiera de las dos X da media vuelta
+C 0x7495 El bit 6 de E270 es el sentido de su paseo
+C 0x749D Dos rla: el bit 6 al carry
+C 0x74A0 Un pixel a la izquierda...
+C 0x74A6 ...o dos mas, que dejan un pixel a la derecha
+C 0x74AB La X a sus dos sprites, el 8 y el 9
+C 0x74B0 E004 = 0x40: la espera que se contara cuando llegue al ?
+C 0x74BB Ya esta en su sitio
+C 0x74C0 Si no, un pixel a la izquierda cada fotograma
+C 0x74C9 dec hl e inc hl seguidos no hacen nada: HL acaba en E0D2
+C 0x74CC El patron 0xF0 al sprite 8...
+C 0x74CF ...y el 0xF4 al 9: la cara grande de dos sprites
+C 0x74D9 Bit 5: ya ha escrito la respuesta, solo le queda irse
+C 0x74DD La columna del ? contra su X
+C 0x74E1 Aun no ha llegado: sigue andando
+C 0x74E3 E271 - 13 vuelve a la X donde se pinto el ?; E = esa X
+C 0x74E7 D = su Y
+C 0x74EB Los 0x40 fotogramas de espera, uno por fotograma
+C 0x74EE El pop se come la direccion de vuelta: mientras el profesor va y espera, el RESTO del paso del juego (tarjetas, frutas, mono y cangrejos) no llega a correr
+C 0x74F3 E1CD (1P) o E1CE (2P)
+C 0x74FB Los cuatro tiles de esa cifra
+C 0x7503 2x2 encima del ?
+C 0x7509 Sonido 0x0D al escribirla
+C 0x7511 Bit 5: ya esta escrita
+C 0x7516 Y la tarjeta de la respuesta fuera de la pantalla
+C 0x751F Un pixel a la izquierda, los dos sprites
+C 0x7526 Al llegar a X = 0xB8 se acaba el viaje
+C 0x7527 Otro pop que se come la vuelta: andando tampoco corre el resto del paso
+C 0x752D E276 = 0x88: empieza el baile
+C 0x7532 Las caras de 0x5E7F a los sprites 0 y 3 de la VRAM
+C 0x7540 El mono con la cara (patrones 0x08 y 0x0C)
+C 0x754B Y el profesor tambien
+C 0x7556 E276 = 0x88 otra vez, ya estaba puesto en 0x752D
+C 0x7565 Fotograma / 4 y & 3: cuatro fases de animacion
+C 0x7570 Los dos patrones, al sprite 8 y al 9
+C 0x757B Bit 2 de E270: lleva la tarjeta
+C 0x757E Y entonces la tarjeta va pegada a su X
+# --- segunda pasada de C: LEVEL SELECT (0x7595-0x76E4) ----------------------
+C 0x7595 "PLAYER" en la fila 2
+C 0x759B Bit 7 de E002 al bit 0
+C 0x75A2 0x31 es el tile del "1": 1 o 2 segun el jugador
+C 0x75A4 Fila 2, columna 19 de la tabla de nombres
+C 0x75AA "LEVEL SELECT" y las cinco lineas de nivel, seis listas seguidas
+C 0x762F E024: el canal 2 del sonido; si se ha callado, se relanza la musica del menu
+C 0x763D La espera a cero: ya no se puede cambiar de nivel
+C 0x7641 Un fotograma menos de los 0x0F00
+C 0x7648 A = antes; and ahora, xor ahora: solo lo que se acaba de pulsar
+C 0x764C La tabla de 0x765F solo tiene 17 entradas
+C 0x7656 0xFF: esa combinacion de teclas no es ningun nivel
+C 0x7659 El nivel elegido, a E153 (1P) o E154 (2P)
+C 0x765D Carry: nivel decidido
+C 0x7670 Uno de cada cuatro fotogramas
+C 0x7679 E1B3: 0x20 parpadeos
+C 0x767C El bit 0 de la cuenta: un fotograma se pinta y otro se borra
+C 0x7683 La primera de las cinco lineas de 0x75D0
+C 0x7688 Mas 19 bytes por linea: la del nivel elegido
+C 0x7692 Los 16 tiles de la linea a cero
+C 0x7695 Los dos primeros bytes de la linea son su direccion de VRAM
+C 0x769B E00D (fase superada): se viene de acabar una fase, no del menu
+C 0x76A5 Bit 5: hay dos jugadores
+C 0x76AA Bit 7: el turno era del 2P, ya han elegido los dos
+C 0x76AE Le toca al 2P: se cambia de jugador y se repite el LEVEL SELECT
+C 0x76B5 0x50 fotogramas de espera
+C 0x76BB Vuelve a ser el 1P
+C 0x76BE Fase superada y las banderas del menu a cero
+C 0x76C7 A x 19 = A x 2 + A + A x 16, que es lo que ocupa cada linea
+C 0x76D8 Bit 7 de E002: de quien es el nivel
+
+# --- segunda pasada de C: la interrupcion y el VDP (0x4038-0x40AE, 0x4209) ---
+C 0x4038 Todos los registros, los alternativos y IX: la interrupcion cae en cualquier sitio
+C 0x4042 Con el VDP no se puede estar a medias
+C 0x4045 El sonido va SIEMPRE, incluso si el paso anterior no acabo
+C 0x4048 Y los sprites tambien: la pantalla nunca se queda quieta
+C 0x4052 Candado echado: si el paso tarda mas de un fotograma, el siguiente sale por la puerta corta
+C 0x4054 Desde aqui ya puede entrar otra interrupcion
+C 0x405D El paso del juego, un estado por fotograma
+C 0x4060 Al recoger los registros, sin interrupciones
+C 0x406A Candado suelto: el paso ha terminado
+C 0x4075 Salida corta: solo se han hecho el sonido y los sprites
+C 0x4084 Bit 6 de la direccion: es para escribir
+C 0x4089 Y se quita, para que el llamante vea DE como lo dejo
+C 0x4094 El call a un ret suelto: los ciclos que el VDP necesita entre la direccion y el dato
+C 0x420C Un fotograma mas
+C 0x4210 En el estado 18 (opcion recien elegida) las teclas no se miran
+C 0x4214 Del estado 11 en adelante ya hay partida: el 1UP parpadea
+C 0x421B Del 1 en adelante, las teclas 1-5
+C 0x4223 El estado manda, por la tabla que va justo detras

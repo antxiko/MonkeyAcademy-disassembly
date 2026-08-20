@@ -94,7 +94,13 @@ hanging in rows 3, 10 and 17. You pick one by **jumping** into it (0x5FA7):
 100 points, sound 7, and the monkey carries it on his head (bits 2-3 of
 0xE260, sprite set 1 with the arms up). With a fruit on his head fire does
 not jump: it **throws** it the way he faces (state 8, 0x64EA), and the fruit
-flies along one of the two arcs of 0x742F/0x7451, eight steps and then falls.
+flies along one of the two arcs of 0x742F/0x7451.
+
+Every eight steps it looks at what is underneath (0x73E1): **if there is a
+platform it goes back to step 0 with the rising arc and keeps flying**, and it
+only starts to fall once there is nothing below. The two arcs are also the same
+table read 17 bytes apart: the same dY values with the sign of dX flipped, and bit 5
+of the state picks the side.
 
 A fruit in the air kills whatever it hits: a crab, which dies showing a white
 "500" for 0x20 frames (0x5FF5); or the monkey, who loses a life (0x5FE8).

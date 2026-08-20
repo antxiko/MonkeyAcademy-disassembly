@@ -96,8 +96,13 @@ colgadas en las filas 3, 10 y 17. Se cogen **saltando** contra ellas
 (0x5FA7): 100 puntos, sonido 7, y el mono la lleva en la cabeza (bits 2-3 de
 0xE260, juego de sprites 1 con los brazos arriba). Con la fruta en la cabeza
 el disparo no salta: la **tira** hacia donde mira (estado 8, 0x64EA), y la
-fruta vuela por una de las dos parábolas de 0x742F/0x7451, ocho pasos y a
-caer.
+fruta vuela por una de las dos parábolas de 0x742F/0x7451.
+
+Cada ocho pasos mira lo que tiene debajo (0x73E1): **si hay plataforma vuelve al
+paso 0 con la parábola que sube y sigue volando**, y solo se pone a caer cuando
+debajo ya no hay nada. Las dos parábolas son además la misma tabla leída con 17
+bytes de desfase: los mismos dY con el dX cambiado de signo, y el bit 5 del
+estado elige el lado.
 
 Una fruta que va por el aire mata a lo que toque: al cangrejo, que se muere
 enseñando un "500" blanco durante 0x20 fotogramas (0x5FF5); o al mono, que
