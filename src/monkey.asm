@@ -1234,17 +1234,17 @@ DATA_jugador_nuevo:
 
 
 SPRITES_DE_JUEGO:		; Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de sprites (0x4B04) a E0B0 y los cuatro actores (0x4B24) a E108; el mono en Y = 0xA8; a partir de la fase 18 el cangrejo 1 es del tipo 4 y patrulla la segunda plataforma
-	ld hl,056bfh		;47e9
+	ld hl,056bfh		;47e9   ; los patrones de sprite de la partida, guardados en 0x56BF
 	ld de,01800h		;47ec
-	ld bc,00080h		;47ef
+	ld bc,00080h		;47ef   ; 0x80 bytes: cuatro sprites de 16x16, que son 32 bytes cada uno
 	di			;47f2
 	call COPIA_A_VRAM		;47f3
 	ei			;47f6
-	ld hl,04b04h		;47f7
-	ld de,0e0b0h		;47fa
+	ld hl,04b04h		;47f7   ; la plantilla de 0x4B04, las fichas de sprite del mono y los cangrejos
+	ld de,0e0b0h		;47fa   ; a E0B0, la copia en RAM de la tabla de atributos
 	ld bc,00020h		;47fd
 	ldir		;4800
-	ld de,0e108h		;4802
+	ld de,0e108h		;4802   ; y las mismas 0x20 otra vez a E108, la segunda tanda de fichas
 	ld c,020h		;4805
 	ldir		;4807
 	ld a,0a8h		;4809   ; El mono, en el suelo (Y = 0xA8)
@@ -1253,9 +1253,9 @@ SPRITES_DE_JUEGO:		; Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de 
 	ld a,(0e051h)		;4811   ; Fase 24 en adelante -0x18 leido en BINARIO, que es como va E051-: el primer cangrejo es del tipo 4 (0x44) y patrulla la segunda plataforma (E110 = 0x38, la Y a la que da la vuelta)
 	cp 018h		;4814
 	ret c			;4816
-	ld a,038h		;4817
+	ld a,038h		;4817   ; la Y de la tercera ficha de E108 -o sea E110- pasa a 0x38...
 	ld (0e110h),a		;4819
-	ld a,044h		;481c
+	ld a,044h		;481c   ; ...y su color, E113, a 0x44
 	ld (0e113h),a		;481e
 	ret			;4821
 
@@ -1272,18 +1272,18 @@ SPRITES_DE_JUEGO:		; Los cuatro sprites del mono (0x56BF) a 0x1800; la tabla de 
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
 MONO_Y_CANGREJOS:		; El reloj, los mandos a E10B, las tarjetas cada 8 fotogramas, la colision y un paso de cada actor
-	call RELOJ		;4822
+	call RELOJ		;4822   ; el reloj antes que nada: la cuenta atras corre aunque no se mueva nadie
 	ld a,(0e009h)		;4825   ; Izquierda, derecha y los dos botones (bits 2-5) suben al nibble alto
 	and 03ch		;4828
 	ld b,a			;482a
-	add a,a			;482b
+	add a,a			;482b   ; cuatro veces doblado, los bits 2 y 3 -izquierda y derecha- caen en el 6 y el 7...
 	add a,a			;482c
 	add a,a			;482d
 	add a,a			;482e
-	or b			;482f
+	or b			;482f   ; ...y el `or b` devuelve los bits 4 y 5, los dos botones, que es lo que conserva el `and 0f0h`. Arriba y abajo, los bits 0 y 1, se quedan fuera a proposito
 	and 0f0h		;4830
 	ld (0e10bh),a		;4832
-	ld a,(0e003h)		;4835
+	ld a,(0e003h)		;4835   ; una vuelta de cada ocho: las tarjetas no hace falta repintarlas en cada fotograma
 	and 007h		;4838
 	jr nz,MONO_COLISION		;483a
 	call PINTA_TARJETAS		;483c
@@ -1294,7 +1294,7 @@ MONO_COLISION:		; La colision con los cangrejos y, si no, el paso de los actores
 	ld hl,0e10ch		;4847
 	ld (hl),00ah		;484a
 MONO_ACTORES:		; Cuantos actores se mueven este fotograma (E272 cuenta los fotogramas)
-	ld hl,0e272h		;484c
+	ld hl,0e272h		;484c   ; E272 cuenta las vueltas del reparto de actores
 	inc (hl)			;484f
 	ld a,(0e051h)		;4850   ; CUANTOS actores juegan: A = fase/8 + 2, tope 4 (el mono y 1, 2 o 3 cangrejos). Y la fase va en BINARIO, asi que los escalones estan en 8 y en 16, no en 8 y en 10: un cangrejo hasta la fase 7, dos de la 8 a la 15 y tres desde la 16. El bucle de 0x4860 llama a 0x5F5F con B = A..1 y B es el NUMERO de actor. Medido: en las fases 1-2 solo anda el cangrejo 1
 	rra			;4853
@@ -1302,9 +1302,9 @@ MONO_ACTORES:		; Cuantos actores se mueven este fotograma (E272 cuenta los fotog
 	rra			;4855
 	inc a			;4856
 	and 01fh		;4857
-	cp 004h		;4859
+	cp 004h		;4859   ; el tope son cuatro: el mono y hasta tres cangrejos
 	jr nc,ACTORES_PASO_4		;485b
-	and 003h		;485d
+	and 003h		;485d   ; y por debajo del tope, uno mas: los fase/8 + 2 de la linea de arriba
 	inc a			;485f
 ACTORES_PASO:		; Un paso de los actores A..1 (B baja con el djnz y es el numero de actor de 0x5F5F); con E272 & 3 == 0 (un fotograma de cada cuatro) solo el mono
 	ld b,a			;4860
@@ -1805,11 +1805,11 @@ DATA_actores_iniciales:
 DEMO_GUION:		; Cada 8 fotogramas el byte siguiente de 0x4B78 a E10B (los mandos de la demo); 0xFF acaba (E00B = 0xFF); y un paso de cada actor
 	ld hl,0e1b0h		;4b44
 	ld a,(hl)			;4b47
-	and 007h		;4b48
+	and 007h		;4b48   ; solo actua una vuelta de cada ocho, mirando los tres bits bajos de E1B0
 	jr nz,DEMO_RELOJ		;4b4a
 	ex de,hl			;4b4c
-	ld a,(0e1b1h)		;4b4d
-	ld hl,04b78h		;4b50
+	ld a,(0e1b1h)		;4b4d   ; E1B1 es por que paso del guion va...
+	ld hl,04b78h		;4b50   ; ...y el guion empieza en 0x4B78
 	call HL_MAS_A		;4b53
 	ld a,(hl)			;4b56
 	cp 0ffh		;4b57
@@ -1880,17 +1880,17 @@ TITULO_FILA_TILES:		; Una fila de 24 tiles seguidos
 	ld b,018h		;4c0e
 TITULO_FILA_TILE:		; Uno
 	call VPOKE		;4c10
-	inc a			;4c13
-	inc de			;4c14
+	inc a			;4c13   ; el tile siguiente...
+	inc de			;4c14   ; ...en la celda de al lado
 	djnz TITULO_FILA_TILE		;4c15
 	ex de,hl			;4c17
 	ld d,a			;4c18
 	ld a,008h		;4c19
-	call HL_MAS_A		;4c1b
+	call HL_MAS_A		;4c1b   ; ocho mas alla, que es lo que separa una fila de la siguiente
 	ex de,hl			;4c1e
 	inc c			;4c1f
 	ld a,c			;4c20
-	cp 003h		;4c21
+	cp 003h		;4c21   ; tres vueltas: los tres tercios de la pantalla
 	ld a,h			;4c23
 	jr nz,TITULO_FILA_TILES		;4c24
 	ld a,070h		;4c26   ; 0x70: la fuente en cyan (el menu)
@@ -1948,18 +1948,18 @@ TITULO_UNA_FILA:		; Una fila de 24 bytes del dibujo de 0x4CD0 a los 24 tiles de 
 	add hl,bc			;4c82
 	ld b,018h		;4c83
 TITULO_UNA_FILA_BYTE:		; Un byte del dibujo a un tile, y 8 mas alla
-	ld a,(hl)			;4c85
-	call VPOKE		;4c86
+	ld a,(hl)			;4c85   ; el byte del dibujo...
+	call VPOKE		;4c86   ; ...a la VRAM tal cual
 	inc hl			;4c89
-	ld a,008h		;4c8a
+	ld a,008h		;4c8a   ; ocho mas alla: los patrones van de ocho en ocho
 	ex de,hl			;4c8c
 	call HL_MAS_A		;4c8d
 	push hl			;4c90
 	push bc			;4c91
 	ld bc,0d7fch		;4c92   ; Al llegar a 0x2804 (el final del tile 0xFF mas uno) se ha acabado el dibujo
-	add hl,bc			;4c95
+	add hl,bc			;4c95   ; 0xD7FC es -0x2804 en complemento a dos, asi que esta suma es la resta disfrazada y el acarreo dice si se ha pasado del final
 	pop bc			;4c96
-	pop hl			;4c97
+	pop hl			;4c97   ; y HL vuelve como estaba: la suma solo servia para mirar la bandera
 	jr c,TITULO_ACABADO		;4c98
 	ex de,hl			;4c9a
 	djnz TITULO_UNA_FILA_BYTE		;4c9b
@@ -2196,28 +2196,28 @@ COGE_TARJETA:		; El mono coge la tarjeta A: si llevaba otra la deja (bit 7 para 
 	push af			;4fae   ; D = la tarjeta nueva; si E1AF ya tenia una, esa se marca para repintar (se cierra)
 	ld d,a			;4faf
 	ld hl,0e1afh		;4fb0
-	ld a,0ffh		;4fb3
+	ld a,0ffh		;4fb3   ; 0xFF en E1AF es "no hay ninguna abierta"
 	ld b,(hl)			;4fb5
 	cp (hl)			;4fb6
 	jr z,COGE_TARJETA_PRIMERA		;4fb7
 	ld a,b			;4fb9
-	add a,a			;4fba
+	add a,a			;4fba   ; por dos: la lista del jugador lleva dos bytes por tarjeta
 	call TARJETAS_DEL_JUGADOR		;4fbb
 	call HL_MAS_A		;4fbe
-	set 7,(hl)		;4fc1
+	set 7,(hl)		;4fc1   ; el bit 7 marca la tarjeta vieja para repintarla, o sea para CERRARLA
 	ld a,d			;4fc3
-	ld (0e1afh),a		;4fc4
+	ld (0e1afh),a		;4fc4   ; y la nueva pasa a ser la abierta
 	pop af			;4fc7
 	ret			;4fc8
 COGE_TARJETA_PRIMERA:		; Sin tarjeta anterior: solo apunta la nueva
-	ld (hl),d			;4fc9
+	ld (hl),d			;4fc9   ; la primera de la pareja: no hay ninguna que cerrar
 	pop af			;4fca
 	ret			;4fcb
 BARAJA_CIFRAS:		; Las diez cifras en E1CF, empezando por una al azar; 64 barajadas al azar; y a las tarjetas del jugador (E1E4 o E20E) con estado 0x13, cifra a cifra
 	call AZAR		;4fcc   ; La primera cifra al azar (nibble bajo, 0-9)
 	ld a,(0e140h)		;4fcf   ; Empieza por una cifra al azar y sigue en orden 0-9
 	and 00fh		;4fd2
-	ld hl,0e1cfh		;4fd4
+	ld hl,0e1cfh		;4fd4   ; la lista de diez cifras vive en E1CF
 	ld b,00ah		;4fd7
 BARAJA_ORDEN:		; Las diez cifras en orden desde la primera
 	ld (hl),a			;4fd9   ; Y las diez seguidas en orden, dando la vuelta en el 9
@@ -2230,40 +2230,40 @@ BARAJA_ORDEN_SIGUE:		; La siguiente
 	djnz BARAJA_ORDEN		;4fe1
 	ld b,040h		;4fe3   ; 64 barajadas
 BARAJA_VUELTA:		; Una barajada: la primera cifra a una posicion al azar
-	push bc			;4fe5
+	push bc			;4fe5   ; se aparta la cuenta de barajadas, que AZAR se lleva B por delante
 	call AZAR		;4fe6
 	ld a,(0e140h)		;4fe9
 	ld c,a			;4fec   ; Suma de los dos nibbles del azar en BCD; el nibble bajo, y 9 si sale 0: la posicion (1-9)
-	and 00fh		;4fed
-	srl c		;4fef
+	and 00fh		;4fed   ; el nibble bajo del azar...
+	srl c		;4fef   ; ...y el alto, bajado con cuatro rotaciones
 	srl c		;4ff1
 	srl c		;4ff3
 	srl c		;4ff5
 	add a,c			;4ff7
-	daa			;4ff8
-	and 00fh		;4ff9
+	daa			;4ff8   ; sumados en BCD, asi que aunque los dos pasen de nueve el `daa` deja cifras validas
+	and 00fh		;4ff9   ; y se coge la de las unidades: la posicion, de 0 a 9
 	jr nz,BARAJA_MUEVE		;4ffb
-	ld a,009h		;4ffd
+	ld a,009h		;4ffd   ; el 0 se convierte en 9, asi que la primera cifra NUNCA se queda donde esta
 BARAJA_MUEVE:		; La mueve
 	ld b,000h		;4fff   ; Mueve la primera cifra a esa posicion: las de en medio suben una
 	ld c,a			;5001
-	ld hl,0e1cfh		;5002
-	ld a,(hl)			;5005
+	ld hl,0e1cfh		;5002   ; la lista de las diez cifras
+	ld a,(hl)			;5005   ; se aparta la primera...
 	push af			;5006
 	push hl			;5007
-	pop de			;5008
+	pop de			;5008   ; ...DE apunta a donde ella esta y HL a la siguiente...
 	inc hl			;5009
-	ldir		;500a
+	ldir		;500a   ; ...el `ldir` sube un sitio las que hay hasta la posicion elegida...
 	pop af			;500c
-	ld (de),a			;500d
-	pop bc			;500e
+	ld (de),a			;500d   ; ...y la primera cae en el hueco que queda al final
+	pop bc			;500e   ; la cuenta de barajadas, que el `ld b,000h` de arriba se ha comido
 	djnz BARAJA_VUELTA		;500f
 	call TARJETAS_DEL_JUGADOR		;5011   ; Las diez tarjetas del jugador: estado 0x13 (metida) y su cifra detras
 	push hl			;5014
 	push hl			;5015
 	pop de			;5016
 	inc de			;5017
-	ld bc,00011h		;5018
+	ld bc,00011h		;5018   ; 0x11 bytes: las diez tarjetas de dos bytes menos el primero, que lo pone el `ld (hl)`
 	ld (hl),013h		;501b
 	ldir		;501d
 	pop hl			;501f
@@ -2679,27 +2679,27 @@ ACTOR_PASO:		; Un paso del actor B (1 el mono, 2-4 los cangrejos)
 	cp d			;5f7d
 	jr z,ACTOR_FRUTAS		;5f7e
 CARGA_SPRITES_MONO:		; Los dos bloques de 0xC0 del juego E10E (tabla 0x6044) a 0x1800 y 0x1C00
-	ld (0e273h),a		;5f80
-	add a,a			;5f83
+	ld (0e273h),a		;5f80   ; E273 se queda con el juego de sprites que hay puesto, para no recargarlo si no cambia
+	add a,a			;5f83   ; por cuatro: cada entrada de la tabla de 0x6044 son DOS punteros
 	add a,a			;5f84
 	ld hl,06044h		;5f85
 	call HL_MAS_A		;5f88
-	ld e,(hl)			;5f8b
+	ld e,(hl)			;5f8b   ; el primero, los patrones que van a 0x1800
 	inc hl			;5f8c
 	ld d,(hl)			;5f8d
 	inc hl			;5f8e
 	push hl			;5f8f
 	ex de,hl			;5f90
-	ld de,01800h		;5f91
-	ld bc,000c0h		;5f94
-	di			;5f97
+	ld de,01800h		;5f91   ; 0x1800 es la tabla de patrones de sprite
+	ld bc,000c0h		;5f94   ; 0xC0 bytes, o sea 24 patrones de ocho
+	di			;5f97   ; las dos copias con las interrupciones paradas: a medias se veria el mono cambiado por la mitad
 	call COPIA_A_VRAM		;5f98
 	pop hl			;5f9b
-	ld e,(hl)			;5f9c
+	ld e,(hl)			;5f9c   ; el segundo puntero de la pareja...
 	inc hl			;5f9d
 	ld d,(hl)			;5f9e
 	ex de,hl			;5f9f
-	ld de,01c00h		;5fa0
+	ld de,01c00h		;5fa0   ; ...a 0x1C00, 0x400 mas alla, la otra mitad de la misma tabla. BC no se recarga porque COPIA_A_VRAM lo apila (0x489D): los dos bloques miden lo mismo
 	call COPIA_A_VRAM		;5fa3
 	ei			;5fa6
 ACTOR_FRUTAS:		; Si el actor toca una fruta (0x6A4F): E = 1 quieta (colgada o en el suelo), 0 en el aire (cae o vuela); D su indice
@@ -4830,17 +4830,17 @@ RESTA_B:		; E142/E143 -= B
 	ld hl,0e142h		;6e9d
 RESTA_B_BUCLE:		; La resta con DAA y el signo si presta
 	ld a,(hl)			;6ea0   ; Resta BCD; si presta, otra vez el signo
-	sub b			;6ea1
+	sub b			;6ea1   ; unidades y decenas menos B, en BCD
 	daa			;6ea2
 	ld (hl),a			;6ea3
 	inc hl			;6ea4
-	ld a,(hl)			;6ea5
+	ld a,(hl)			;6ea5   ; el byte alto solo puede bajar por el prestamo, de ahi el `sbc a,000h`
 	sbc a,000h		;6ea6
 	daa			;6ea8
 	ld (hl),a			;6ea9
-	ld a,(0e152h)		;6eaa
+	ld a,(0e152h)		;6eaa   ; E152 lleva el signo del resultado
 	jr nc,RESTA_B_FIN		;6ead
-	xor 001h		;6eaf
+	xor 001h		;6eaf   ; si la resta ha prestado, el resultado cambia de signo: el `xor 001h` lo alterna
 	ld (0e152h),a		;6eb1
 RESTA_B_FIN:		; Fuera
 	pop hl			;6eb4
@@ -4904,33 +4904,33 @@ DIVISION_E:		; E al azar (1-9)
 	ld (0e142h),a		;6f07
 	jp ECUACION_SEGUNDO_SIGNO		;6f0a
 AZAR:		; Semilla de 16 bits en E140/E141: se mezcla, se suma el registro R, se lee una palabra de la ROM en 0x0000-0x3FFF (la BIOS) y se remezcla con DAA. Los nibbles de E140 salen entre 0 y 9
-	push hl			;6f0d
+	push hl			;6f0d   ; se apartan los tres pares: la llaman desde media docena de sitios y no puede pisar nada
 	push bc			;6f0e
 	push af			;6f0f
-	ld hl,(0e140h)		;6f10
+	ld hl,(0e140h)		;6f10   ; la semilla es una PALABRA en E140, aunque los llamantes solo lean el byte bajo
 	ld a,h			;6f13
-	xor l			;6f14
+	xor l			;6f14   ; la mezcla barata: las dos mitades una contra otra y una rotacion
 	rlc a		;6f15
 	ld l,a			;6f17
-	sra h		;6f18
+	sra h		;6f18   ; los dos `sra` conservan el bit 7, asi que el bit alto de la semilla se arrastra en vez de perderse
 	sra l		;6f1a
 	ld a,r		;6f1c   ; El registro R del Z80: la parte que no se puede predecir
 	add a,l			;6f1e
 	ld l,a			;6f1f
 	ld a,h			;6f20
 	adc a,000h		;6f21
-	and 03fh		;6f23
+	and 03fh		;6f23   ; H entre 0 y 0x3F: la direccion que sale cae SIEMPRE dentro de la ROM de la BIOS, 0x0000-0x3FFF
 	ld h,a			;6f25
 	ld c,(hl)			;6f26   ; Una palabra de la BIOS (H queda entre 0 y 0x3F) como tabla de ruido
 	inc hl			;6f27
 	ld h,(hl)			;6f28
 	ld l,c			;6f29
 	ld a,h			;6f2a
-	and 077h		;6f2b
+	and 077h		;6f2b   ; el `and 077h` deja cada nibble entre 0 y 7...
 	ld h,a			;6f2d
 	ld a,(0e140h)		;6f2e
 	add a,h			;6f31
-	daa			;6f32
+	daa			;6f32   ; ...y asi el `daa` de la suma siempre cuadra: la semilla se queda en cifras BCD validas, que es lo que necesitan los llamantes que cogen un nibble suelto y esperan 0-9 (0x4FCC, 0x4FE6, 0x6EDE)
 	ld h,a			;6f33
 	ld a,l			;6f34
 	and 077h		;6f35
@@ -4939,7 +4939,7 @@ AZAR:		; Semilla de 16 bits en E140/E141: se mezcla, se suma el registro R, se l
 	add a,l			;6f3b
 	daa			;6f3c
 	ld l,a			;6f3d
-	ld (0e140h),hl		;6f3e
+	ld (0e140h),hl		;6f3e   ; la semilla nueva, para la vuelta siguiente
 	pop af			;6f41
 	pop bc			;6f42
 	pop hl			;6f43
@@ -7057,42 +7057,42 @@ DATA_mono_del_globo_canal_b:
 
 
 FRUTAS_DE_LA_FASE:		; Las 8 frutas de la fase ((fase - 1) & 7 de 0x6806) a los sprites 10-17; la tarjeta escondida y amarilla (0xFC); los ocho estados a (0, 1); el profesor (0x7ED9) a los sprites 8-9; y las banderas, los fallos y la tarjeta cogida a cero
-	ld a,(0e051h)		;7e85
-	dec a			;7e88
+	ld a,(0e051h)		;7e85   ; E051 es la fase
+	dec a			;7e88   ; menos uno y modulo 8: de la novena fase en adelante las tandas de fruta se repiten
 	and 007h		;7e89
 	ld h,000h		;7e8b
 	ld l,a			;7e8d
-	add hl,hl			;7e8e
+	add hl,hl			;7e8e   ; cinco veces doblado: 32 bytes por tanda
 	add hl,hl			;7e8f
 	add hl,hl			;7e90
 	add hl,hl			;7e91
 	add hl,hl			;7e92
-	ld bc,06806h		;7e93
+	ld bc,06806h		;7e93   ; las tandas empiezan en 0x6806
 	add hl,bc			;7e96
-	ld de,0e0d8h		;7e97
+	ld de,0e0d8h		;7e97   ; a E0D8, las ocho fichas de sprite de la fruta, cuatro bytes cada una (E0D8-E0F7)
 	ld bc,00020h		;7e9a
 	ldir		;7e9d
 	ld hl,0e0f8h		;7e9f
-	ld (hl),0e1h		;7ea2
+	ld (hl),0e1h		;7ea2   ; y los dos bytes de detras son la Y y la X de la tarjeta suelta, el sprite 18: con 0xE1 en la Y se queda escondida, que es justo lo que mira 0x6A20 antes de soltar otra
 	inc hl			;7ea4
 	ld (hl),0e1h		;7ea5
 	ld b,008h		;7ea7
 	ld hl,0e260h		;7ea9
 FRUTAS_ESTADOS:		; Los ocho estados a (0, 1)
-	ld (hl),000h		;7eac
+	ld (hl),000h		;7eac   ; estado 0 y contador 1 para las ocho frutas: E260 lleva dos bytes por fruta
 	inc hl			;7eae
 	ld (hl),001h		;7eaf
 	inc hl			;7eb1
 	djnz FRUTAS_ESTADOS		;7eb2
 	ld hl,0e0fah		;7eb4
-	ld (hl),0fch		;7eb7
+	ld (hl),0fch		;7eb7   ; el patron (0xFC) y el color (0x0A) de esa tarjeta suelta, los bytes +2 y +3 de su ficha
 	inc hl			;7eb9
 	ld (hl),00ah		;7eba
 	ld de,0e0d0h		;7ebc
-	ld hl,07ed9h		;7ebf
+	ld hl,07ed9h		;7ebf   ; ocho bytes de 0x7ED9 a E0D0: las dos fichas de sprite que van delante de las frutas
 	ld bc,00008h		;7ec2
 	ldir		;7ec5
-	xor a			;7ec7
+	xor a			;7ec7   ; y a cero los tres contadores de la tanda
 	ld (0e270h),a		;7ec8
 	ld (0e238h),a		;7ecb
 	ld (0e276h),a		;7ece

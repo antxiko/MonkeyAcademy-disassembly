@@ -2126,3 +2126,95 @@ C 0x4A98 el tile 0x60, el azul del panel, en las tres celdas
 C 0x4ABF hasta tres bloques de 2x2 desde la lista de 0x4AE0
 C 0x4AC0 dos por dos: la cara del mono ocupa cuatro tiles
 C 0x4ACB dieciseis pixeles a la derecha, o sea dos columnas: el hueco siguiente
+
+# ----------------------------------------------------------------------
+# Tanda del 2026-08-21 (tercera zona): el azar, las frutas y los sprites.
+# ----------------------------------------------------------------------
+C 0x6EA1 unidades y decenas menos B, en BCD
+C 0x6EA5 el byte alto solo puede bajar por el prestamo, de ahi el `sbc a,000h`
+C 0x6EAA E152 lleva el signo del resultado
+C 0x6EAF si la resta ha prestado, el resultado cambia de signo: el `xor 001h` lo alterna
+
+C 0x6F0D se apartan los tres pares: la llaman desde media docena de sitios y no puede pisar nada
+C 0x6F10 la semilla es una PALABRA en E140, aunque los llamantes solo lean el byte bajo
+C 0x6F14 la mezcla barata: las dos mitades una contra otra y una rotacion
+C 0x6F18 los dos `sra` conservan el bit 7, asi que el bit alto de la semilla se arrastra en vez de perderse
+C 0x6F23 H entre 0 y 0x3F: la direccion que sale cae SIEMPRE dentro de la ROM de la BIOS, 0x0000-0x3FFF
+C 0x6F2B el `and 077h` deja cada nibble entre 0 y 7...
+C 0x6F32 ...y asi el `daa` de la suma siempre cuadra: la semilla se queda en cifras BCD validas, que es lo que necesitan los llamantes que cogen un nibble suelto y esperan 0-9 (0x4FCC, 0x4FE6, 0x6EDE)
+C 0x6F3E la semilla nueva, para la vuelta siguiente
+
+C 0x7E85 E051 es la fase
+C 0x7E88 menos uno y modulo 8: de la novena fase en adelante las tandas de fruta se repiten
+C 0x7E8E cinco veces doblado: 32 bytes por tanda
+C 0x7E93 las tandas empiezan en 0x6806
+C 0x7E97 a E0D8, las ocho fichas de sprite de la fruta, cuatro bytes cada una (E0D8-E0F7)
+C 0x7EA2 y los dos bytes de detras son la Y y la X de la tarjeta suelta, el sprite 18: con 0xE1 en la Y se queda escondida, que es justo lo que mira 0x6A20 antes de soltar otra
+
+C 0x7EAC estado 0 y contador 1 para las ocho frutas: E260 lleva dos bytes por fruta
+C 0x7EB7 el patron (0xFC) y el color (0x0A) de esa tarjeta suelta, los bytes +2 y +3 de su ficha
+C 0x7EBF ocho bytes de 0x7ED9 a E0D0: las dos fichas de sprite que van delante de las frutas
+C 0x7EC7 y a cero los tres contadores de la tanda
+
+C 0x5F80 E273 se queda con el juego de sprites que hay puesto, para no recargarlo si no cambia
+C 0x5F83 por cuatro: cada entrada de la tabla de 0x6044 son DOS punteros
+C 0x5F8B el primero, los patrones que van a 0x1800
+C 0x5F91 0x1800 es la tabla de patrones de sprite
+C 0x5F94 0xC0 bytes, o sea 24 patrones de ocho
+C 0x5F97 las dos copias con las interrupciones paradas: a medias se veria el mono cambiado por la mitad
+C 0x5F9C el segundo puntero de la pareja...
+C 0x5FA0 ...a 0x1C00, 0x400 mas alla, la otra mitad de la misma tabla. BC no se recarga porque COPIA_A_VRAM lo apila (0x489D): los dos bloques miden lo mismo
+
+C 0x4FB3 0xFF en E1AF es "no hay ninguna abierta"
+C 0x4FBA por dos: la lista del jugador lleva dos bytes por tarjeta
+C 0x4FC1 el bit 7 marca la tarjeta vieja para repintarla, o sea para CERRARLA
+C 0x4FC4 y la nueva pasa a ser la abierta
+C 0x4FC9 la primera de la pareja: no hay ninguna que cerrar
+
+C 0x4FD4 la lista de diez cifras vive en E1CF
+C 0x4FE5 se aparta la cuenta de barajadas, que AZAR se lleva B por delante
+C 0x4FED el nibble bajo del azar...
+C 0x4FEF ...y el alto, bajado con cuatro rotaciones
+C 0x4FF8 sumados en BCD, asi que aunque los dos pasen de nueve el `daa` deja cifras validas
+C 0x4FF9 y se coge la de las unidades: la posicion, de 0 a 9
+C 0x4FFD el 0 se convierte en 9, asi que la primera cifra NUNCA se queda donde esta
+
+C 0x5002 la lista de las diez cifras
+C 0x5005 se aparta la primera...
+C 0x5008 ...DE apunta a donde ella esta y HL a la siguiente...
+C 0x500A ...el `ldir` sube un sitio las que hay hasta la posicion elegida...
+C 0x500D ...y la primera cae en el hueco que queda al final
+C 0x500E la cuenta de barajadas, que el `ld b,000h` de arriba se ha comido
+C 0x5018 0x11 bytes: las diez tarjetas de dos bytes menos el primero, que lo pone el `ld (hl)`
+
+C 0x47E9 los patrones de sprite de la partida, guardados en 0x56BF
+C 0x47EF 0x80 bytes: cuatro sprites de 16x16, que son 32 bytes cada uno
+C 0x47F7 la plantilla de 0x4B04, las fichas de sprite del mono y los cangrejos
+C 0x47FA a E0B0, la copia en RAM de la tabla de atributos
+C 0x4802 y las mismas 0x20 otra vez a E108, la segunda tanda de fichas
+C 0x4817 la Y de la tercera ficha de E108 -o sea E110- pasa a 0x38...
+C 0x481C ...y su color, E113, a 0x44
+
+C 0x4822 el reloj antes que nada: la cuenta atras corre aunque no se mueva nadie
+C 0x482B cuatro veces doblado, los bits 2 y 3 -izquierda y derecha- caen en el 6 y el 7...
+C 0x482F ...y el `or b` devuelve los bits 4 y 5, los dos botones, que es lo que conserva el `and 0f0h`. Arriba y abajo, los bits 0 y 1, se quedan fuera a proposito
+C 0x4835 una vuelta de cada ocho: las tarjetas no hace falta repintarlas en cada fotograma
+
+C 0x484C E272 cuenta las vueltas del reparto de actores
+C 0x4859 el tope son cuatro: el mono y hasta tres cangrejos
+C 0x485D y por debajo del tope, uno mas: los fase/8 + 2 de la linea de arriba
+
+C 0x4B48 solo actua una vuelta de cada ocho, mirando los tres bits bajos de E1B0
+C 0x4B4D E1B1 es por que paso del guion va...
+C 0x4B50 ...y el guion empieza en 0x4B78
+
+C 0x4C13 el tile siguiente...
+C 0x4C14 ...en la celda de al lado
+C 0x4C1B ocho mas alla, que es lo que separa una fila de la siguiente
+C 0x4C21 tres vueltas: los tres tercios de la pantalla
+
+C 0x4C85 el byte del dibujo...
+C 0x4C86 ...a la VRAM tal cual
+C 0x4C8A ocho mas alla: los patrones van de ocho en ocho
+C 0x4C95 0xD7FC es -0x2804 en complemento a dos, asi que esta suma es la resta disfrazada y el acarreo dice si se ha pasado del final
+C 0x4C97 y HL vuelve como estaba: la suma solo servia para mirar la bandera
