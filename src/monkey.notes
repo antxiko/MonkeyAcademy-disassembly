@@ -398,7 +398,6 @@ B 0x4945 ----------------------------------------------------------------------
 L 0x4945 SUMA_PUNTOS       CDE (BCD) a E043 (1P) o E046 (2P); solo con partida en marcha (bit 6 de E002)
 C 0x4948 add a,a: el bit 6 (partida en marcha) pasa al SIGNO -por eso el ret P- y al carry va el bit 7, que es el que mira el jr nc de 0x494D para elegir jugador
 C 0x494F Bit 7 al carry: E046 para el 2P
-C 0x4965 Mas de 999999: se clava el record en 999999
 L 0x4974 VIDA_EXTRA        Cuando las decenas de millar de los puntos (E045) superan E052: una vida mas, se pintan, sonido 0x10 y E052 += 2. E052 arranca en 0: la primera a los 10000, luego cada 20000 (30000, 50000...). Medido: vida extra con 010260
 C 0x497C La siguiente, 20000 mas alla
 L 0x4995 RECORD            Si los puntos superan el record, se copian y se pinta
@@ -2031,3 +2030,99 @@ C 0x45D2 Los tres canales: E012 el A, E01C el B y E026 el C
 C 0x45DF Aqui se sale y se vuelve a mirar al fotograma siguiente; el GAME OVER, en cambio, se queda dando vueltas dentro
 C 0x45E0 E24A: quien mando aqui dejo apuntado a donde ir (7 el estado 16, 8 el 13 y el 14)
 C 0x45E9 E004 = 0x50 y el inc: se acaba en E24A + 1
+
+# ----------------------------------------------------------------------
+# Tanda del 2026-08-21: el subsistema de sonido, linea a linea.
+# ----------------------------------------------------------------------
+C 0x78E7 con las interrupciones paradas: SUENA corre en la interrupcion y toca estos mismos bloques de 0xE010
+C 0x78EC D = 0, o sea mirando prioridad; el rearranque de 0x7964 es el unico que entra con D = 1
+C 0x78F5 y se devuelven al salir: el corte dura lo que tarde en apuntar los canales, no lo que dure el sonido
+
+C 0x7937 dos atras: HL entra apuntando al +2 del canal -0xE012 o 0xE026- y las notas se apuntan desde el +0
+C 0x7939 un fotograma para la primera nota, asi que suena ya en la interrupcion siguiente
+C 0x793C duracion 1, que el primer evento de la pista la reescribe
+C 0x793F el numero de sonido en el +2, que es lo que marca el canal como OCUPADO: SUENA se salta los que valen 0
+C 0x7942 los dos bytes del puntero de pista, sacados de la tabla de 0x7A7B
+C 0x7948 ocho mas alla del +4 es el +12, o sea el +2 del canal siguiente: los dos `dec hl` de arriba lo bajan al +0
+C 0x794D y la palabra siguiente de la tabla, que las de un mismo sonido van seguidas, una por canal
+C 0x794E otro canal, si el sonido pidio mas de uno
+
+C 0x7992 el puntero de la pista, que vive en el +3 y el +4 del canal
+C 0x7999 0xFE y 0xFF son los dos eventos comunes a musica y efecto: repetir y apagar
+C 0x799F el bit 7 del NUMERO de sonido -no del evento- es lo que separa musica de efecto
+C 0x79A6 en un efecto, un evento 0x2n trae duracion nueva en el nibble bajo
+C 0x79AF esa duracion se guarda en el +1 y el evento sigue en el byte siguiente
+
+C 0x79B3 el nibble alto del primer byte es el volumen
+C 0x79B7 y el `xor (hl)` deja el bajo, que es el nibble alto del periodo
+C 0x79BA el byte siguiente completa el periodo, que es de 12 bits
+C 0x79BC se apunta por donde se ha quedado la pista, para el evento que viene
+C 0x79C3 el periodo al PSG, al par de registros que diga C
+C 0x79C7 cuatro rotaciones bajan el volumen a su nibble
+
+C 0x7A10 0xFD es el unico evento de control de la musica: cambia octava y volumen de golpe
+C 0x7A16 los tres bits bajos son la octava, al +5
+C 0x7A1B el `xor (hl)` deja los cinco altos y tres rotaciones los bajan: el volumen de arranque, al +6
+C 0x7A22 y detras del 0xFD viene ya la nota, sin evento propio
+
+C 0x7A24 nibble bajo: la nota, de 0 a 11, y el 12 es el silencio
+C 0x7A27 el `xor (hl)` deja el alto, que es el indice en la tabla de duraciones
+C 0x7A28 la pista avanza UN byte: una nota de musica ocupa uno solo
+C 0x7A2F cuatro rotaciones para bajarlo, que la tabla de 0x7AC3 es de bytes
+C 0x7A39 la duracion que salga...
+C 0x7A3A ...al +1, que es de donde NOTA_ARRANCA copia el +0
+C 0x7A3E resta 12 para ver si la nota era el silencio, y de paso deja el volumen en curso a CERO, que es justo lo que hace falta si lo era; si no lo era, 0x7A45 lo repone del +6
+
+# ----------------------------------------------------------------------
+# Tanda del 2026-08-21 (segunda zona): el marcador y los puntos.
+# ----------------------------------------------------------------------
+C 0x491F se aparta el byte de relleno, que RELLENA_VRAM se lo come
+C 0x4924 el byte alto de la direccion mas 8 son 0x800 mas alla: el tercio siguiente de la pantalla
+C 0x4931 el tercero sin `call`: hereda el retorno de aqui
+
+C 0x4938 los mismos 0x800 del tercio, pero copiando en vez de rellenando
+C 0x4942 y el tercero heredando el retorno, igual que arriba
+
+C 0x4951 unidades y decenas
+C 0x4955 la pareja baja se guarda en E porque RECORD_MIRA compara los seis digitos y necesita las dos bajas en DE
+C 0x4957 centenas y millares, arrastrando el acarreo de la pareja de abajo
+C 0x495C sin acarreo no hace falta tocar la pareja alta: se salta a mirar la vida extra
+C 0x495E y con acarreo, decenas y centenas de millar
+C 0x4965 pasado de 999999: los dos `ld (...),bc` se solapan y dejan 0x99 en E040, E041 y E042, o sea el RECORD clavado en 999999. Los puntos del jugador (E043-E045) se quedan como los deja el `daa`, o sea DANDO LA VUELTA: solo se planta el record
+
+C 0x4996 el byte alto del record...
+C 0x4999 ...contra el alto de los puntos, que HL trae apuntado
+C 0x499D con acarreo el record es menor: hay record nuevo
+C 0x499F y sin acarreo pero distinto, el record gana y no hay nada que hacer
+C 0x49A2 empatados en el byte alto, las dos parejas bajas se comparan de golpe con un `sbc hl,de` de 16 bits
+C 0x49A8 tampoco: el record aguanta
+
+C 0x4A3C sumar 10 y quedarse con el nibble bajo es restar 6 cuando la resta se paso: deja las unidades en BCD
+C 0x4A41 las decenas venian en el juego alternativo
+C 0x4A42 cuatro veces doblado: al nibble alto
+C 0x4A49 el byte BCD se monta en E1B0, que es un byte de paso, y desde ahi lo pinta el bucle de abajo
+C 0x4A4D un solo byte: dos cifras
+
+C 0x4A4F el byte BCD, que se necesita dos veces
+C 0x4A51 el nibble bajo mas 0x30 es el tile de esa cifra: los digitos empiezan en el tile 0x30
+C 0x4A57 y el alto, bajado con cuatro rotaciones
+C 0x4A5F primero la cifra de la izquierda...
+C 0x4A63 ...y detras la de la derecha, que estaba guardada en C
+C 0x4A67 los BCD se recorren hacia ABAJO y la pantalla hacia la derecha: los bytes van al reves que los tiles
+
+C 0x4A6C E003 es el contador de fotogramas
+C 0x4A74 uno de cada 32: el parpadeo
+C 0x4A78 0x391A es la fila 8, columna 26
+C 0x4A7C 'P', que es el tile 0x50
+C 0x4A80 el bit 7 de E002 dice si juega el segundo...
+C 0x4A84 ...y entonces el rotulo va a la fila 11 (0x397A) y el '1' pasa a '2'
+
+C 0x4A88 'U', el tile 0x55
+C 0x4A8B se apunta el VDP a leer esa celda
+C 0x4A8E el `call` a un `ret` suelto: los ciclos que el VDP necesita antes de que el dato este listo
+C 0x4A94 no hace falta llevar la cuenta del parpadeo: SE MIRA LA PANTALLA. Si hay azul se ponen las letras y si hay letras se pone azul
+C 0x4A98 el tile 0x60, el azul del panel, en las tres celdas
+
+C 0x4ABF hasta tres bloques de 2x2 desde la lista de 0x4AE0
+C 0x4AC0 dos por dos: la cara del mono ocupa cuatro tiles
+C 0x4ACB dieciseis pixeles a la derecha, o sea dos columnas: el hueco siguiente

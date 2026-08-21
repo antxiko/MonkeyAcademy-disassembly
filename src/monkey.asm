@@ -1461,10 +1461,10 @@ COLOR_FUENTE:		; Los colores de los tiles 0x30-0x5F (cifras y letras) = A en los
 	ld de,00180h		;4919
 	ld bc,00180h		;491c
 COLOR_TRES_TERCIOS:		; BC bytes de A en la VRAM DE y en los dos tercios siguientes
-	push af			;491f
+	push af			;491f   ; se aparta el byte de relleno, que RELLENA_VRAM se lo come
 	call RELLENA_VRAM		;4920
 	ld a,d			;4923
-	add a,008h		;4924
+	add a,008h		;4924   ; el byte alto de la direccion mas 8 son 0x800 mas alla: el tercio siguiente de la pantalla
 	ld d,a			;4926
 	pop af			;4927
 	push af			;4928
@@ -1473,17 +1473,17 @@ COLOR_TRES_TERCIOS:		; BC bytes de A en la VRAM DE y en los dos tercios siguient
 	add a,008h		;492d
 	ld d,a			;492f
 	pop af			;4930
-	jp RELLENA_VRAM		;4931
+	jp RELLENA_VRAM		;4931   ; el tercero sin `call`: hereda el retorno de aqui
 COPIA_TRES_TERCIOS:		; BC bytes de HL en la VRAM DE y en los dos tercios siguientes
 	call COPIA_A_VRAM		;4934
 	ld a,d			;4937
-	add a,008h		;4938
+	add a,008h		;4938   ; los mismos 0x800 del tercio, pero copiando en vez de rellenando
 	ld d,a			;493a
 	call COPIA_A_VRAM		;493b
 	ld a,d			;493e
 	add a,008h		;493f
 	ld d,a			;4941
-	jp COPIA_A_VRAM		;4942
+	jp COPIA_A_VRAM		;4942   ; y el tercero heredando el retorno, igual que arriba
 
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
@@ -1500,25 +1500,25 @@ SUMA_PUNTOS:		; CDE (BCD) a E043 (1P) o E046 (2P); solo con partida en marcha (b
 	jr nc,SUMA_PUNTOS_BCD		;494d
 	ld l,046h		;494f   ; Bit 7 al carry: E046 para el 2P
 SUMA_PUNTOS_BCD:		; La suma en BCD de las tres parejas
-	ld a,(hl)			;4951
+	ld a,(hl)			;4951   ; unidades y decenas
 	add a,e			;4952
 	daa			;4953
 	ld (hl),a			;4954
-	ld e,a			;4955
+	ld e,a			;4955   ; la pareja baja se guarda en E porque RECORD_MIRA compara los seis digitos y necesita las dos bajas en DE
 	inc l			;4956
-	ld a,(hl)			;4957
+	ld a,(hl)			;4957   ; centenas y millares, arrastrando el acarreo de la pareja de abajo
 	adc a,d			;4958
 	daa			;4959
 	ld (hl),a			;495a
 	ld d,a			;495b
-	jr nc,SUMA_PUNTOS_ALTO		;495c
-	inc hl			;495e
+	jr nc,SUMA_PUNTOS_ALTO		;495c   ; sin acarreo no hace falta tocar la pareja alta: se salta a mirar la vida extra
+	inc hl			;495e   ; y con acarreo, decenas y centenas de millar
 	ld a,(hl)			;495f
 	adc a,c			;4960
 	daa			;4961
 	ld (hl),a			;4962
 	jr nc,VIDA_EXTRA		;4963
-	ld bc,09999h		;4965   ; Mas de 999999: se clava el record en 999999
+	ld bc,09999h		;4965   ; pasado de 999999: los dos `ld (...),bc` se solapan y dejan 0x99 en E040, E041 y E042, o sea el RECORD clavado en 999999. Los puntos del jugador (E043-E045) se quedan como los deja el `daa`, o sea DANDO LA VUELTA: solo se planta el record
 	ld (0e040h),bc		;4968
 	ld (0e041h),bc		;496c
 	jp PINTA_RECORD		;4970
@@ -1546,18 +1546,18 @@ VIDA_EXTRA_DA:		; La siguiente ya apuntada: una vida mas
 RECORD:		; Si los puntos superan el record, se copian y se pinta
 	pop hl			;4995
 RECORD_MIRA:		; Compara los puntos con el record, byte a byte
-	ld a,(0e042h)		;4996
-	ld b,(hl)			;4999
+	ld a,(0e042h)		;4996   ; el byte alto del record...
+	ld b,(hl)			;4999   ; ...contra el alto de los puntos, que HL trae apuntado
 	sub (hl)			;499a
 	ex de,hl			;499b
 	pop de			;499c
-	jr c,RECORD_NUEVO		;499d
-	jr nz,PINTA_PUNTOS		;499f
+	jr c,RECORD_NUEVO		;499d   ; con acarreo el record es menor: hay record nuevo
+	jr nz,PINTA_PUNTOS		;499f   ; y sin acarreo pero distinto, el record gana y no hay nada que hacer
 	push hl			;49a1
-	ld hl,(0e040h)		;49a2
+	ld hl,(0e040h)		;49a2   ; empatados en el byte alto, las dos parejas bajas se comparan de golpe con un `sbc hl,de` de 16 bits
 	sbc hl,de		;49a5
 	pop hl			;49a7
-	jr nc,PINTA_PUNTOS		;49a8
+	jr nc,PINTA_PUNTOS		;49a8   ; tampoco: el record aguanta
 RECORD_NUEVO:		; Los puntos pasan a ser el record
 	ld (0e040h),de		;49aa
 	ld a,b			;49ae
@@ -1628,65 +1628,65 @@ FASE_DECENAS:		; Cuenta las decenas restando 10
 	ex af,af'			;4a39
 	jr FASE_DECENAS		;4a3a
 FASE_UNIDADES:		; Las unidades y las decenas juntas
-	add a,00ah		;4a3c
+	add a,00ah		;4a3c   ; sumar 10 y quedarse con el nibble bajo es restar 6 cuando la resta se paso: deja las unidades en BCD
 	and 00fh		;4a3e
 	ld h,a			;4a40
-	ex af,af'			;4a41
-	add a,a			;4a42
+	ex af,af'			;4a41   ; las decenas venian en el juego alternativo
+	add a,a			;4a42   ; cuatro veces doblado: al nibble alto
 	add a,a			;4a43
 	add a,a			;4a44
 	add a,a			;4a45
 	and 0f0h		;4a46
 	or h			;4a48
-	ld hl,0e1b0h		;4a49
+	ld hl,0e1b0h		;4a49   ; el byte BCD se monta en E1B0, que es un byte de paso, y desde ahi lo pinta el bucle de abajo
 	ld (hl),a			;4a4c
-	ld b,001h		;4a4d
+	ld b,001h		;4a4d   ; un solo byte: dos cifras
 PINTA_BYTES_BCD:		; B bytes BCD desde HL hacia abajo, dos cifras cada uno, en la VRAM DE
-	ld a,(hl)			;4a4f
+	ld a,(hl)			;4a4f   ; el byte BCD, que se necesita dos veces
 	push af			;4a50
-	and 00fh		;4a51
+	and 00fh		;4a51   ; el nibble bajo mas 0x30 es el tile de esa cifra: los digitos empiezan en el tile 0x30
 	or 030h		;4a53
 	ld c,a			;4a55
 	pop af			;4a56
-	and 0f0h		;4a57
+	and 0f0h		;4a57   ; y el alto, bajado con cuatro rotaciones
 	rra			;4a59
 	rra			;4a5a
 	rra			;4a5b
 	rra			;4a5c
 	or 030h		;4a5d
-	call VPOKE		;4a5f
+	call VPOKE		;4a5f   ; primero la cifra de la izquierda...
 	inc de			;4a62
-	ld a,c			;4a63
+	ld a,c			;4a63   ; ...y detras la de la derecha, que estaba guardada en C
 	call VPOKE		;4a64
-	dec hl			;4a67
+	dec hl			;4a67   ; los BCD se recorren hacia ABAJO y la pantalla hacia la derecha: los bytes van al reves que los tiles
 	inc de			;4a68
 	djnz PINTA_BYTES_BCD		;4a69
 	ret			;4a6b
 PARPADEA_1UP:		; Cada 32 fotogramas: "1UP" (fila 8) o "2UP" (fila 11) sobre los puntos del jugador que juega, alternando con el azul
-	ld a,(0e003h)		;4a6c
+	ld a,(0e003h)		;4a6c   ; E003 es el contador de fotogramas
 	ld bc,(0e002h)		;4a6f
 	ld b,a			;4a73
-	ld a,01fh		;4a74
+	ld a,01fh		;4a74   ; uno de cada 32: el parpadeo
 	and b			;4a76
 	ret nz			;4a77
-	ld de,0391ah		;4a78
+	ld de,0391ah		;4a78   ; 0x391A es la fila 8, columna 26
 	ld a,c			;4a7b
-	ld c,050h		;4a7c
+	ld c,050h		;4a7c   ; 'P', que es el tile 0x50
 	ld h,031h		;4a7e   ; '1' 'U' 'P'
-	bit 7,a		;4a80
+	bit 7,a		;4a80   ; el bit 7 de E002 dice si juega el segundo...
 	jr z,PARPADEA_1UP_MIRA		;4a82
-	ld de,0397ah		;4a84
+	ld de,0397ah		;4a84   ; ...y entonces el rotulo va a la fila 11 (0x397A) y el '1' pasa a '2'
 	inc h			;4a87
 PARPADEA_1UP_MIRA:		; Lee lo que hay en la VRAM: letras o azul
-	ld l,055h		;4a88
+	ld l,055h		;4a88   ; 'U', el tile 0x55
 	di			;4a8a
-	call VDP_DIRECCION		;4a8b
-	call RET_2		;4a8e
+	call VDP_DIRECCION		;4a8b   ; se apunta el VDP a leer esa celda
+	call RET_2		;4a8e   ; el `call` a un `ret` suelto: los ciclos que el VDP necesita antes de que el dato este listo
 	in a,(098h)		;4a91   ; Si esta el azul (0x60), letras; si estan las letras, azul
 	ei			;4a93
-	cp 060h		;4a94
+	cp 060h		;4a94   ; no hace falta llevar la cuenta del parpadeo: SE MIRA LA PANTALLA. Si hay azul se ponen las letras y si hay letras se pone azul
 	jr z,PARPADEA_1UP_PINTA		;4a96
-	ld a,060h		;4a98
+	ld a,060h		;4a98   ; el tile 0x60, el azul del panel, en las tres celdas
 	ld h,a			;4a9a
 	ld l,a			;4a9b
 	ld c,a			;4a9c
@@ -1712,15 +1712,15 @@ PINTA_VIDAS_UNA:		; Cada hueco: cara o azul, y 16 pixels a la derecha
 	jp p,PINTA_VIDA_BLOQUE		;4ab9
 	ld hl,04ae4h		;4abc
 PINTA_VIDA_BLOQUE:		; El bloque de 2x2 del hueco
-	push bc			;4abf
-	ld bc,00202h		;4ac0
+	push bc			;4abf   ; hasta tres bloques de 2x2 desde la lista de 0x4AE0
+	ld bc,00202h		;4ac0   ; dos por dos: la cara del mono ocupa cuatro tiles
 	push hl			;4ac3
 	push de			;4ac4
 	call PINTA_BLOQUE		;4ac5
 	pop de			;4ac8
 	pop hl			;4ac9
 	pop bc			;4aca
-	ld a,010h		;4acb
+	ld a,010h		;4acb   ; dieciseis pixeles a la derecha, o sea dos columnas: el hueco siguiente
 	add a,e			;4acd
 	ld e,a			;4ace
 	djnz PINTA_VIDAS_UNA		;4acf
@@ -6479,18 +6479,18 @@ SONIDO:		; Arranca el sonido A si hay partida en marcha (bit 6 de E002)
 	pop hl			;78e5
 	ret z			;78e6
 SONIDO_YA:		; Arranca el sonido A sin mirar nada (D = 0: con prioridad)
-	di			;78e7
+	di			;78e7   ; con las interrupciones paradas: SUENA corre en la interrupcion y toca estos mismos bloques de 0xE010
 	push hl			;78e8
 	push de			;78e9
 	push bc			;78ea
 	push af			;78eb
-	ld d,000h		;78ec
+	ld d,000h		;78ec   ; D = 0, o sea mirando prioridad; el rearranque de 0x7964 es el unico que entra con D = 1
 	call SONIDO_ARRANCA		;78ee
 	pop af			;78f1
 	pop bc			;78f2
 	pop de			;78f3
 	pop hl			;78f4
-	ei			;78f5
+	ei			;78f5   ; y se devuelven al salir: el corte dura lo que tarde en apuntar los canales, no lo que dure el sonido
 	ret			;78f6
 SONIDO_DEL_ACTOR:		; Un efecto pedido desde un actor: los cangrejos solo pueden pedir el 9; los demas son del mono
 	cp 009h		;78f7
@@ -6534,25 +6534,25 @@ SONIDO_PISTAS:		; Indice = numero & 0x3F en la tabla de 0x7A7B; una palabra por 
 	call HL_MAS_A		;7933
 	ex de,hl			;7936
 SONIDO_CANAL:		; Arranca un canal: 1 fotograma, duracion 1, el numero, y el puntero de la tabla; y al siguiente canal (10 bytes mas alla)
-	dec hl			;7937
+	dec hl			;7937   ; dos atras: HL entra apuntando al +2 del canal -0xE012 o 0xE026- y las notas se apuntan desde el +0
 	dec hl			;7938
-	ld (hl),001h		;7939
+	ld (hl),001h		;7939   ; un fotograma para la primera nota, asi que suena ya en la interrupcion siguiente
 	inc hl			;793b
-	ld (hl),001h		;793c
+	ld (hl),001h		;793c   ; duracion 1, que el primer evento de la pista la reescribe
 	inc hl			;793e
-	ld a,c			;793f
+	ld a,c			;793f   ; el numero de sonido en el +2, que es lo que marca el canal como OCUPADO: SUENA se salta los que valen 0
 	ld (hl),a			;7940
 	inc hl			;7941
-	ld a,(de)			;7942
+	ld a,(de)			;7942   ; los dos bytes del puntero de pista, sacados de la tabla de 0x7A7B
 	ld (hl),a			;7943
 	inc hl			;7944
 	inc de			;7945
 	ld a,(de)			;7946
 	ld (hl),a			;7947
-	ld a,008h		;7948
+	ld a,008h		;7948   ; ocho mas alla del +4 es el +12, o sea el +2 del canal siguiente: los dos `dec hl` de arriba lo bajan al +0
 	call HL_MAS_A		;794a
-	inc de			;794d
-	djnz SONIDO_CANAL		;794e
+	inc de			;794d   ; y la palabra siguiente de la tabla, que las de un mismo sonido van seguidas, una por canal
+	djnz SONIDO_CANAL		;794e   ; otro canal, si el sonido pidio mas de uno
 SONIDO_IGUAL:		; El mismo numero: solo el 2 se repite
 	cp 002h		;7950
 	jr z,SONIDO_PISTAS		;7952
@@ -6614,36 +6614,36 @@ SUENA_PASO:		; Musica (bit 7) por 79E5; efecto: descuenta y, a cero, siguiente e
 	dec (ix+000h)		;798e
 	ret nz			;7991
 SIGUIENTE_EVENTO:		; Lee la pista: 0xFE repite, 0xFF apaga, musica por 7A10, efecto aqui
-	ld l,(ix+003h)		;7992
+	ld l,(ix+003h)		;7992   ; el puntero de la pista, que vive en el +3 y el +4 del canal
 	ld h,(ix+004h)		;7995
 	ld a,(hl)			;7998
-	cp 0feh		;7999
+	cp 0feh		;7999   ; 0xFE y 0xFF son los dos eventos comunes a musica y efecto: repetir y apagar
 	jr z,SONIDO_REPITE		;799b
 	jr nc,CANAL_APAGA		;799d
-	bit 7,(ix+002h)		;799f
+	bit 7,(ix+002h)		;799f   ; el bit 7 del NUMERO de sonido -no del evento- es lo que separa musica de efecto
 	jp nz,MUSICA_EVENTO		;79a3
-	and 0f0h		;79a6
+	and 0f0h		;79a6   ; en un efecto, un evento 0x2n trae duracion nueva en el nibble bajo
 	cp 020h		;79a8
 	jr nz,EFECTO_EVENTO		;79aa
 	ld a,(hl)			;79ac
 	and 00fh		;79ad
-	ld (ix+001h),a		;79af
+	ld (ix+001h),a		;79af   ; esa duracion se guarda en el +1 y el evento sigue en el byte siguiente
 	inc hl			;79b2
 EFECTO_EVENTO:		; Nibble alto volumen, nibble bajo y byte siguiente el periodo
-	ld a,(hl)			;79b3
+	ld a,(hl)			;79b3   ; el nibble alto del primer byte es el volumen
 	and 0f0h		;79b4
 	ld b,a			;79b6
-	xor (hl)			;79b7
+	xor (hl)			;79b7   ; y el `xor (hl)` deja el bajo, que es el nibble alto del periodo
 	ld d,a			;79b8
 	inc hl			;79b9
-	ld e,(hl)			;79ba
+	ld e,(hl)			;79ba   ; el byte siguiente completa el periodo, que es de 12 bits
 	inc hl			;79bb
-	ld (ix+003h),l		;79bc
+	ld (ix+003h),l		;79bc   ; se apunta por donde se ha quedado la pista, para el evento que viene
 	ld (ix+004h),h		;79bf
 	ex de,hl			;79c2
-	call PSG_PERIODO		;79c3
+	call PSG_PERIODO		;79c3   ; el periodo al PSG, al par de registros que diga C
 	ld a,b			;79c6
-	rrca			;79c7
+	rrca			;79c7   ; cuatro rotaciones bajan el volumen a su nibble
 	rrca			;79c8
 	rrca			;79c9
 	rrca			;79ca
@@ -6688,36 +6688,36 @@ PSG_VOLUMEN:		; Registro 8/9/10 (segun C) = H
 	out (0a1h),a		;7a0d
 	ret			;7a0f
 MUSICA_EVENTO:		; 0xFD: octava (bits 0-2) y volumen (bits 3-7); luego la nota
-	cp 0fdh		;7a10
+	cp 0fdh		;7a10   ; 0xFD es el unico evento de control de la musica: cambia octava y volumen de golpe
 	jr nz,MUSICA_NOTA		;7a12
 	inc hl			;7a14
 	ld a,(hl)			;7a15
-	and 007h		;7a16
+	and 007h		;7a16   ; los tres bits bajos son la octava, al +5
 	ld (ix+005h),a		;7a18
-	xor (hl)			;7a1b
+	xor (hl)			;7a1b   ; el `xor (hl)` deja los cinco altos y tres rotaciones los bajan: el volumen de arranque, al +6
 	rrca			;7a1c
 	rrca			;7a1d
 	rrca			;7a1e
 	ld (ix+006h),a		;7a1f
-	inc hl			;7a22
+	inc hl			;7a22   ; y detras del 0xFD viene ya la nota, sin evento propio
 	ld a,(hl)			;7a23
 MUSICA_NOTA:		; Nibble bajo la nota, alto el indice de duracion; 12 es silencio (no repone el volumen)
-	and 00fh		;7a24
+	and 00fh		;7a24   ; nibble bajo: la nota, de 0 a 11, y el 12 es el silencio
 	ld b,a			;7a26
-	xor (hl)			;7a27
-	inc hl			;7a28
+	xor (hl)			;7a27   ; el `xor (hl)` deja el alto, que es el indice en la tabla de duraciones
+	inc hl			;7a28   ; la pista avanza UN byte: una nota de musica ocupa uno solo
 	ld (ix+003h),l		;7a29
 	ld (ix+004h),h		;7a2c
-	rrca			;7a2f
+	rrca			;7a2f   ; cuatro rotaciones para bajarlo, que la tabla de 0x7AC3 es de bytes
 	rrca			;7a30
 	rrca			;7a31
 	rrca			;7a32
 	ld hl,07ac3h		;7a33
 	call HL_MAS_A		;7a36
-	ld a,(hl)			;7a39
-	ld (ix+001h),a		;7a3a
+	ld a,(hl)			;7a39   ; la duracion que salga...
+	ld (ix+001h),a		;7a3a   ; ...al +1, que es de donde NOTA_ARRANCA copia el +0
 	ld a,b			;7a3d
-	sub 00ch		;7a3e
+	sub 00ch		;7a3e   ; resta 12 para ver si la nota era el silencio, y de paso deja el volumen en curso a CERO, que es justo lo que hace falta si lo era; si no lo era, 0x7A45 lo repone del +6
 	ld (ix+007h),a		;7a40
 	jr z,MUSICA_PERIODO		;7a43
 	ld a,(ix+006h)		;7a45

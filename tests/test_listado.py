@@ -167,7 +167,7 @@ class TestListado(unittest.TestCase):
             "comentarios": len(directivas("C")),
             "rangos": len(directivas("D")),
         }
-        esperado = {"etiquetas": 498, "comentarios": 997, "rangos": 121}
+        esperado = {"etiquetas": 498, "comentarios": 1071, "rangos": 121}
         self.assertEqual(cuentas, esperado,
                          "las cifras del arbol han cambiado: hay que "
                          "actualizar README.md y README.es.md")
@@ -177,7 +177,7 @@ class TestListado(unittest.TestCase):
         for fichero, sep in (("README.md", ","), ("README.es.md", ".")):
             with open(os.path.join(RAIZ, fichero), encoding="utf-8") as f:
                 texto = f.read()
-            for cifra in ("7%s422" % sep, "8%s962" % sep, "498", "997", "121"):
+            for cifra in ("7%s422" % sep, "8%s962" % sep, "498", "1071", "121"):
                 self.assertIn(cifra, texto, "%s no publica %s" % (fichero, cifra))
 
 
