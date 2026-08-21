@@ -356,9 +356,9 @@ LEE_TECLADO:		; Monta el mismo mapa de bits con las filas 7 (SELECT) y 8 (flecha
 	jr GUARDA_MANDOS		;41fd
 BORRA_PANTALLA:		; Tabla de nombres entera (0x3800, 768 bytes) a cero
 	ld de,03800h		;41ff
-	ld bc,00300h		;4202
+	ld bc,00300h		;4202   ; 768 bytes: los 24 x 32 tiles de la tabla de nombres. Los patrones y los colores no se tocan
 	xor a			;4205
-	jp RELLENA_VRAM		;4206
+	jp RELLENA_VRAM		;4206   ; Salta en vez de llamar: el ret de RELLENA_VRAM devuelve ya al que pidio borrar
 
 ; ----------------------------------------------------------------------
 ; ----------------------------------------------------------------------
@@ -379,7 +379,7 @@ BORRA_PANTALLA:		; Tabla de nombres entera (0x3800, 768 bytes) a cero
 PASO_DEL_JUEGO:		; E003++, el 1UP a partir del estado 11, las teclas 1-5 salvo en el 18, y el estado por la tabla
 	ld hl,0e003h		;4209
 	inc (hl)			;420c   ; Un fotograma mas
-	ld a,(0e000h)		;420d   ; En el estado 18 (opcion recien elegida) no se leen las teclas
+	ld a,(0e000h)		;420d   ; El estado manda dos veces seguidas: aqui para el 1UP y en 0x421B para las teclas
 	cp 012h		;4210   ; En el estado 18 (opcion recien elegida) las teclas no se miran
 	jr z,PASO_TECLAS		;4212
 	cp 00bh		;4214   ; Del estado 11 en adelante ya hay partida: el 1UP parpadea
@@ -445,50 +445,50 @@ ESTADO_0_TITULO:		; Musica del titulo (0xA1), pantalla apagada, sprites y nombre
 	inc (hl)			;4280
 	jp SIGUIENTE_ESTADO		;4281
 ESTADO_1_GLOBOS:		; Suben los globos con la ecuacion (0x713D); al llegar todos, las frutas de la fase, los sprites de juego y al estado 7 (la demo)
-	call GLOBOS_SUBEN		;4284
+	call GLOBOS_SUBEN		;4284   ; Carry cuando los E058 globos han llegado arriba; mientras, se sale y se vuelve al fotograma siguiente
 	ret nc			;4287
-	ld a,006h		;4288
+	ld a,006h		;4288   ; Estado 6 aqui mas el inc de 0x4661: al 7, la demo jugando. Montar la demo (el 6 de verdad) ya se hizo en 0x42E1
 	ld (0e000h),a		;428a
-	call FRUTAS_DE_LA_FASE		;428d
+	call FRUTAS_DE_LA_FASE		;428d   ; Con la ecuacion ya escrita en la pantalla: las ocho frutas de la fase y los sprites del mono y los cangrejos
 	call SPRITES_DE_JUEGO		;4290
-	jp SIGUIENTE_ESTADO		;4293
+	jp SIGUIENTE_ESTADO		;4293   ; A este estado solo se llega desde el 6 (0x4328): el estado 0 se salta el 1 con su doble inc
 ESTADO_2_LOGO:		; Cada dos fotogramas sube una fila el KONAMI (0x6C42); al acabar, "VIDEO CARTRIDGE" y 0x80 fotogramas de espera
-	ld a,(0e003h)		;4296
+	ld a,(0e003h)		;4296   ; El bit 0 de E003 pasa al carry: el logotipo sube un fotograma si y otro no
 	rra			;4299
 	ret nc			;429a
-	call SUBE_LOGO_KONAMI		;429b
+	call SUBE_LOGO_KONAMI		;429b   ; Devuelve Z cuando el dec de 0x6C6F deja E00A a cero: las 17 filas ya subidas
 	ret nz			;429e
-	ld hl,06c2ch		;429f
+	ld hl,06c2ch		;429f   ; "- VIDEO CARTRIDGE -" en la fila 11, debajo del KONAMI ya parado
 	call PINTA_LISTA_TILES		;42a2
-	ld a,080h		;42a5
+	ld a,080h		;42a5   ; E004 = 0x80: 128 fotogramas de logotipo quieto antes de empezar el rotulo
 	jp SIGUIENTE_ESTADO_A		;42a7
 ESTADO_3_ESPERA:		; Cuando E004 llega a cero, prepara la zona del titulo (0x4BF0) y los cursores del dibujo
-	ld hl,0e004h		;42aa
+	ld hl,0e004h		;42aa   ; E004 baja un fotograma cada vez; hasta que no llega a cero no se pasa de aqui
 	dec (hl)			;42ad
 	ret nz			;42ae
 	call PREPARA_TITULO		;42af
-	ld hl,025c0h		;42b2
+	ld hl,025c0h		;42b2   ; E246 es el cursor en la VRAM: 0x25C0 son los patrones del tile 0xB8, el primero del rotulo
 	ld (0e246h),hl		;42b5
-	ld hl,00000h		;42b8
+	ld hl,00000h		;42b8   ; E248 es el cursor dentro del dibujo de 0x4CD0: se empieza por su primer byte
 	ld (0e248h),hl		;42bb
 	jp SIGUIENTE_ESTADO		;42be
 ESTADO_4_TITULO:		; Cada 8 fotogramas una fila de pixels del "Monkey Academy" (0x4C77); al acabar, el menu (0x6B99) y espera 256 fotogramas
-	ld a,(0e003h)		;42c1
+	ld a,(0e003h)		;42c1   ; Una fila de pixels cada ocho fotogramas: las 21 del dibujo tardan 168
 	and 007h		;42c4
 	ret nz			;42c6
-	call TITULO_UNA_FILA		;42c7
+	call TITULO_UNA_FILA		;42c7   ; Carry mientras quede dibujo; al acabar, 0x4CC8 ya ha puesto el "(c)Konami 1984"
 	ret c			;42ca
-	ld hl,06b99h		;42cb
+	ld hl,06b99h		;42cb   ; "PLAY SELECT" y las cuatro opciones, debajo del rotulo recien dibujado
 	call PINTA_LISTA_TILES		;42ce
-	xor a			;42d1
+	xor a			;42d1   ; E004 = 0: el estado 5 lo descuenta desde ahi, o sea 256 fotogramas de menu
 	jp SIGUIENTE_ESTADO_A		;42d2
 ESTADO_5_MENU:		; Cuando E004 llega a cero, E00B = 0 y a montar la demo
-	ld hl,0e004h		;42d5
+	ld hl,0e004h		;42d5   ; El primer dec deja E004 en 0xFF: 256 fotogramas de menu antes de la demo
 	dec (hl)			;42d8
 	ret nz			;42d9
-	xor a			;42da
+	xor a			;42da   ; E00B a cero: la demo empieza con el guion entero por delante
 	ld (0e00bh),a		;42db
-	jp SIGUIENTE_ESTADO_50		;42de
+	jp SIGUIENTE_ESTADO_50		;42de   ; E004 = 0x50 y al estado 6, que monta la demo detras de la cortinilla
 ESTADO_6_DEMO_MONTA:		; Cortinilla, tiles de la ecuacion en 0xB8, jugador 1, fase 1 y el marcador; ecuacion 93+25 fija, tarjetas 2-7, y los globos
 	call CORTINILLA		;42e1
 	ret p			;42e4   ; La cortinilla devuelve P mientras le quedan columnas
@@ -611,34 +611,34 @@ DATA_recuadro_player:
 
 
 ESTADO_10_MONTA_FASE:		; Cuando E004 llega a cero: marcador, tiempo, tarjetas de la fase (0x4F81) y, si toca, la ecuacion nueva (0x6F96), la cifra escondida (0x7253) y las cifras barajadas (0x4FCC); luego los globos y al READY
-	ld hl,0e004h		;43ba
+	ld hl,0e004h		;43ba   ; Los 0x65 fotogramas del cartel PLAYER n / LEVEL n que puso 0x43B0
 	dec (hl)			;43bd
 	ret nz			;43be
-	call PINTA_MARCADOR		;43bf
+	call PINTA_MARCADOR		;43bf   ; El cartel tapaba el marcador: se vuelve a pintar entero
 	ld hl,0e056h		;43c2
 	call PINTA_RELOJ		;43c5
 	call TARJETAS_DE_LA_FASE		;43c8
 	ld a,(0e053h)		;43cb   ; E053: hace falta ecuacion nueva (la primera del turno, o al resolver la anterior)
 	or a			;43ce
 	jr z,MONTA_FASE_GLOBOS		;43cf
-	di			;43d1
+	di			;43d1   ; El di y el ei envuelven a las tres, aunque ninguna de ellas -ni nada de lo que llaman- toca el VDP: por que esta, sin cerrar
 	call GENERA_ECUACION		;43d2
 	call ELIGE_INCOGNITA		;43d5
 	call ECUACION_AL_JUGADOR		;43d8
 	ei			;43db
-	call BARAJA_CIFRAS		;43dc
+	call BARAJA_CIFRAS		;43dc   ; Barajar las cifras se queda fuera del di
 MONTA_FASE_GLOBOS:		; Los globos, el sonido 1 y al READY
 	call MONTA_GLOBOS		;43df
 	ld a,001h		;43e2   ; Sonido 1: la ecuacion arranca
 	call SONIDO		;43e4
 	xor a			;43e7
-	ld (0e1b2h),a		;43e8
-	jp SIGUIENTE_ESTADO_A		;43eb
+	ld (0e1b2h),a		;43e8   ; E1B2 = 0: el giro con que 0x46BA vuelca los sprites vuelve a empezar
+	jp SIGUIENTE_ESTADO_A		;43eb   ; E004 = 0 al entrar en el READY, que no lo mira: ahi quien cuenta es E242
 ESTADO_11_READY:		; Primero suben los globos (0x713D); despues el recuadro READY con la cuenta atras 15..0 en segundos, o hasta que se pulse un boton
 	ld a,(0e241h)		;43ee
 	or a			;43f1
 	jr nz,READY_CUENTA		;43f2
-	ld a,(0e01ch)		;43f4
+	ld a,(0e01ch)		;43f4   ; Lee el canal B y lo tira: GLOBOS_SUBEN empieza con ld b,0 y no mira ni A ni las banderas. Tres bytes muertos
 	or a			;43f7
 	call GLOBOS_SUBEN		;43f8
 	ret nc			;43fb
@@ -661,47 +661,47 @@ ESTADO_11_READY:		; Primero suben los globos (0x713D); despues el recuadro READY
 	ld hl,04482h		;4423
 	call PINTA_LISTA_TILES		;4426
 	ld b,001h		;4429
-	ld hl,0e242h		;442b   ; El 15 en la fila 12, columna 12
+	ld hl,0e242h		;442b   ; El 15 en la fila 13, columna 12 (0x39AC): justo debajo del READY, que va en la 12
 	ld de,039ach		;442e
 	jp PINTA_BYTES_BCD		;4431
 READY_CUENTA:		; Cada 64 fotogramas resta uno (BCD); un boton nuevo o el cero arrancan
-	ld hl,0e242h		;4434
+	ld hl,0e242h		;4434   ; E242: los segundos que quedan, en BCD
 	ld a,(hl)			;4437
 	or a			;4438
-	jp z,READY_ARRANCA		;4439
+	jp z,READY_ARRANCA		;4439   ; A cero se arranca sin esperar a ningun boton
 	ld hl,0e008h		;443c   ; Lo pulsado ahora y no antes
 	ld a,(hl)			;443f
 	inc hl			;4440
-	xor (hl)			;4441
+	xor (hl)			;4441   ; antes XOR ahora, y luego AND ahora: queda solo lo que se acaba de pulsar, y se guarda en la pila hasta 0x4460
 	and (hl)			;4442
 	push af			;4443
 	ld a,093h		;4444   ; Sin boton nuevo: se mantiene la musica del READY (0x93)
 	call z,SONIDO		;4446
-	ld a,(0e003h)		;4449
+	ld a,(0e003h)		;4449   ; Uno de cada 64 fotogramas: un segundo
 	and 03fh		;444c
 	jr nz,READY_CUENTA_FIN		;444e
 	ld hl,0e242h		;4450
 	ld a,(hl)			;4453
-	sub 001h		;4454
+	sub 001h		;4454   ; sub 1 y daa: la resta en BCD, que es como esta el 15
 	daa			;4456
 	ld (hl),a			;4457
-	ld b,001h		;4458
+	ld b,001h		;4458   ; Un byte, dos cifras, en la fila 13 columna 12
 	ld de,039ach		;445a
 	call PINTA_BYTES_BCD		;445d
 READY_CUENTA_FIN:		; Con boton nuevo (NZ) arranca; si no, sigue contando
 	pop af			;4460
 	ret z			;4461
 READY_ARRANCA:		; Borra el recuadro (0x448A), esconde los sprites y al estado 12
-	xor a			;4462
+	xor a			;4462   ; E1B2 a 0 (el giro de los sprites empieza de nuevo) y E241 a 0 (fuera de la cuenta atras)
 	ld (0e1b2h),a		;4463
 	ld (0e241h),a		;4466
-	ld hl,0448ah		;4469
+	ld hl,0448ah		;4469   ; El mismo rectangulo con el tile 0: borra el cartel READY
 	call PINTA_RECUADRO		;446c
-	ld a,0e1h		;446f
+	ld a,0e1h		;446f   ; Los 128 bytes de la tabla de sprites a 0xE1, los CUATRO de cada uno; con la Y en 0xE1 no se ve ninguno hasta el volcado siguiente
 	ld de,03b00h		;4471
 	ld bc,00080h		;4474
 	call RELLENA_VRAM		;4477
-	jp SIGUIENTE_ESTADO_A		;447a
+	jp SIGUIENTE_ESTADO_A		;447a   ; RELLENA_VRAM devuelve A intacto, asi que E004 se queda con 0xE1; el estado 12 no lo mira
 
 ; ----------------------------------------------------------------------
 ; DATOS recuadro_ready: Rectangulo para 0x66BB: 7 columnas x 4 filas del tile
@@ -773,19 +773,19 @@ PARTIDA_PASO:		; Profesor, respuesta, tarjetas, frutas, mono y cangrejos, y el r
 	ld a,(0e055h)		;44d3
 	sub 010h		;44d6
 	jr nc,PARTIDA_RELOJ		;44d8
-	ld a,00ch		;44da
+	ld a,00ch		;44da   ; El 0x0C es menor que 0x20, o sea que pasa por el filtro de actor de 0x78F7; al volver de 0x4822 el ultimo actor recorrido es el mono (B = 1, IX = E0B0) y su nibble bajo es 0, que es justo el que deja pasar el efecto
 	call SONIDO		;44dc
 PARTIDA_RELOJ:		; Tiempo a cero: se pierde la vida
 	ld hl,(0e055h)		;44df   ; Tiempo a cero: se pierde la vida (E00C = 1), sonido 0xA0, cara de susto y el reloj vuelve a 05:00
-	ld a,l			;44e2
+	ld a,l			;44e2   ; E055 los segundos y E056 los minutos, los dos en BCD: los dos a cero es el tiempo agotado
 	or h			;44e3
 	jr nz,PARTIDA_DECIDE		;44e4
 	inc a			;44e6
 	ld (0e00ch),a		;44e7
-	ld a,0a0h		;44ea
+	ld a,0a0h		;44ea   ; 0xA0 es el sonido que 0x7925 apunta como 0x20: entra por encima de lo que suene y luego lo pisa cualquiera
 	call SONIDO		;44ec
 	call CARA_DE_SUSTO		;44ef
-	ld hl,00500h		;44f2
+	ld hl,00500h		;44f2   ; 05:00 otra vez: L a E055 (segundos) y H a E056 (minutos)
 	ld (0e055h),hl		;44f5
 PARTIDA_DECIDE:		; E00C al 13, E00D al 16, si no sigue en el 12
 	ld hl,0e00ch		;44f8   ; E00C: al estado 13; E00D: al 16; si no, sigue
@@ -805,7 +805,7 @@ ESTADO_13_VIDA_O_RESUELTA:		; Suelta la tarjeta, esconde los cangrejos, restaura
 	xor a			;4511
 	ld (0e00ch),a		;4512
 	di			;4515
-	ld hl,056bfh		;4516   ; Los sprites del mono (0x56BF) y de los cangrejos (0x59FF) vuelven a su sitio
+	ld hl,056bfh		;4516   ; El juego de sprites NORMAL del mono vuelve a 0x1800 y a 0x1C00: 0x59FF es el mono andando hacia la izquierda (0x6044), no los cangrejos. Deshace lo que hubiera cargado 0x5F80 (el mono con la fruta o con la tarjeta)
 	ld de,01800h		;4519
 	ld bc,000c0h		;451c
 	call COPIA_A_VRAM		;451f
@@ -816,23 +816,23 @@ ESTADO_13_VIDA_O_RESUELTA:		; Suelta la tarjeta, esconde los cangrejos, restaura
 	ld a,(0e050h)		;452c   ; E050 = 0: se acabaron las vidas
 	or a			;452f
 	jr nz,SIGUE_O_CAMBIA		;4530
-GAME_OVER:		; Espera a que callen los tres canales; sonido 0x9D, "GAME OVER" y "PLAYER n" en el recuadro azul, y al estado 14 tras 0x50 fotogramas
-	ld a,(0e012h)		;4532
+GAME_OVER:		; Espera a que callen los tres canales; sonido 0x9D, "GAME OVER" y "PLAYER n" en el recuadro azul, y al estado 15 (14 mas el inc de 0x465E) tras 256 fotogramas, porque 0x4560 deja E004 a 0
+	ld a,(0e012h)		;4532   ; Los tres numeros que estan sonando: E012 el canal A, E01C el B y E026 el C
 	ld b,a			;4535
 	ld a,(0e01ch)		;4536
 	or b			;4539
 	ld b,a			;453a
 	ld a,(0e026h)		;453b
 	or b			;453e
-	jr nz,GAME_OVER		;453f
+	jr nz,GAME_OVER		;453f   ; Se queda dando vueltas AQUI, dentro de la interrupcion. Funciona porque 0x4054 ya hizo ei: cada fotograma entra otra interrupcion, hace sonar los canales y se va por el candado de E005. Los otros dos sitios que esperan al sonido (0x4378 y 0x45D2) salen con ret
 	call ESCONDE_SPRITES		;4541
 	ld a,09dh		;4544
 	call SONIDO		;4546
-	ld hl,066ebh		;4549
+	ld hl,066ebh		;4549   ; Primero borra la zona de juego entera (25 columnas x 24 filas) y encima pone el recuadro azul
 	call PINTA_RECUADRO		;454c
 	ld hl,043b5h		;454f
 	call PINTA_RECUADRO		;4552
-	ld hl,06c17h		;4555
+	ld hl,06c17h		;4555   ; "GAME OVER" en la fila 13 y, por el 0xFE que cierra 0x6C17, "PLAYER" en la 11 con su numero
 	call PLAYER_N		;4558
 	ld a,00eh		;455b   ; Estado 14 mas el inc de 0x465E: al 15
 	ld (0e000h),a		;455d
@@ -848,67 +848,67 @@ SIGUE_O_CAMBIA:		; Con vidas: si el otro jugador tambien tiene, al estado 14 (ca
 	ld (0e000h),a		;4572
 	ret			;4575
 ESCONDE_CANGREJOS:		; Los sprites 2 a 7 (E0B8-E0CF) fuera de la pantalla (Y = 0xE1)
-	ld hl,0e0b8h		;4576
+	ld hl,0e0b8h		;4576   ; Los seis sprites de los tres cangrejos, dos cada uno, desde E0B8
 	ld de,0e0b9h		;4579
 	ld bc,00017h		;457c
-	ld (hl),0e1h		;457f
-	ldir		;4581
+	ld (hl),0e1h		;457f   ; El ldir reparte el 0xE1 por los 24 bytes: la Y, la X, el patron y el color de cada sprite
+	ldir		;4581   ; Los dos del mono (E0B0-E0B7) no se tocan: se queda en la pantalla
 	ret			;4583
 ESTADO_14_CAMBIO:		; Intercambia E050-E06F con E080-E09F, cambia el bit 7 de E002 (el jugador) y su puerto de joystick, y al 17 con E24A = 8
-	ld hl,0e050h		;4584
+	ld hl,0e050h		;4584   ; 32 bytes por jugador: E050-E06F el que juega, E080-E09F el que espera
 	ld de,0e080h		;4587
 	ld b,020h		;458a
 	call INTERCAMBIA		;458c
-	ld hl,0e002h		;458f
+	ld hl,0e002h		;458f   ; El bit 7 de E002 dice quien juega; se le da la vuelta
 	ld a,(hl)			;4592
 	xor 080h		;4593
 	ld (hl),a			;4595
-	call PSG_PUERTO_JOYSTICK		;4596
-	ld a,008h		;4599
+	call PSG_PUERTO_JOYSTICK		;4596   ; Y el mando: el registro 15 del PSG pasa a leer el otro puerto
+	ld a,008h		;4599   ; E24A = 8: el estado 17 lo copia y su inc lo deja en 9, el PLAYER n del que entra
 	ld (0e24ah),a		;459b
 	jr AL_ESTADO_17		;459e
 ESTADO_15_DECIDE:		; Cuando E004 llega a cero: si el otro jugador tiene vidas, al 14 (cambio); si no, se acabo la partida (bit 6 de E002 a cero) y al titulo
-	ld hl,0e004h		;45a0
+	ld hl,0e004h		;45a0   ; Los 256 fotogramas del GAME OVER (0x4560 dejo E004 a 0) o los 0x50 del cambio de jugador
 	dec (hl)			;45a3
 	ret nz			;45a4
-	ld a,(0e080h)		;45a5
+	ld a,(0e080h)		;45a5   ; E080: las vidas del que espera. Si le quedan, al 14 a intercambiar
 	or a			;45a8
-	ld a,00eh		;45a9
+	ld a,00eh		;45a9   ; ld a,n no toca las banderas: el 14 ya esta cargado cuando se mira el jr nz de la comparacion anterior
 	jr nz,DECIDE_ESTADO		;45ab
-	ld hl,0e002h		;45ad
+	ld hl,0e002h		;45ad   ; Bit 6 de E002 fuera: se acabo la partida, y 0x78DF deja de dejar pasar sonidos
 	res 6,(hl)		;45b0
-	ld a,050h		;45b2
+	ld a,050h		;45b2   ; 0x50 fotogramas que no llega a descontar nadie: el estado 0 no mira E004 y el 2 lo deja en 0x80 antes de que el 3 lo use
 	ld (0e004h),a		;45b4
 	xor a			;45b7
 DECIDE_ESTADO:		; E000 = A
 	ld (0e000h),a		;45b8
 	ret			;45bb
 ESTADO_16_FASE_SUPERADA:		; Sonido 0x99, devuelve la vida que gastara el 9, fase + 1, y al 17 con E24A = 7 (que acaba en el 8: LEVEL SELECT otra vez)
-	ld a,099h		;45bc
+	ld a,099h		;45bc   ; 0x99: la musica de fase superada; por caer entre 0x91 y 0x9C ocupa dos canales (0x7909)
 	call SONIDO		;45be
-	ld hl,0e050h		;45c1
+	ld hl,0e050h		;45c1   ; La vida que el estado 9 se gasta al entrar (0x4387): se devuelve aqui
 	inc (hl)			;45c4
 	inc hl			;45c5
-	inc (hl)			;45c6
-	ld a,007h		;45c7
+	inc (hl)			;45c6   ; E051 + 1 SIN daa: la fase va en binario, y por eso 0x4A24 la pasa a decimal restando diez en bucle
+	ld a,007h		;45c7   ; E24A = 7: el estado 17 lo copia y su inc lo deja en 8, otra vez el LEVEL SELECT
 	ld (0e24ah),a		;45c9
 AL_ESTADO_17:		; E000 = 17
 	ld a,011h		;45cc
 	ld (0e000h),a		;45ce
 	ret			;45d1
-ESTADO_17_ESPERA_SONIDO:		; Cuando callan los tres canales: estado = E24A, sprites a cero, 0x50 fotogramas y el inc de 0x465C
-	ld a,(0e012h)		;45d2
+ESTADO_17_ESPERA_SONIDO:		; Cuando callan los tres canales: estado = E24A, los sprites fuera de la pantalla (0xE1, no cero), 0x50 fotogramas y el inc de 0x465C
+	ld a,(0e012h)		;45d2   ; Los tres canales: E012 el A, E01C el B y E026 el C
 	ld b,a			;45d5
 	ld a,(0e01ch)		;45d6
 	or b			;45d9
 	ld b,a			;45da
 	ld a,(0e026h)		;45db
 	or b			;45de
-	ret nz			;45df
-	ld a,(0e24ah)		;45e0
+	ret nz			;45df   ; Aqui se sale y se vuelve a mirar al fotograma siguiente; el GAME OVER, en cambio, se queda dando vueltas dentro
+	ld a,(0e24ah)		;45e0   ; E24A: quien mando aqui dejo apuntado a donde ir (7 el estado 16, 8 el 13 y el 14)
 	ld (0e000h),a		;45e3
 	call ESCONDE_SPRITES		;45e6
-	jp SIGUIENTE_ESTADO_50		;45e9
+	jp SIGUIENTE_ESTADO_50		;45e9   ; E004 = 0x50 y el inc: se acaba en E24A + 1
 ESTADO_18_OPCION:		; La primera vez pinta el menu limpio (0x470D) y suena 0x91; luego 0x60 fotogramas parpadeando la linea elegida, y al 8
 	ld a,(0e13ch)		;45ec
 	or a			;45ef
@@ -1107,7 +1107,7 @@ VUELCA_SPRITES_CABEZA:		; Y luego los del principio hasta llegar a el
 	djnz VUELCA_SPRITES_CABEZA		;46fc
 VUELCA_SPRITES_FIN:		; Listo
 	ret			;46fe
-ESCONDE_SPRITES:		; E0B0-E0FB (19 sprites) a 0xE1: fuera de la pantalla
+ESCONDE_SPRITES:		; E0B0-E0FC a 0xE1: fuera de la pantalla. Son los 19 sprites que vuelca 0x46BA (E0B0-E0FB) y un byte de mas, la Y del 20, porque el ldir lleva 0x4C y para 76 bytes bastaba 0x4B
 	ld hl,0e0b0h		;46ff
 	ld de,0e0b1h		;4702
 	ld bc,0004ch		;4705
@@ -1494,7 +1494,7 @@ COPIA_TRES_TERCIOS:		; BC bytes de HL en la VRAM DE y en los dos tercios siguien
 ; ----------------------------------------------------------------------
 SUMA_PUNTOS:		; CDE (BCD) a E043 (1P) o E046 (2P); solo con partida en marcha (bit 6 de E002)
 	ld a,(0e002h)		;4945
-	add a,a			;4948   ; Bit 6 al carry: sin partida (la demo) no se suman
+	add a,a			;4948   ; add a,a: el bit 6 (partida en marcha) pasa al SIGNO -por eso el ret P- y al carry va el bit 7, que es el que mira el jr nc de 0x494D para elegir jugador
 	ret p			;4949
 	ld hl,0e043h		;494a
 	jr nc,SUMA_PUNTOS_BCD		;494d

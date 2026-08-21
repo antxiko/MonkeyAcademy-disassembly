@@ -194,7 +194,7 @@ B 0x4209   15 espera y decide         16 fase superada   17 espera a que acabe e
 B 0x4209   18 opcion elegida (parpadea)   19 espera y a la partida
 B 0x4209 ----------------------------------------------------------------------
 L 0x4209 PASO_DEL_JUEGO    E003++, el 1UP a partir del estado 11, las teclas 1-5 salvo en el 18, y el estado por la tabla
-C 0x420D En el estado 18 (opcion recien elegida) no se leen las teclas
+C 0x420D El estado manda dos veces seguidas: aqui para el 1UP y en 0x421B para las teclas
 D 0x4226 0x424E tabla_de_estados Los 20 estados del juego (indice E000), destino del despachador de 0x4223
 F 0x4226 w1
 
@@ -246,7 +246,7 @@ C 0x43FC Solo 0x40 bytes: los patrones 0x70 y 0x74 (el 500 y el 100) vuelven a 0
 C 0x4410 E00C = 0, E241 = 1: fase de la cuenta atras
 C 0x4418 15 segundos, en BCD
 C 0x441D El recuadro azul de 7x4 en la fila 11, columna 10, y "READY"
-C 0x442B El 15 en la fila 12, columna 12
+C 0x442B El 15 en la fila 13, columna 12 (0x39AC): justo debajo del READY, que va en la 12
 L 0x4434 READY_CUENTA      Cada 64 fotogramas resta uno (BCD); un boton nuevo o el cero arrancan
 C 0x443C Lo pulsado ahora y no antes
 C 0x4444 Sin boton nuevo: se mantiene la musica del READY (0x93)
@@ -269,9 +269,9 @@ C 0x44CD Con menos de 10 segundos, el aviso 0x0C cada fotograma
 C 0x44DF Tiempo a cero: se pierde la vida (E00C = 1), sonido 0xA0, cara de susto y el reloj vuelve a 05:00
 C 0x44F8 E00C: al estado 13; E00D: al 16; si no, sigue
 L 0x4509 ESTADO_13_VIDA_O_RESUELTA Suelta la tarjeta, esconde los cangrejos, restaura los sprites del mono; sin vidas, GAME OVER; si no, al 17 (o al 14 con dos jugadores)
-C 0x4516 Los sprites del mono (0x56BF) y de los cangrejos (0x59FF) vuelven a su sitio
+C 0x4516 El juego de sprites NORMAL del mono vuelve a 0x1800 y a 0x1C00: 0x59FF es el mono andando hacia la izquierda (0x6044), no los cangrejos. Deshace lo que hubiera cargado 0x5F80 (el mono con la fruta o con la tarjeta)
 C 0x452C E050 = 0: se acabaron las vidas
-L 0x4532 GAME_OVER         Espera a que callen los tres canales; sonido 0x9D, "GAME OVER" y "PLAYER n" en el recuadro azul, y al estado 14 tras 0x50 fotogramas
+L 0x4532 GAME_OVER         Espera a que callen los tres canales; sonido 0x9D, "GAME OVER" y "PLAYER n" en el recuadro azul, y al estado 15 (14 mas el inc de 0x465E) tras 256 fotogramas, porque 0x4560 deja E004 a 0
 C 0x455B Estado 14 mas el inc de 0x465E: al 15
 L 0x4564 SIGUE_O_CAMBIA    Con vidas: si el otro jugador tambien tiene, al estado 14 (cambio); si no, al 17 y luego al 9
 C 0x456B El estado 17 vuelve al 8 (E24A) y de ahi al 9: PLAYER n de nuevo
@@ -280,7 +280,7 @@ L 0x4584 ESTADO_14_CAMBIO  Intercambia E050-E06F con E080-E09F, cambia el bit 7 
 L 0x45A0 ESTADO_15_DECIDE  Cuando E004 llega a cero: si el otro jugador tiene vidas, al 14 (cambio); si no, se acabo la partida (bit 6 de E002 a cero) y al titulo
 L 0x45BC ESTADO_16_FASE_SUPERADA Sonido 0x99, devuelve la vida que gastara el 9, fase + 1, y al 17 con E24A = 7 (que acaba en el 8: LEVEL SELECT otra vez)
 L 0x45CC AL_ESTADO_17      E000 = 17
-L 0x45D2 ESTADO_17_ESPERA_SONIDO Cuando callan los tres canales: estado = E24A, sprites a cero, 0x50 fotogramas y el inc de 0x465C
+L 0x45D2 ESTADO_17_ESPERA_SONIDO Cuando callan los tres canales: estado = E24A, los sprites fuera de la pantalla (0xE1, no cero), 0x50 fotogramas y el inc de 0x465C
 L 0x45EC ESTADO_18_OPCION  La primera vez pinta el menu limpio (0x470D) y suena 0x91; luego 0x60 fotogramas parpadeando la linea elegida, y al 8
 C 0x45F2 Pantalla en blanco: el menu vuelve a pintarse sin el titulo
 C 0x4614 Bit 3 de E004: la linea se ve o no
@@ -323,7 +323,7 @@ L 0x46BA VUELCA_SPRITES    E0B0.. a 0x3B00 girados E1B2 posiciones
 C 0x46C4 En el READY (estado 11) giran 24 sprites (0x60 bytes); si no, 19 (0x4C)
 L 0x46DE VUELCA_SPRITES_COLA Desde el sprite E1B2 hasta el final
 L 0x46F4 VUELCA_SPRITES_CABEZA Y luego los del principio hasta llegar a el
-L 0x46FF ESCONDE_SPRITES   E0B0-E0FB (19 sprites) a 0xE1: fuera de la pantalla
+L 0x46FF ESCONDE_SPRITES   E0B0-E0FC a 0xE1: fuera de la pantalla. Son los 19 sprites que vuelca 0x46BA (E0B0-E0FB) y un byte de mas, la Y del 20, porque el ldir lleva 0x4C y para 76 bytes bastaba 0x4B
 L 0x470D PINTA_MENU        El titulo entero de golpe (0x4BF0 y todas las filas de 0x4C77) y el menu de 0x6B99
 L 0x4721 PINTA_MENU_TEXTO  Solo el texto del menu (PLAY SELECT y las cuatro opciones)
 L 0x4728 CARGA_TILES_ECUACION Los 12 tiles de 0x5EFF a 0xB8-0xC3 en los tres tercios (cifras de la ecuacion que faltaban en 0x5156) y sus colores: 6 blancos sobre azul y 6 amarillos
@@ -396,7 +396,7 @@ B 0x4945 juega; en la demo no. Vida extra al pasar de cada 20000 (E052 son las
 B 0x4945 decenas de millar del siguiente), y el record de paso.
 B 0x4945 ----------------------------------------------------------------------
 L 0x4945 SUMA_PUNTOS       CDE (BCD) a E043 (1P) o E046 (2P); solo con partida en marcha (bit 6 de E002)
-C 0x4948 Bit 6 al carry: sin partida (la demo) no se suman
+C 0x4948 add a,a: el bit 6 (partida en marcha) pasa al SIGNO -por eso el ret P- y al carry va el bit 7, que es el que mira el jr nc de 0x494D para elegir jugador
 C 0x494F Bit 7 al carry: E046 para el 2P
 C 0x4965 Mas de 999999: se clava el record en 999999
 L 0x4974 VIDA_EXTRA        Cuando las decenas de millar de los puntos (E045) superan E052: una vida mas, se pintan, sonido 0x10 y E052 += 2. E052 arranca en 0: la primera a los 10000, luego cada 20000 (30000, 50000...). Medido: vida extra con 010260
@@ -1964,3 +1964,70 @@ C 0x6D94 Se toca la X, no la Y: el grupo entra de lado
 C 0x6DC7 Y el segundo globo, el de debajo
 C 0x6E0C El nibble bajo no pinta nada en esta cuenta
 C 0x6E23 Y el patron de los detalles, en el sprite de al lado
+
+# --- tercera pasada de C: el despachador y los estados (0x41FF-0x45EB) ---
+C 0x4202 768 bytes: los 24 x 32 tiles de la tabla de nombres. Los patrones y los colores no se tocan
+C 0x4206 Salta en vez de llamar: el ret de RELLENA_VRAM devuelve ya al que pidio borrar
+C 0x4284 Carry cuando los E058 globos han llegado arriba; mientras, se sale y se vuelve al fotograma siguiente
+C 0x4288 Estado 6 aqui mas el inc de 0x4661: al 7, la demo jugando. Montar la demo (el 6 de verdad) ya se hizo en 0x42E1
+C 0x428D Con la ecuacion ya escrita en la pantalla: las ocho frutas de la fase y los sprites del mono y los cangrejos
+C 0x4293 A este estado solo se llega desde el 6 (0x4328): el estado 0 se salta el 1 con su doble inc
+C 0x4296 El bit 0 de E003 pasa al carry: el logotipo sube un fotograma si y otro no
+C 0x429B Devuelve Z cuando el dec de 0x6C6F deja E00A a cero: las 17 filas ya subidas
+C 0x429F "- VIDEO CARTRIDGE -" en la fila 11, debajo del KONAMI ya parado
+C 0x42A5 E004 = 0x80: 128 fotogramas de logotipo quieto antes de empezar el rotulo
+C 0x42AA E004 baja un fotograma cada vez; hasta que no llega a cero no se pasa de aqui
+C 0x42B2 E246 es el cursor en la VRAM: 0x25C0 son los patrones del tile 0xB8, el primero del rotulo
+C 0x42B8 E248 es el cursor dentro del dibujo de 0x4CD0: se empieza por su primer byte
+C 0x42C1 Una fila de pixels cada ocho fotogramas: las 21 del dibujo tardan 168
+C 0x42C7 Carry mientras quede dibujo; al acabar, 0x4CC8 ya ha puesto el "(c)Konami 1984"
+C 0x42CB "PLAY SELECT" y las cuatro opciones, debajo del rotulo recien dibujado
+C 0x42D1 E004 = 0: el estado 5 lo descuenta desde ahi, o sea 256 fotogramas de menu
+C 0x42D5 El primer dec deja E004 en 0xFF: 256 fotogramas de menu antes de la demo
+C 0x42DA E00B a cero: la demo empieza con el guion entero por delante
+C 0x42DE E004 = 0x50 y al estado 6, que monta la demo detras de la cortinilla
+C 0x43BA Los 0x65 fotogramas del cartel PLAYER n / LEVEL n que puso 0x43B0
+C 0x43BF El cartel tapaba el marcador: se vuelve a pintar entero
+C 0x43D1 El di y el ei envuelven a las tres, aunque ninguna de ellas -ni nada de lo que llaman- toca el VDP: por que esta, sin cerrar
+C 0x43DC Barajar las cifras se queda fuera del di
+C 0x43E8 E1B2 = 0: el giro con que 0x46BA vuelca los sprites vuelve a empezar
+C 0x43EB E004 = 0 al entrar en el READY, que no lo mira: ahi quien cuenta es E242
+C 0x43F4 Lee el canal B y lo tira: GLOBOS_SUBEN empieza con ld b,0 y no mira ni A ni las banderas. Tres bytes muertos
+C 0x4434 E242: los segundos que quedan, en BCD
+C 0x4439 A cero se arranca sin esperar a ningun boton
+C 0x4441 antes XOR ahora, y luego AND ahora: queda solo lo que se acaba de pulsar, y se guarda en la pila hasta 0x4460
+C 0x4449 Uno de cada 64 fotogramas: un segundo
+C 0x4454 sub 1 y daa: la resta en BCD, que es como esta el 15
+C 0x4458 Un byte, dos cifras, en la fila 13 columna 12
+C 0x4462 E1B2 a 0 (el giro de los sprites empieza de nuevo) y E241 a 0 (fuera de la cuenta atras)
+C 0x4469 El mismo rectangulo con el tile 0: borra el cartel READY
+C 0x446F Los 128 bytes de la tabla de sprites a 0xE1, los CUATRO de cada uno; con la Y en 0xE1 no se ve ninguno hasta el volcado siguiente
+C 0x447A RELLENA_VRAM devuelve A intacto, asi que E004 se queda con 0xE1; el estado 12 no lo mira
+C 0x44DA El 0x0C es menor que 0x20, o sea que pasa por el filtro de actor de 0x78F7; al volver de 0x4822 el ultimo actor recorrido es el mono (B = 1, IX = E0B0) y su nibble bajo es 0, que es justo el que deja pasar el efecto
+C 0x44E2 E055 los segundos y E056 los minutos, los dos en BCD: los dos a cero es el tiempo agotado
+C 0x44EA 0xA0 es el sonido que 0x7925 apunta como 0x20: entra por encima de lo que suene y luego lo pisa cualquiera
+C 0x44F2 05:00 otra vez: L a E055 (segundos) y H a E056 (minutos)
+C 0x4532 Los tres numeros que estan sonando: E012 el canal A, E01C el B y E026 el C
+C 0x453F Se queda dando vueltas AQUI, dentro de la interrupcion. Funciona porque 0x4054 ya hizo ei: cada fotograma entra otra interrupcion, hace sonar los canales y se va por el candado de E005. Los otros dos sitios que esperan al sonido (0x4378 y 0x45D2) salen con ret
+C 0x4549 Primero borra la zona de juego entera (25 columnas x 24 filas) y encima pone el recuadro azul
+C 0x4555 "GAME OVER" en la fila 13 y, por el 0xFE que cierra 0x6C17, "PLAYER" en la 11 con su numero
+C 0x4576 Los seis sprites de los tres cangrejos, dos cada uno, desde E0B8
+C 0x457F El ldir reparte el 0xE1 por los 24 bytes: la Y, la X, el patron y el color de cada sprite
+C 0x4581 Los dos del mono (E0B0-E0B7) no se tocan: se queda en la pantalla
+C 0x4584 32 bytes por jugador: E050-E06F el que juega, E080-E09F el que espera
+C 0x458F El bit 7 de E002 dice quien juega; se le da la vuelta
+C 0x4596 Y el mando: el registro 15 del PSG pasa a leer el otro puerto
+C 0x4599 E24A = 8: el estado 17 lo copia y su inc lo deja en 9, el PLAYER n del que entra
+C 0x45A0 Los 256 fotogramas del GAME OVER (0x4560 dejo E004 a 0) o los 0x50 del cambio de jugador
+C 0x45A5 E080: las vidas del que espera. Si le quedan, al 14 a intercambiar
+C 0x45A9 ld a,n no toca las banderas: el 14 ya esta cargado cuando se mira el jr nz de la comparacion anterior
+C 0x45AD Bit 6 de E002 fuera: se acabo la partida, y 0x78DF deja de dejar pasar sonidos
+C 0x45B2 0x50 fotogramas que no llega a descontar nadie: el estado 0 no mira E004 y el 2 lo deja en 0x80 antes de que el 3 lo use
+C 0x45BC 0x99: la musica de fase superada; por caer entre 0x91 y 0x9C ocupa dos canales (0x7909)
+C 0x45C1 La vida que el estado 9 se gasta al entrar (0x4387): se devuelve aqui
+C 0x45C6 E051 + 1 SIN daa: la fase va en binario, y por eso 0x4A24 la pasa a decimal restando diez en bucle
+C 0x45C7 E24A = 7: el estado 17 lo copia y su inc lo deja en 8, otra vez el LEVEL SELECT
+C 0x45D2 Los tres canales: E012 el A, E01C el B y E026 el C
+C 0x45DF Aqui se sale y se vuelve a mirar al fotograma siguiente; el GAME OVER, en cambio, se queda dando vueltas dentro
+C 0x45E0 E24A: quien mando aqui dejo apuntado a donde ir (7 el estado 16, 8 el 13 y el 14)
+C 0x45E9 E004 = 0x50 y el inc: se acaba en E24A + 1
