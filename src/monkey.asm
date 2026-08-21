@@ -100,7 +100,7 @@ INTERRUPCION_SALE:		; Salida corta cuando el paso anterior sigue a medias: recup
 	pop de			;407c
 	pop bc			;407d
 	pop af			;407e
-	ei			;407f
+	ei			;407f   ; El candado E005 se queda puesto: la salida corta no lo suelta; lo suelta la larga, cuando el paso entero acaba
 	reti		;4080
 VPOKE:		; Escribe A en la VRAM DE (bit 6 de D para escribir; se deja como estaba)
 	di			;4082
@@ -124,7 +124,7 @@ VDP_DIRECCION:		; Manda DE al VDP: primero E, luego D (con el bit 6 a 1 si es pa
 	ld a,e			;409b
 	out (099h),a		;409c
 	ld a,d			;409e
-	call RET_		;409f
+	call RET_		;409f   ; El call al `ret` suelto tambien aqui: los ciclos que el VDP pide entre los dos bytes de la direccion
 	out (099h),a		;40a2
 	ret			;40a4
 HL_MAS_A:		; HL = HL + A, sin signo. Es la rutina que usa el despachador
@@ -317,7 +317,7 @@ LEE_MANDOS:		; E009 = ahora, E008 = el fotograma anterior; joystick o teclado se
 	ei			;41ca
 GUARDA_MANDOS:		; Lo de ahora pasa a E009 y lo que habia baja a E008
 	ld hl,0e009h		;41cb
-	ld c,(hl)			;41ce
+	ld c,(hl)			;41ce   ; C hace de tercera mano: lo que estaba en E009 baja a E008 sin tocar A
 	ld (hl),a			;41cf
 	dec hl			;41d0
 	ld (hl),c			;41d1
@@ -918,7 +918,7 @@ ESTADO_18_OPCION:		; La primera vez pinta el menu limpio (0x470D) y suena 0x91; 
 	xor a			;45f8
 	call RELLENA_VRAM		;45f9
 	call PINTA_MENU		;45fc
-	ld a,060h		;45ff
+	ld a,060h		;45ff   ; E004 = 0x60: el plazo del parpadeo, que OPCION_PARPADEA descuenta
 	ld (0e004h),a		;4601
 	ld a,091h		;4604
 	call SONIDO		;4606
@@ -963,7 +963,7 @@ DATA_fila_de_cada_opcion:
 OPCION_AL_8:		; Al estado 8 con la pantalla en blanco y los tiles de la ecuacion cargados
 	ld a,008h		;463b
 	ld (0e000h),a		;463d
-	ld de,03800h		;4640
+	ld de,03800h		;4640   ; La tabla de nombres entera (0x3800, 0x300 celdas) a cero: pantalla en blanco
 	ld bc,00300h		;4643
 	xor a			;4646
 	call RELLENA_VRAM		;4647
@@ -971,10 +971,10 @@ OPCION_AL_8:		; Al estado 8 con la pantalla en blanco y los tiles de la ecuacion
 ESTADO_19_ESPERA_PARTIDA:		; Cuando E004 llega a cero, al 12 y a mirar E00C/E00D
 	ld hl,0e004h		;464d
 	dec (hl)			;4650
-	xor a			;4651
+	xor a			;4651   ; El `xor a / cp (hl)` es redundante: el Z del `dec (hl)` ya decia lo mismo
 	cp (hl)			;4652
 	ret nz			;4653
-	ld a,00ch		;4654
+	ld a,00ch		;4654   ; Al estado 12, el que decide a quien le toca jugar (E00C/E00D)
 	ld (0e000h),a		;4656
 	jp PARTIDA_DECIDE		;4659
 SIGUIENTE_ESTADO_50:		; E004 = 0x50 y al estado siguiente
@@ -987,11 +987,11 @@ SIGUIENTE_ESTADO:		; E000++
 	ret			;4665
 PLAYER_N:		; La lista HL ("PLAYER") y el numero del jugador (bit 7 de E002) en la fila 11, columna 17
 	call PINTA_LISTA_TILES		;4666
-	ld a,(0e002h)		;4669
+	ld a,(0e002h)		;4669   ; El bit 7 de E002 es el jugador en juego: el `rlca` lo baja al bit 0 y 0x31 es el tile del "1"
 	rlca			;466c
 	and 001h		;466d
 	add a,031h		;466f
-	ld de,03971h		;4671
+	ld de,03971h		;4671   ; 0x3971 es la fila 11, columna 17: justo detras de "PLAYER"
 	call VPOKE		;4674
 	ret			;4677
 
@@ -1075,19 +1075,19 @@ VUELCA_SPRITES:		; E0B0.. a 0x3B00 girados E1B2 posiciones
 	ld (hl),012h		;46cb
 VUELCA_SPRITES_DESDE:		; Desde el sprite E1B2 x 4
 	ld a,(hl)			;46cd
-	add a,a			;46ce
+	add a,a			;46ce   ; El doble doble es x4, los cuatro bytes de cada ficha; B y C arrancan iguales: C contara lo volcado y B sera la cabeza que falta
 	add a,a			;46cf
 	ld b,a			;46d0
 	ld c,a			;46d1
 	ld hl,0e0b0h		;46d2
 	call HL_MAS_A		;46d5
-	ld de,07b00h		;46d8
+	ld de,07b00h		;46d8   ; 0x7B00 = escribir en 0x3B00, la tabla de atributos
 	call VDP_DIRECCION		;46db
 VUELCA_SPRITES_COLA:		; Desde el sprite E1B2 hasta el final
 	ld a,(hl)			;46de
 	out (098h),a		;46df
 	inc c			;46e1
-	ld a,(0e000h)		;46e2
+	ld a,(0e000h)		;46e2   ; El limite se relee del estado en CADA byte: 0x60 en el READY, 0x4C si no
 	cp 00bh		;46e5
 	ld a,060h		;46e7
 	jr z,VUELCA_SPRITES_HASTA		;46e9
@@ -1098,7 +1098,7 @@ VUELCA_SPRITES_HASTA:		; Hasta 0x60 (READY) o 0x4C bytes
 	jr nz,VUELCA_SPRITES_COLA		;46ef
 	ld hl,0e0b0h		;46f1
 VUELCA_SPRITES_CABEZA:		; Y luego los del principio hasta llegar a el
-	ld a,b			;46f4
+	ld a,b			;46f4   ; B trae E1B2 x 4: los bytes saltados al empezar por el medio; a cero (giro 0) no hay cabeza
 	or a			;46f5
 	jr z,VUELCA_SPRITES_FIN		;46f6
 	ld a,(hl)			;46f8
@@ -1111,7 +1111,7 @@ ESCONDE_SPRITES:		; E0B0-E0FC a 0xE1: fuera de la pantalla. Son los 19 sprites q
 	ld hl,0e0b0h		;46ff
 	ld de,0e0b1h		;4702
 	ld bc,0004ch		;4705
-	ld (hl),0e1h		;4708
+	ld (hl),0e1h		;4708   ; El (hl),0xE1 siembra el primer byte y el ldir lo arrastra: 77 escrituras, E0B0-E0FC
 	ldir		;470a
 	ret			;470c
 PINTA_MENU:		; El titulo entero de golpe (0x4BF0 y todas las filas de 0x4C77) y el menu de 0x6B99
@@ -1152,10 +1152,10 @@ CARGA_TILES_ECUACION:		; Los 12 tiles de 0x5EFF a 0xB8-0xC3 en los tres tercios 
 ; ----------------------------------------------------------------------
 LEVEL_SELECT:		; Cortinilla; arranca la partida si no habia; pinta PLAYER n / LEVEL SELECT y espera la tecla
 	ld a,(0e152h)		;4747
-	add a,a			;474a
+	add a,a			;474a   ; El `add a,a` manda el bit 7 (la cortinilla ya paso) al acarreo
 	jr c,LEVEL_SELECT_BITS		;474b
 	call CORTINILLA		;474d
-	ret p			;4750
+	ret p			;4750   ; CORTINILLA devuelve M al acabar; mientras (P), se sale y otra columna al fotograma siguiente
 	ld hl,0e152h		;4751
 	set 7,(hl)		;4754
 	ret			;4756
@@ -1202,14 +1202,14 @@ LEVEL_SELECT_BITS:		; Cortinilla ya pasada: los bits 4, 6 y 3
 	ld bc,00020h		;47b5
 	ldir		;47b8
 LEVEL_SELECT_PINTA:		; Fuente blanca, fondo azul (R7 = 4), el texto de 0x7595, 0x0F00 fotogramas de espera y a esperar la tecla
-	ld a,020h		;47ba
+	ld a,020h		;47ba   ; E1B3 = 0x20: la racion de parpadeos de la linea que se elija
 	ld (0e1b3h),a		;47bc
 	ld a,0f4h		;47bf
 	call COLOR_FUENTE		;47c1
 	ld a,004h		;47c4   ; R7 = 4: fondo azul oscuro
 	call VDP_R7		;47c6
 	call PINTA_LEVEL_SELECT		;47c9
-	ld hl,00f00h		;47cc
+	ld hl,00f00h		;47cc   ; La espera del LEVEL SELECT (E23F): 0x0F00 fotogramas, que 0x762F descuenta
 	ld (0e23fh),hl		;47cf
 	ld hl,0e152h		;47d2
 	set 6,(hl)		;47d5
@@ -1320,7 +1320,7 @@ ACTORES_PASO_4:		; Los cuatro actores (fase 16 en adelante)
 	ld a,004h		;486e
 	jr ACTORES_PASO		;4870
 VDP_R7:		; Registro 7 = A (color de fondo y borde)
-	ld d,087h		;4872
+	ld d,087h		;4872   ; D = 0x87: el bit 7 dice que es un registro, y VDP_DIRECCION lo manda igual que una direccion
 	ld e,a			;4874
 	di			;4875
 	call VDP_DIRECCION		;4876
@@ -1335,7 +1335,7 @@ VDP_REGISTROS_BUCLE:		; Registro por registro (D = 0x80 + n)
 	di			;4883
 	call VDP_DIRECCION		;4884
 	inc hl			;4887
-	inc d			;4888
+	inc d			;4888   ; El `inc d` recorre 0x80-0x87: el numero de registro viaja en el byte alto
 	djnz VDP_REGISTROS_BUCLE		;4889
 	ret			;488b
 
@@ -1365,7 +1365,7 @@ COPIA_A_VRAM_BUCLE:		; Byte a byte al puerto 0x98
 	ld a,(hl)			;489e
 	out (098h),a		;489f
 	inc hl			;48a1
-	dec bc			;48a2
+	dec bc			;48a2   ; El `dec bc` no toca banderas: el `ld a,b / or c` es el "BC == 0" de un contador de 16 bits
 	ld a,b			;48a3
 	or c			;48a4
 	jr nz,COPIA_A_VRAM_BUCLE		;48a5
@@ -1377,12 +1377,12 @@ RELLENA_VRAM:		; BC bytes de A en la VRAM DE
 	push hl			;48ab
 	push bc			;48ac
 	di			;48ad
-	ld h,a			;48ae
+	ld h,a			;48ae   ; El byte de relleno se aparta en H, que el bucle no gasta
 	set 6,d		;48af
 	call VDP_DIRECCION		;48b1
 	res 6,d		;48b4
 RELLENA_VRAM_BUCLE:		; El mismo byte BC veces
-	ld a,h			;48b6
+	ld a,h			;48b6   ; El byte a repetir se relee de H en cada vuelta, que el `out` gasta A
 	out (098h),a		;48b7
 	dec bc			;48b9
 	ld a,b			;48ba
@@ -1411,12 +1411,12 @@ CORTINILLA_IMPAR:		; Fotograma impar: la columna de la derecha (E004 baja)
 CORTINILLA_COLUMNA:		; Los 24 tiles de una columna a cero
 	xor a			;48da
 	call VPOKE		;48db
-	ld a,020h		;48de
+	ld a,020h		;48de   ; De fila en fila: 32 celdas por fila de la tabla de nombres
 	ex de,hl			;48e0
 	call HL_MAS_A		;48e1
 	ex de,hl			;48e4
 	djnz CORTINILLA_COLUMNA		;48e5
-	xor a			;48e7
+	xor a			;48e7   ; El `xor a` final deja el signo en P: la cortinilla aun no ha acabado
 	ret			;48e8
 PINTA_LISTA_TILES:		; Lista de HL: dos bytes de VRAM y tiles seguidos; 0xFE cambia de direccion, 0xFF acaba
 	ld e,(hl)			;48e9
@@ -1427,7 +1427,7 @@ PINTA_LISTA_SIGUE:		; El bucle de tiles con DE ya puesto
 	ld a,(hl)			;48ed
 	inc hl			;48ee
 	ld b,a			;48ef
-	inc b			;48f0
+	inc b			;48f0   ; Los dos `inc b` distinguen 0xFF (fin) y 0xFE (cambio de direccion) sin comparar
 	ret z			;48f1
 	inc b			;48f2
 	jr z,PINTA_LISTA_TILES		;48f3
@@ -1435,7 +1435,7 @@ PINTA_LISTA_SIGUE:		; El bucle de tiles con DE ya puesto
 	inc de			;48f8
 	jr PINTA_LISTA_SIGUE		;48f9
 INTERCAMBIA:		; B bytes de HL con los de DE (los datos de los dos jugadores)
-	ld c,(hl)			;48fb
+	ld c,(hl)			;48fb   ; C hace de tercera mano en cada byte del trueque
 	ld a,(de)			;48fc
 	ld (hl),a			;48fd
 	ld a,c			;48fe
@@ -1449,7 +1449,7 @@ PSG_PUERTO_JOYSTICK:		; Registro 15 del PSG = 0x8F, o 0xCF (bit 6) para el puert
 	out (0a0h),a		;4907
 	ld a,08fh		;4909
 	ld hl,0e002h		;490b
-	bit 7,(hl)		;490e
+	bit 7,(hl)		;490e   ; El bit 7 de E002 es el 2P: el bit 6 del registro 15 conmuta la lectura al puerto 2
 	jr z,PSG_R15		;4910
 	set 6,a		;4912
 PSG_R15:		; Al registro 15
@@ -1536,11 +1536,11 @@ VIDA_EXTRA:		; Cuando las decenas de millar de los puntos (E045) superan E052: u
 	ld a,0ffh		;4981
 VIDA_EXTRA_DA:		; La siguiente ya apuntada: una vida mas
 	ld (0e052h),a		;4983
-	ld hl,0e050h		;4986
+	ld hl,0e050h		;4986   ; E050 son las vidas
 	inc (hl)			;4989
 	call PINTA_VIDAS		;498a
 	pop hl			;498d
-	ld a,010h		;498e
+	ld a,010h		;498e   ; El 0x10 es el efecto de la vida extra
 	call SONIDO		;4990
 	jr RECORD_MIRA		;4993
 RECORD:		; Si los puntos superan el record, se copian y se pinta
@@ -1603,7 +1603,7 @@ PINTA_PUNTOS:		; Los puntos del jugador que juega
 PINTA_PUNTOS_DE:		; Los puntos del jugador del bit 7 de A: 1P en la fila 9, 2P en la 12, columna 25
 	ld de,03939h		;4a11
 	ld hl,0e045h		;4a14
-	add a,a			;4a17
+	add a,a			;4a17   ; El bit 7 (el 2P) sale por el acarreo: sus puntos viven en E046-E048 y van a la fila 12
 	jr nc,PINTA_3_BYTES_BCD		;4a18
 	ld e,099h		;4a1a
 	ld hl,0e048h		;4a1c
@@ -1623,7 +1623,7 @@ PINTA_FASE:		; E051 -que va en BINARIO- pasada a decimal restando diez en bucle,
 FASE_DECENAS:		; Cuenta las decenas restando 10
 	sub 00ah		;4a33
 	jr c,FASE_UNIDADES		;4a35
-	ex af,af'			;4a37
+	ex af,af'			;4a37   ; Las decenas se acumulan en el A alternativo, que arranco a cero en 0x4A2A
 	inc a			;4a38
 	ex af,af'			;4a39
 	jr FASE_DECENAS		;4a3a
@@ -1691,7 +1691,7 @@ PARPADEA_1UP_MIRA:		; Lee lo que hay en la VRAM: letras o azul
 	ld l,a			;4a9b
 	ld c,a			;4a9c
 PARPADEA_1UP_PINTA:		; Los tres tiles
-	ld a,h			;4a9d
+	ld a,h			;4a9d   ; H, L y C traen los tres tiles: "1UP"/"2UP" o tres azules, segun lo que se leyo
 	call VPOKE		;4a9e
 	inc de			;4aa1
 	ld a,l			;4aa2
@@ -1726,12 +1726,12 @@ PINTA_VIDA_BLOQUE:		; El bloque de 2x2 del hueco
 	djnz PINTA_VIDAS_UNA		;4acf
 	ret			;4ad1
 PINTA_FALLOS:		; Los fallos (E057) como caras de 2x2 (0x4AE8) en la fila 17, columna 25
-	ld de,088c8h		;4ad2
+	ld de,088c8h		;4ad2   ; D = 0x88 y E = 0xC8 son PIXELS: Y 136 (fila 17) y X 200 (columna 25), que es como se recibe el destino
 	ld a,(0e057h)		;4ad5
 	ld c,a			;4ad8
 	ld b,003h		;4ad9
 	ld hl,04ae8h		;4adb
-	jr PINTA_VIDAS_UNA		;4ade
+	jr PINTA_VIDAS_UNA		;4ade   ; El mismo bucle que las vidas, con la cara llorando de 0x4AE8
 
 ; ----------------------------------------------------------------------
 ; DATOS cara_de_vida: El bloque de 2x2 tiles de una vida (0x0D 0x0F / 0x0E
@@ -1759,9 +1759,9 @@ DATA_cara_de_fallo:
 
 
 MONTA_DEMO:		; Fase 1, guion de la demo desde el principio, fuente blanca, colores del panel y el marcador entero
-	ld hl,0e051h		;4aec
+	ld hl,0e051h		;4aec   ; E051 = 1: la demo juega siempre la fase 1
 	ld (hl),001h		;4aef
-	xor a			;4af1
+	xor a			;4af1   ; El reloj de la demo (E1B0) y el paso del guion (E1B1), los dos a cero: el guion desde el principio
 	ld (0e1b0h),a		;4af2
 	ld (0e1b1h),a		;4af5
 	ld a,0f4h		;4af8
@@ -1902,14 +1902,14 @@ TITULO_FILA_TILE:		; Uno
 	ret			;4c36
 COLORES_TITULO:		; Los colores de los tiles 0xB8-0xFF: una banda de 8 bytes distinta por fila de tiles (0x4C5F, 0x4C67, 0x4C6F)
 	di			;4c37
-	ld de,045c0h		;4c38
+	ld de,045c0h		;4c38   ; 0x45C0 = escribir en los colores 0x05C0, los de los tiles 0xB8 en adelante
 	call VDP_DIRECCION		;4c3b
 	di			;4c3e
 	ld hl,04c5fh		;4c3f
 	call COLORES_TITULO_FILA		;4c42
 	ld hl,04c67h		;4c45
 	call COLORES_TITULO_FILA		;4c48
-	ld hl,04c6fh		;4c4b
+	ld hl,04c6fh		;4c4b   ; La tercera banda cae en la rutina de abajo sin `call`: el `ret` final sirve a las tres
 COLORES_TITULO_FILA:		; 24 tiles con la misma banda de 8 bytes
 	ld b,018h		;4c4e
 COLORES_TITULO_TILE:		; Los 8 bytes de un tile
@@ -1919,7 +1919,7 @@ COLORES_TITULO_TILE:		; Los 8 bytes de un tile
 	ld b,008h		;4c53
 COLORES_TITULO_BYTE:		; Un byte de color
 	ld a,(de)			;4c55
-	out (098h),a		;4c56
+	out (098h),a		;4c56   ; Al puerto de datos directamente: la direccion quedo apuntada en 0x4C3B y el VDP la sube solo
 	inc de			;4c58
 	djnz COLORES_TITULO_BYTE		;4c59
 	pop bc			;4c5b
@@ -1983,7 +1983,7 @@ TITULO_FILA_SIGUIENTE:		; La fila de pixel siguiente
 TITULO_FILA_DE_TILES_SIGUIENTE:		; Se paso del tile: 24 tiles mas alla
 	ex de,hl			;4cbb
 	ld a,l			;4cbc
-	sub 008h		;4cbd
+	sub 008h		;4cbd   ; El `inc` lo dejo alineado a 8; quitando los 8 que sumo el bucle, el cursor cae en la fila 0 del primer tile de la fila de tiles siguiente
 	ld l,a			;4cbf
 	jr nc,TITULO_CURSOR		;4cc0
 	dec h			;4cc2
@@ -2273,7 +2273,7 @@ BARAJA_MUEVE:		; La mueve
 BARAJA_A_TARJETAS:		; Las diez cifras a las tarjetas del jugador
 	ld a,(de)			;5026
 	ld (hl),a			;5027
-	inc hl			;5028
+	inc hl			;5028   ; Los dos `inc hl` saltan al byte de cifra de la tarjeta siguiente: cada tarjeta son dos bytes, estado y cifra
 	inc hl			;5029
 	inc de			;502a
 	djnz BARAJA_A_TARJETAS		;502b
@@ -3069,7 +3069,7 @@ ACTOR_ANIMACION:		; Los dos patrones de la fase de andar (X/4 & 3) de la tabla H
 	call HL_MAS_A		;6237
 ACTOR_ANIMACION_PON:		; Los dos patrones
 	ld a,(hl)			;623a
-	ld (ix+002h),a		;623b
+	ld (ix+002h),a		;623b   ; Los dos patrones caen en el +2 y el +6 de la ficha: los DOS sprites solapados del actor, el de color y el detalle
 	inc hl			;623e
 	ld a,(hl)			;623f
 	ld (ix+006h),a		;6240
@@ -3443,7 +3443,7 @@ ACTOR_TIRA_FRUTA:		; Estado 8: la fruta que lleva (E260 con 0x0C el mono, 0x04 e
 	jr z,ACTOR_TIRA_BUSCA		;64f6
 	ld d,004h		;64f8
 ACTOR_TIRA_BUSCA:		; Busca la fruta que lleva
-	ld a,(hl)			;64fa
+	ld a,(hl)			;64fa   ; El estado de cada fruta contra D: los bits 2-3 dicen quien la lleva
 	and 00ch		;64fb
 	cp d			;64fd
 	jr z,ACTOR_TIRA_SUELTA		;64fe
@@ -3515,11 +3515,11 @@ CANGREJO_MUERE:		; Estado 9: cuando acaba +0x5D, esconde el "500" (el sprite de 
 	call CANGREJO_ESPERA		;657e
 	call CANGREJO_SUELTA_FRUTA		;6581
 	ret			;6584
-CANGREJO_ESPERA:		; +0x5D = cuanto espera escondido: (16 - fase) x 16 + 17 fotogramas hasta la fase 19; desde la 20, uno
+CANGREJO_ESPERA:		; +0x5D = cuanto espera escondido: ((8 - fase mod 8) mod 8) x 16 + 17 fotogramas; desde la fase 32, uno
 	ld a,(0e051h)		;6585   ; La espera NO baja seguida con la fase: el `and 070h` de 0x6592 se queda con tres bits, asi que ((8 - fase mod 8) mod 8) x 16 + 17 va de 129 a 17 en ocho fases y vuelve a empezar -129, 113, 97, 81, 65, 49, 33, 17-. Desde la fase 32 (0x20 en BINARIO, que es como va E051) siempre 1
 	cp 020h		;6588
 	jr nc,CANGREJO_ESPERA_1		;658a
-	neg		;658c
+	neg		;658c   ; El `neg` y los cuatro dobles montan (8 - fase) x 16; el `and 0x70` es el que recorta a tres bits y hace que la espera vuelva a empezar cada ocho fases
 	add a,a			;658e
 	add a,a			;658f
 	add a,a			;6590
@@ -3530,7 +3530,7 @@ CANGREJO_ESPERA:		; +0x5D = cuanto espera escondido: (16 - fase) x 16 + 17 fotog
 CANGREJO_ESPERA_PON:		; +0x5D = A
 	ld (ix+05dh),a		;6597
 	ret			;659a
-CANGREJO_ESPERA_1:		; Desde la fase 20: un fotograma
+CANGREJO_ESPERA_1:		; Desde la fase 32 (0x20, que E051 va en binario): un fotograma
 	ld a,001h		;659b
 	jr CANGREJO_ESPERA_PON		;659d
 ACTOR_LE_DA_LA_FRUTA:		; Estado 10: sonido 0xA0, cara de susto y se pierde la vida (E00C = 1)
@@ -4871,7 +4871,7 @@ MULTIPLICA_BUCLE:		; Una suma mas
 	ld (hl),a			;6ed1
 	inc hl			;6ed2
 	ld a,(hl)			;6ed3
-	adc a,000h		;6ed4
+	adc a,000h		;6ed4   ; El acarreo decimal del byte bajo sube al alto, con su propio `daa`
 	daa			;6ed6
 	ld (hl),a			;6ed7
 	dec hl			;6ed8
@@ -5531,7 +5531,7 @@ MONTA_GLOBO_SPRITE:		; Uno de los dos
 GLOBO_PRIMERO:		; Un indice al azar menor que E058 arranca (estado 1) y se apunta en E258
 	call AZAR		;730b
 	ld a,(0e140h)		;730e
-	and 00fh		;7311
+	and 00fh		;7311   ; El nibble bajo del azar contra E058 (cuantos globos hay): si se pasa, otra tirada
 	ld hl,0e058h		;7313
 	cp (hl)			;7316
 	jr nc,GLOBO_PRIMERO		;7317
@@ -5580,7 +5580,7 @@ FRUTAS_BUCLE:		; Una fruta
 	call FRUTA_PASO		;7341
 	pop bc			;7344
 	inc b			;7345
-	ld a,008h		;7346
+	ld a,008h		;7346   ; El `cp` con B en vez de un `djnz`: FRUTA_PASO quiere el numero de fruta contando hacia ARRIBA en B
 	cp b			;7348
 	jr nz,FRUTAS_BUCLE		;7349
 	ret			;734b
@@ -6131,7 +6131,7 @@ PINTA_LEVEL:		; "LEVEL" en la fila 13, columna 10, y el nivel del jugador mas un
 	call PINTA_LISTA_TILES		;76e8
 	ld a,(0e002h)		;76eb
 	bit 7,a		;76ee
-	ld hl,0e153h		;76f0
+	ld hl,0e153h		;76f0   ; El mismo reparto que NIVEL_DEL_JUGADOR, repetido aqui a mano: E153 el 1P, E154 el 2P
 	jr z,PINTA_LEVEL_NUMERO		;76f3
 	inc hl			;76f5
 PINTA_LEVEL_NUMERO:		; El nivel mas uno
@@ -6493,10 +6493,10 @@ SONIDO_YA:		; Arranca el sonido A sin mirar nada (D = 0: con prioridad)
 	ei			;78f5   ; y se devuelven al salir: el corte dura lo que tarde en apuntar los canales, no lo que dure el sonido
 	ret			;78f6
 SONIDO_DEL_ACTOR:		; Un efecto pedido desde un actor: los cangrejos solo pueden pedir el 9; los demas son del mono
-	cp 009h		;78f7
+	cp 009h		;78f7   ; El 9 pasa sin mirar quien lo pide
 	jr z,SONIDO_CANALES		;78f9
 	ld b,a			;78fb
-	ld a,(ix+05bh)		;78fc
+	ld a,(ix+05bh)		;78fc   ; El nibble bajo del +0x5B es el tipo del actor: cualquier otro efecto solo pasa si vale 0, o sea si lo pide el mono
 	and 00fh		;78ff
 	ret nz			;7901
 	ld a,b			;7902
@@ -6507,11 +6507,11 @@ SONIDO_ARRANCA:		; Los menores de 0x20 pasan por el filtro del actor; reparte lo
 SONIDO_CANALES:		; B canales desde HL: 1 desde E026 (efectos), 2 desde E012 (musicas 0x91-0x9B), 3 (0x9D en adelante)
 	ld b,002h		;7909
 	ld hl,0e012h		;790b
-	cp 091h		;790e
+	cp 091h		;790e   ; Por debajo de 0x91 es un efecto: un solo canal
 	jr c,SONIDO_UN_CANAL		;7910
 	cp 09dh		;7912
 	jr c,SONIDO_PRIORIDAD		;7914
-	inc b			;7916
+	inc b			;7916   ; De 0x9D en adelante (el GAME OVER y las pistas mudas), los tres canales
 	jr SONIDO_PRIORIDAD		;7917
 SONIDO_UN_CANAL:		; Un canal, el C (E026)
 	dec b			;7919
@@ -6526,8 +6526,8 @@ SONIDO_PRIORIDAD:		; D = 1 (desde el bucle) no mira; si no, contra el numero que
 	jr nz,SONIDO_PISTAS		;7927
 	and 07fh		;7929
 SONIDO_PISTAS:		; Indice = numero & 0x3F en la tabla de 0x7A7B; una palabra por canal seguida
-	ld c,a			;792b
-	and 03fh		;792c
+	ld c,a			;792b   ; C guarda el numero entero, que es lo que SONIDO_CANAL deja apuntado en el +2
+	and 03fh		;792c   ; El `and 0x3F` saca el indice (0x91 -> 17) y el doble es porque la tabla es de palabras
 	add a,a			;792e
 	ld de,07a7bh		;792f
 	ex de,hl			;7932
@@ -6560,16 +6560,16 @@ SONIDO_IGUAL:		; El mismo numero: solo el 2 se repite
 SONIDO_REPITE:		; 0xFE n en la pista: vuelve a arrancar el mismo sonido n veces (0xFF, siempre); despues se apaga
 	inc hl			;7955
 	ld a,(hl)			;7956
-	inc a			;7957
+	inc a			;7957   ; El `inc a` caza el 0xFF: siempre, sin llevar la cuenta
 	jr z,SONIDO_REARRANCA		;7958
-	inc (ix+009h)		;795a
+	inc (ix+009h)		;795a   ; El +9 del canal lleva las vueltas ya dadas; al alcanzar n, el canal se apaga
 	dec a			;795d
 	cp (ix+009h)		;795e
 	jp z,CANAL_APAGA		;7961
 SONIDO_REARRANCA:		; Otra vez desde el principio, sin prioridad
-	ld a,(ix+002h)		;7964
+	ld a,(ix+002h)		;7964   ; El numero se relee del +2 del propio canal
 	push bc			;7967
-	ld d,001h		;7968
+	ld d,001h		;7968   ; D = 1: sin mirar prioridad, que si no el numero empataria consigo mismo y no rearrancaria
 	call SONIDO_ARRANCA		;796a
 	pop bc			;796d
 	ret			;796e
@@ -6600,10 +6600,10 @@ SUENA:		; Un fotograma de los tres canales (IX = E010, +10 por canal; C = regist
 	ld de,0000ah		;7978
 SUENA_CANAL:		; Siguiente canal
 	exx			;797b
-	ld a,(ix+002h)		;797c
+	ld a,(ix+002h)		;797c   ; El +2 es el numero del sonido: a cero el canal esta libre y no se toca
 	or a			;797f
 	call nz,SUENA_PASO		;7980
-	inc c			;7983
+	inc c			;7983   ; C sube de dos en dos (1, 3, 5): el registro ALTO del par de periodo de cada canal del PSG
 	inc c			;7984
 	exx			;7985
 	add ix,de		;7986
@@ -6650,9 +6650,9 @@ EFECTO_EVENTO:		; Nibble alto volumen, nibble bajo y byte siguiente el periodo
 	and 00fh		;79cb
 NOTA_ARRANCA:		; H = volumen; +0 = duracion, +8 = duracion + 3 (la envolvente); y al PSG
 	ld h,a			;79cd
-	ld a,(ix+001h)		;79ce
+	ld a,(ix+001h)		;79ce   ; La duracion del +1 pasa al +0, que es lo que SUENA descuenta
 	ld (ix+000h),a		;79d1
-	add a,003h		;79d4
+	add a,003h		;79d4   ; Y al +8 con 3 de propina: la cuenta de la envolvente, que MUSICA_PASO va cerrando
 	ld (ix+008h),a		;79d6
 	jr PSG_VOLUMEN		;79d9
 CANAL_APAGA:		; Numero 0 y volumen 0
@@ -6664,11 +6664,11 @@ CANAL_APAGA:		; Numero 0 y volumen 0
 MUSICA_PASO:		; Descuenta la nota; envolvente: tres pasos abajo al principio, dos al final
 	dec (ix+000h)		;79e5
 	jr z,SIGUIENTE_EVENTO		;79e8
-	dec (ix+008h)		;79ea
+	dec (ix+008h)		;79ea   ; El +8 arranco 3 por encima del +0; mientras no se igualen baja DOS por fotograma (esta y la de abajo) y el volumen cae: los tres primeros fotogramas
 	ld a,(ix+008h)		;79ed
 	cp (ix+000h)		;79f0
 	jr nz,ENVOLVENTE_ARRANQUE		;79f3
-	cp 003h		;79f5
+	cp 003h		;79f5   ; Ya igualados bajan a la par; solo con menos de 3 de nota vuelve a caer el volumen: la cola de la envolvente
 	jr c,VOLUMEN_BAJA		;79f7
 	ret			;79f9
 ENVOLVENTE_ARRANQUE:		; Los tres primeros fotogramas: baja
@@ -6681,7 +6681,7 @@ VOLUMEN_BAJA:		; Un paso menos, sin pasar de cero
 	ld h,a			;7a05
 PSG_VOLUMEN:		; Registro 8/9/10 (segun C) = H
 	ld a,c			;7a06
-	rrca			;7a07
+	rrca			;7a07   ; La media vuelta convierte C (1, 3, 5) en 0x80, 0x81 y 0x82, y el `add 0x88` los deja en 8, 9 y 10: el bit alto se va por el acarreo
 	add a,088h		;7a08
 	out (0a0h),a		;7a0a
 	ld a,h			;7a0c
@@ -6723,13 +6723,13 @@ MUSICA_NOTA:		; Nibble bajo la nota, alto el indice de duracion; 12 es silencio 
 	ld a,(ix+006h)		;7a45
 	ld (ix+007h),a		;7a48
 MUSICA_PERIODO:		; Periodo de la nota por 0x7A71, doblado tantas veces como octavas
-	call NOTA_ARRANCA		;7a4b
+	call NOTA_ARRANCA		;7a4b   ; El silencio (B = 12) tambien pasa por aqui y programa como periodo un byte de la tabla de punteros, pero con el volumen ya a 0 no se oye
 	ld a,b			;7a4e
 	ld hl,07a71h		;7a4f
 	call HL_MAS_A		;7a52
 	ld l,(hl)			;7a55
 	ld h,000h		;7a56
-	ld a,(ix+005h)		;7a58
+	ld a,(ix+005h)		;7a58   ; La octava del +5: a cero, el periodo tal cual (la octava aguda de la tabla); cada `add hl,hl` lo dobla, una octava mas grave
 	or a			;7a5b
 	jr z,PSG_PERIODO		;7a5c
 	ld b,a			;7a5e
@@ -6738,7 +6738,7 @@ MUSICA_OCTAVA:		; Una octava mas abajo por vuelta
 	djnz MUSICA_OCTAVA		;7a60
 PSG_PERIODO:		; Registros C y C-1 = HL (periodo)
 	ld a,c			;7a62
-	out (0a0h),a		;7a63
+	out (0a0h),a		;7a63   ; Primero el registro alto del par (C), luego el bajo (C-1); C sale igual que entro
 	ld a,h			;7a65
 	out (0a1h),a		;7a66
 	dec c			;7a68
@@ -6746,7 +6746,7 @@ PSG_PERIODO:		; Registros C y C-1 = HL (periodo)
 	out (0a0h),a		;7a6a
 	ld a,l			;7a6c
 	out (0a1h),a		;7a6d
-	inc c			;7a6f
+	inc c			;7a6f   ; El `inc c` deja C como entro: el llamante sigue con su registro alto
 	ret			;7a70
 
 ; ----------------------------------------------------------------------

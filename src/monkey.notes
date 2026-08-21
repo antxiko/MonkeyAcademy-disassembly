@@ -615,7 +615,7 @@ L 0x6534 ACTOR_TIRA_FIN    El mono vuelve a estar parado (estado 1) con sus patr
 L 0x654A CANGREJO_TIRA     El cangrejo, con los patrones 0xE8/0xEC (o 0x68/0x6C) mientras cuenta
 L 0x655D CANGREJO_TIRA_FIN Y a estar parado con 0x30/0x3C (o 0xB0/0xBC)
 L 0x656B CANGREJO_MUERE    Estado 9: cuando acaba +0x5D, esconde el "500" (el sprite de la fruta que lo mato, +0x59/+0x5A), vuelve a esconderse (estado 0) a esperar segun la fase (0x6585), y la fruta que llevara desaparece
-L 0x6585 CANGREJO_ESPERA   +0x5D = cuanto espera escondido: (16 - fase) x 16 + 17 fotogramas hasta la fase 19; desde la 20, uno
+L 0x6585 CANGREJO_ESPERA   +0x5D = cuanto espera escondido: ((8 - fase mod 8) mod 8) x 16 + 17 fotogramas; desde la fase 32, uno
 L 0x659F ACTOR_LE_DA_LA_FRUTA Estado 10: sonido 0xA0, cara de susto y se pierde la vida (E00C = 1)
 L 0x65AE CARA_DE_SUSTO     Los patrones del mono a 0x58/0x5C (los sprites 16-17 de 0x56BF, la cara de susto) o sus espejos 0xD8/0xDC segun a donde mira
 D 0x65C3 0x65CB patrones_andar_derecha Los patrones de las cuatro fases de andar hacia la derecha, dos sprites por fase: (00,0C) (04,10) (00,0C) (08,14): los sprites 0-2 de 0x56BF con sus detalles 3-5 (o el juego que haya cargado E10E)
@@ -944,15 +944,25 @@ B 0x78DF ----------------------------------------------------------------------
 L 0x78DF SONIDO            Arranca el sonido A si hay partida en marcha (bit 6 de E002)
 L 0x78E7 SONIDO_YA         Arranca el sonido A sin mirar nada (D = 0: con prioridad)
 L 0x78F7 SONIDO_DEL_ACTOR  Un efecto pedido desde un actor: los cangrejos solo pueden pedir el 9; los demas son del mono
+C 0x78F7 El 9 pasa sin mirar quien lo pide
+C 0x78FC El nibble bajo del +0x5B es el tipo del actor: cualquier otro efecto solo pasa si vale 0, o sea si lo pide el mono
 L 0x7905 SONIDO_ARRANCA    Los menores de 0x20 pasan por el filtro del actor; reparte los canales y apunta las pistas
 L 0x7909 SONIDO_CANALES    B canales desde HL: 1 desde E026 (efectos), 2 desde E012 (musicas 0x91-0x9B), 3 (0x9D en adelante)
+C 0x790E Por debajo de 0x91 es un efecto: un solo canal
+C 0x7916 De 0x9D en adelante (el GAME OVER y las pistas mudas), los tres canales
 L 0x791D SONIDO_PRIORIDAD  D = 1 (desde el bucle) no mira; si no, contra el numero que suena en el canal
 C 0x7925 0xA0 se apunta como 0x20: entra sobre todo y luego lo pisa cualquiera
 L 0x792B SONIDO_PISTAS     Indice = numero & 0x3F en la tabla de 0x7A7B; una palabra por canal seguida
+C 0x792B C guarda el numero entero, que es lo que SONIDO_CANAL deja apuntado en el +2
+C 0x792C El `and 0x3F` saca el indice (0x91 -> 17) y el doble es porque la tabla es de palabras
 L 0x7937 SONIDO_CANAL      Arranca un canal: 1 fotograma, duracion 1, el numero, y el puntero de la tabla; y al siguiente canal (10 bytes mas alla)
 L 0x7950 SONIDO_IGUAL      El mismo numero: solo el 2 se repite
 L 0x7955 SONIDO_REPITE     0xFE n en la pista: vuelve a arrancar el mismo sonido n veces (0xFF, siempre); despues se apaga
+C 0x7957 El `inc a` caza el 0xFF: siempre, sin llevar la cuenta
+C 0x795A El +9 del canal lleva las vueltas ya dadas; al alcanzar n, el canal se apaga
 L 0x7964 SONIDO_REARRANCA  Otra vez desde el principio, sin prioridad
+C 0x7964 El numero se relee del +2 del propio canal
+C 0x7968 D = 1: sin mirar prioridad, que si no el numero empataria consigo mismo y no rearrancaria
 B 0x796F ----------------------------------------------------------------------
 B 0x796F EL REPRODUCTOR, en cada interrupcion (aunque el juego vaya atrasado).
 B 0x796F Tres canales de 10 bytes desde E010: +0 lo que queda de nota, +1 la
@@ -971,20 +981,30 @@ B 0x796F Es el reproductor que Konami repite en sus cartuchos, con otras direcci
 B 0x796F ----------------------------------------------------------------------
 L 0x796F SUENA             Un fotograma de los tres canales (IX = E010, +10 por canal; C = registro de periodo)
 L 0x797B SUENA_CANAL       Siguiente canal
+C 0x797C El +2 es el numero del sonido: a cero el canal esta libre y no se toca
+C 0x7983 C sube de dos en dos (1, 3, 5): el registro ALTO del par de periodo de cada canal del PSG
 L 0x798B SUENA_PASO        Musica (bit 7) por 79E5; efecto: descuenta y, a cero, siguiente evento
 L 0x7992 SIGUIENTE_EVENTO  Lee la pista: 0xFE repite, 0xFF apaga, musica por 7A10, efecto aqui
 L 0x79B3 EFECTO_EVENTO     Nibble alto volumen, nibble bajo y byte siguiente el periodo
 L 0x79CD NOTA_ARRANCA      H = volumen; +0 = duracion, +8 = duracion + 3 (la envolvente); y al PSG
+C 0x79CE La duracion del +1 pasa al +0, que es lo que SUENA descuenta
+C 0x79D4 Y al +8 con 3 de propina: la cuenta de la envolvente, que MUSICA_PASO va cerrando
 L 0x79DB CANAL_APAGA       Numero 0 y volumen 0
 L 0x79E5 MUSICA_PASO       Descuenta la nota; envolvente: tres pasos abajo al principio, dos al final
+C 0x79EA El +8 arranco 3 por encima del +0; mientras no se igualen baja DOS por fotograma (esta y la de abajo) y el volumen cae: los tres primeros fotogramas
+C 0x79F5 Ya igualados bajan a la par; solo con menos de 3 de nota vuelve a caer el volumen: la cola de la envolvente
 L 0x79FA ENVOLVENTE_ARRANQUE Los tres primeros fotogramas: baja
 L 0x79FD VOLUMEN_BAJA      Un paso menos, sin pasar de cero
 L 0x7A06 PSG_VOLUMEN       Registro 8/9/10 (segun C) = H
+C 0x7A07 La media vuelta convierte C (1, 3, 5) en 0x80, 0x81 y 0x82, y el `add 0x88` los deja en 8, 9 y 10: el bit alto se va por el acarreo
 L 0x7A10 MUSICA_EVENTO     0xFD: octava (bits 0-2) y volumen (bits 3-7); luego la nota
 L 0x7A24 MUSICA_NOTA       Nibble bajo la nota, alto el indice de duracion; 12 es silencio (no repone el volumen)
 L 0x7A4B MUSICA_PERIODO    Periodo de la nota por 0x7A71, doblado tantas veces como octavas
+C 0x7A4B El silencio (B = 12) tambien pasa por aqui y programa como periodo un byte de la tabla de punteros, pero con el volumen ya a 0 no se oye
+C 0x7A58 La octava del +5: a cero, el periodo tal cual (la octava aguda de la tabla); cada `add hl,hl` lo dobla, una octava mas grave
 L 0x7A5F MUSICA_OCTAVA     Una octava mas abajo por vuelta
 L 0x7A62 PSG_PERIODO       Registros C y C-1 = HL (periodo)
+C 0x7A63 Primero el registro alto del par (C), luego el bajo (C-1); C sale igual que entro
 D 0x7A71 0x7A7B periodos_de_notas Los periodos del PSG de Do6 a La6 (106, 100, 95, 89, 84, 80, 75, 71, 67, 63); La#6 y Si6 (60, 56) son los dos bytes siguientes, que a la vez son la entrada 0 de la tabla de punteros
 D 0x7A7B 0x7AC3 tabla_de_sonidos 36 punteros de pista, indice = numero del sonido & 0x3F, con los canales seguidos: 1-16 los efectos, 17-18 la musica del menu (0x91), 19-20 la de la partida y el READY (0x93), 21-22 el acierto (0x95), 23-24 el mono del globo (0x97), 25-26 la fase superada (0x99), 27-28 la respuesta camino del profesor (0x9B), 29-31 el GAME OVER (0x9D), 32 la vida perdida (0xA0, con 33-34 mudos) y 33-35 el 0xA1, que calla los tres canales (las tres apuntan al 0xFF de 0x7B1B). La entrada 0 (0x383C) no es un puntero: son las dos ultimas notas de la tabla de periodos
 F 0x7A7B w1
@@ -1135,7 +1155,7 @@ L 0x6514 ACTOR_TIRA_POSE   El mono con los brazos de tirar mientras cuenta
 L 0x652C ACTOR_TIRA_PATRONES Los dos patrones
 L 0x6540 ACTOR_TIRA_PARADO Parado (1) y sin carga
 L 0x6597 CANGREJO_ESPERA_PON +0x5D = A
-L 0x659B CANGREJO_ESPERA_1 Desde la fase 20: un fotograma
+L 0x659B CANGREJO_ESPERA_1 Desde la fase 32 (0x20, que E051 va en binario): un fotograma
 L 0x65BA CARA_DE_SUSTO_PON Los patrones al mono
 L 0x6622 DENTRO_DE_FIN     Fuera
 L 0x662B SIN_LLAMADAS_TRAMO_BUCLE Un tile
@@ -2218,3 +2238,54 @@ C 0x4C86 ...a la VRAM tal cual
 C 0x4C8A ocho mas alla: los patrones van de ocho en ocho
 C 0x4C95 0xD7FC es -0x2804 en complemento a dos, asi que esta suma es la resta disfrazada y el acarreo dice si se ha pasado del final
 C 0x4C97 y HL vuelve como estaba: la suma solo servia para mirar la bandera
+
+C 0x407F El candado E005 se queda puesto: la salida corta no lo suelta; lo suelta la larga, cuando el paso entero acaba
+C 0x409F El call al `ret` suelto tambien aqui: los ciclos que el VDP pide entre los dos bytes de la direccion
+C 0x41CE C hace de tercera mano: lo que estaba en E009 baja a E008 sin tocar A
+C 0x45FF E004 = 0x60: el plazo del parpadeo, que OPCION_PARPADEA descuenta
+C 0x4640 La tabla de nombres entera (0x3800, 0x300 celdas) a cero: pantalla en blanco
+C 0x4651 El `xor a / cp (hl)` es redundante: el Z del `dec (hl)` ya decia lo mismo
+C 0x4654 Al estado 12, el que decide a quien le toca jugar (E00C/E00D)
+C 0x4669 El bit 7 de E002 es el jugador en juego: el `rlca` lo baja al bit 0 y 0x31 es el tile del "1"
+C 0x4671 0x3971 es la fila 11, columna 17: justo detras de "PLAYER"
+C 0x46CE El doble doble es x4, los cuatro bytes de cada ficha; B y C arrancan iguales: C contara lo volcado y B sera la cabeza que falta
+C 0x46D8 0x7B00 = escribir en 0x3B00, la tabla de atributos
+C 0x46E2 El limite se relee del estado en CADA byte: 0x60 en el READY, 0x4C si no
+C 0x46F4 B trae E1B2 x 4: los bytes saltados al empezar por el medio; a cero (giro 0) no hay cabeza
+C 0x4708 El (hl),0xE1 siembra el primer byte y el ldir lo arrastra: 77 escrituras, E0B0-E0FC
+C 0x474A El `add a,a` manda el bit 7 (la cortinilla ya paso) al acarreo
+C 0x4750 CORTINILLA devuelve M al acabar; mientras (P), se sale y otra columna al fotograma siguiente
+C 0x47BA E1B3 = 0x20: la racion de parpadeos de la linea que se elija
+C 0x47CC La espera del LEVEL SELECT (E23F): 0x0F00 fotogramas, que 0x762F descuenta
+C 0x4872 D = 0x87: el bit 7 dice que es un registro, y VDP_DIRECCION lo manda igual que una direccion
+C 0x4888 El `inc d` recorre 0x80-0x87: el numero de registro viaja en el byte alto
+C 0x48A2 El `dec bc` no toca banderas: el `ld a,b / or c` es el "BC == 0" de un contador de 16 bits
+C 0x48B6 El byte a repetir se relee de H en cada vuelta, que el `out` gasta A
+C 0x48DE De fila en fila: 32 celdas por fila de la tabla de nombres
+C 0x48E7 El `xor a` final deja el signo en P: la cortinilla aun no ha acabado
+C 0x48F0 Los dos `inc b` distinguen 0xFF (fin) y 0xFE (cambio de direccion) sin comparar
+C 0x48FB C hace de tercera mano en cada byte del trueque
+C 0x490E El bit 7 de E002 es el 2P: el bit 6 del registro 15 conmuta la lectura al puerto 2
+C 0x4986 E050 son las vidas
+C 0x498E El 0x10 es el efecto de la vida extra
+C 0x4A17 El bit 7 (el 2P) sale por el acarreo: sus puntos viven en E046-E048 y van a la fila 12
+C 0x4A37 Las decenas se acumulan en el A alternativo, que arranco a cero en 0x4A2A
+C 0x4A9D H, L y C traen los tres tiles: "1UP"/"2UP" o tres azules, segun lo que se leyo
+C 0x4AD2 D = 0x88 y E = 0xC8 son PIXELS: Y 136 (fila 17) y X 200 (columna 25), que es como se recibe el destino
+C 0x4ADE El mismo bucle que las vidas, con la cara llorando de 0x4AE8
+C 0x4AEC E051 = 1: la demo juega siempre la fase 1
+C 0x4AF1 El reloj de la demo (E1B0) y el paso del guion (E1B1), los dos a cero: el guion desde el principio
+C 0x4C38 0x45C0 = escribir en los colores 0x05C0, los de los tiles 0xB8 en adelante
+C 0x4C4B La tercera banda cae en la rutina de abajo sin `call`: el `ret` final sirve a las tres
+C 0x4C56 Al puerto de datos directamente: la direccion quedo apuntada en 0x4C3B y el VDP la sube solo
+C 0x4CBD El `inc` lo dejo alineado a 8; quitando los 8 que sumo el bucle, el cursor cae en la fila 0 del primer tile de la fila de tiles siguiente
+C 0x5028 Los dos `inc hl` saltan al byte de cifra de la tarjeta siguiente: cada tarjeta son dos bytes, estado y cifra
+C 0x623B Los dos patrones caen en el +2 y el +6 de la ficha: los DOS sprites solapados del actor, el de color y el detalle
+C 0x64FA El estado de cada fruta contra D: los bits 2-3 dicen quien la lleva
+C 0x658C El `neg` y los cuatro dobles montan (8 - fase) x 16; el `and 0x70` es el que recorta a tres bits y hace que la espera vuelva a empezar cada ocho fases
+C 0x6ED4 El acarreo decimal del byte bajo sube al alto, con su propio `daa`
+C 0x7311 El nibble bajo del azar contra E058 (cuantos globos hay): si se pasa, otra tirada
+C 0x7346 El `cp` con B en vez de un `djnz`: FRUTA_PASO quiere el numero de fruta contando hacia ARRIBA en B
+C 0x76F0 El mismo reparto que NIVEL_DEL_JUGADOR, repetido aqui a mano: E153 el 1P, E154 el 2P
+C 0x48AE El byte de relleno se aparta en H, que el bucle no gasta
+C 0x7A6F El `inc c` deja C como entro: el llamante sigue con su registro alto

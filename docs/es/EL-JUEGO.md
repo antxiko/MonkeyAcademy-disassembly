@@ -82,8 +82,9 @@ en B, del último al primero; y uno de cada cuatro fotogramas (0xE272) solo se
 mueve el mono. Medido en una partida: en las fases 1 y 2 el mono dio 1003
 pasos en 1003 fotogramas, el primer cangrejo 752, los otros dos ninguno. Y
 cuánto esperan
-escondidos antes de volver, (16 - fase) × 16 + 17 fotogramas hasta la fase 19,
-uno desde la 20 (0x6585). Al llegar al borde izquierdo del suelo se van por
+escondidos antes de volver: ((8 − fase mod 8) mod 8) × 16 + 17 fotogramas, que
+baja de 129 a 17 en ocho fases y vuelve a empezar; desde la fase 32, uno
+(0x6585). Al llegar al borde izquierdo del suelo se van por
 él (0x61C2).
 
 Si uno te toca a menos de 16 pixels (0x69B0), cara de susto (0x65AE), sonido

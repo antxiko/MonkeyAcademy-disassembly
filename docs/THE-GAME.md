@@ -81,8 +81,9 @@ step is at 16, not at 10). The loop at 0x4860 calls
 (0xE272) only the monkey moves. Measured in a real game: in stages 1 and 2 the
 monkey took 1003 steps in 1003 frames, the first crab 752, the other two
 none. And how long they wait hidden
-before coming back: (16 − stage) × 16 + 17 frames up to stage 19, one from
-stage 20 (0x6585). Reaching the left edge of the floor they leave through it
+before coming back: ((8 − stage mod 8) mod 8) × 16 + 17 frames, dropping from
+129 to 17 over eight stages and starting over; from stage 32, one frame
+(0x6585). Reaching the left edge of the floor they leave through it
 (0x61C2).
 
 If one touches you within 16 pixels (0x69B0): scared face (0x65AE), sound

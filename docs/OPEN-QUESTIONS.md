@@ -21,11 +21,12 @@ with its single five-symbol script, the binary does not say.
 
 ## How long a full game lasts
 
-The stage is BCD and `PINTA_FASE` (0x4A24) resets it to 0 on reaching 100,
-and the tables of platforms, cards and fruit are indexed by (stage − 1) & 7,
-so the eight stages repeat. What grows is how many crabs are in play (one up
-to stage 7, two from stage 8 to 15, all three from stage 16; 0x4850) and how
-little they wait hidden (from stage 20, one frame). It remains to actually
+The stage (E051) is binary; `PINTA_FASE` (0x4A24) converts it to decimal for
+display and resets it to 0 on reaching 100. The tables of platforms, cards
+and fruit are indexed by (stage − 1) & 7, so the eight stages repeat. What
+grows is how many crabs are in play (one up to stage 7, two from stage 8 to
+15, all three from stage 16; 0x4850) and how little they wait hidden (from
+stage 32, one frame). It remains to actually
 play that far to see whether the game becomes unplayable before that or
 whether the wrap to stage 0 has any effect the code does not show. One
 measurement so far: a novice player's game, at levels 4 and 5, lasted 5 min
