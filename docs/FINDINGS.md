@@ -13,6 +13,10 @@ level-1 equations in the emulator: 0 exceptions, 238 of 400 with the `?` in
 the first two positions and only 67 in the result. The digit that gets hidden
 depends on the digit you can see.
 
+## It does not carry Konami's hidden mark
+
+Many of the house's cartridges hide their catalogue number and the title in katakana at the end of the ROM; **Manuel Pazos** ([@ManuelPazosMSX](https://twitter.com/ManuelPazosMSX)) found it. This one does not: the last byte with any content is at 0x7EE0, and behind it there are only 287 bytes of 0xFF padding. Nor is it somewhere else: all 16,384 positions were swept with a search that does find it in the cartridges of the series that carry it.
+
 ## Operands never end in 0 or 1
 
 `OPERANDO` (0x6F45) rolls again until the units come out between 2 and 9. In

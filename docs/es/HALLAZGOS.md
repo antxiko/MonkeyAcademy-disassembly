@@ -13,6 +13,10 @@ primeras posiciones; con un 1 delante, solo en el primer operando. Medido con
 `?` en las dos primeras posiciones y solo 67 en el resultado. La cifra que se
 tapa depende de la que se ve.
 
+## No lleva la marca oculta de Konami
+
+Muchos cartuchos de la casa esconden al final de la ROM su número de catálogo y el título en katakana; lo descubrió **Manuel Pazos** ([@ManuelPazosMSX](https://twitter.com/ManuelPazosMSX)). Este no: el último byte con contenido está en 0x7EE0, y detrás solo hay 287 bytes de relleno 0xFF. Y no es que esté en otro sitio: se rastrearon las 16.384 posiciones con un buscador que sí la encuentra en los cartuchos de la serie que la llevan.
+
 ## Los operandos nunca acaban en 0 ni en 1
 
 `OPERANDO` (0x6F45) repite el azar hasta que las unidades salen entre 2 y 9.
