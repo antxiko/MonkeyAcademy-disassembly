@@ -26,7 +26,7 @@
 # (comprobado en el listado; ver src/monkey.notes en cada direccion).
 
 set DIR [file normalize [file join [file dirname [info script]] .. work omsx partida]]
-if {[info script] eq ""} { set DIR "C:/Users/Antxiko/Documents/DES_ASM/MONKEY_DISAM/work/omsx/partida" }
+if {[info script] eq ""} { set DIR "C:/Users/Antxiko/Documents/DES_ASM/desensamblados/MONKEY_DISAM/work/omsx/partida" }
 if {[info exists ::env(MK_DIR)]} { set DIR $::env(MK_DIR) }   ;# para probar el arnes en otro sitio
 file mkdir $DIR
 set LOG [open "$DIR/partida.log" a]
