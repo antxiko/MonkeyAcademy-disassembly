@@ -136,3 +136,27 @@ tiles at pixel coordinates, `PINTA_RECUADRO` (0x66BB) fills rectangles,
 (0x6C84) decompresses the tiles, `ESPEJA_SPRITES` (0x4107) flips 22 sprites
 bit by bit, and `TITULO_UNA_FILA` (0x4C77) paints the title sign one pixel
 row every eight frames.
+
+## Code shared with other Konami cartridges
+
+This disassembly has been compared, instruction by instruction, with
+every other Konami one in the series. A block counts when the same
+instructions, at least six of them from a label to its `ret` or its
+unconditional jump, are in both cartridges; the addresses are left
+aside, because they change from one cartridge to the next. Of the
+other 57, **31** have at least one block in common with this one;
+these are the ones that share the most:
+
+| Cartridge | Blocks | Instructions | For example (here = there) |
+|---|---:|---:|---|
+| [Athletic Land](https://antxiko.github.io/AthleticLand-disassembly/) | 17 | 255 | `SUENA_PASO` (0x798B) |
+| [Cabbage Patch Kids](https://antxiko.github.io/CabbagePatchKids-disassembly/) | 10 | 115 | `PINTA_BYTES_BCD` (0x4A4F) = `PINTA_BCD` |
+| [Antarctic Adventure](https://antxiko.github.io/AntarcticAdventure-disassembly/) | 9 | 184 | `MUSICA_EVENTO` (0x7A10) = `VOLUMEN_MIRA_FD` |
+| [Super Cobra](https://antxiko.github.io/SuperCobra-disassembly/) | 9 | 136 | `MUSICA_EVENTO` (0x7A10) |
+| [Konami’s Billiards](https://antxiko.github.io/KonamisBilliards-disassembly/) | 6 | 105 | `SUENA_PASO` (0x798B) = `paso_de_un_canal` |
+| [Circus Charlie](https://antxiko.github.io/CircusCharlie-disassembly/) | 6 | 49 | `PINTA_TILES_SEGUIDOS` (0x6C71) = `pinta_franja_correlativa` |
+| [Magical Tree](https://antxiko.github.io/MagicalTree-disassembly/) | 5 | 53 | `PINTA_BYTES_BCD` (0x4A4F) = `imprime_bcd` |
+
+The whole matrix, the 58 cartridges against each other, is on
+[The routines](https://antxiko.github.io/MSX-disassembly-database/THE-ROUTINES.html) in the series database, along
+with the method and the program that measures it.
